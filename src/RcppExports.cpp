@@ -10,32 +10,22 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// smokinghistorygenerator
-bool smokinghistorygenerator(const char* sInputFileName);
-RcppExport SEXP _RcppSmokingHistoryGenerator_smokinghistorygenerator(SEXP sInputFileNameSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const char* >::type sInputFileName(sInputFileNameSEXP);
-    rcpp_result_gen = Rcpp::wrap(smokinghistorygenerator(sInputFileName));
-    return rcpp_result_gen;
-END_RCPP
-}
 // RunWebVersion
-int RunWebVersion(const char * sInputFileName);
-RcppExport SEXP _RcppSmokingHistoryGenerator_RunWebVersion(SEXP sInputFileNameSEXP) {
+bool RunWebVersion();
+RcppExport SEXP _RcppSmokingHistoryGenerator_RunWebVersion() {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const char * >::type sInputFileName(sInputFileNameSEXP);
-    rcpp_result_gen = Rcpp::wrap(RunWebVersion(sInputFileName));
+    rcpp_result_gen = Rcpp::wrap(RunWebVersion());
     return rcpp_result_gen;
 END_RCPP
 }
 
+RcppExport SEXP _rcpp_module_boot_SmokingSimulator();
+
 static const R_CallMethodDef CallEntries[] = {
-    {"_RcppSmokingHistoryGenerator_smokinghistorygenerator", (DL_FUNC) &_RcppSmokingHistoryGenerator_smokinghistorygenerator, 1},
-    {"_RcppSmokingHistoryGenerator_RunWebVersion", (DL_FUNC) &_RcppSmokingHistoryGenerator_RunWebVersion, 1},
+    {"_RcppSmokingHistoryGenerator_RunWebVersion", (DL_FUNC) &_RcppSmokingHistoryGenerator_RunWebVersion, 0},
+    {"_rcpp_module_boot_SmokingSimulator", (DL_FUNC) &_rcpp_module_boot_SmokingSimulator, 0},
     {NULL, NULL, 0}
 };
 
