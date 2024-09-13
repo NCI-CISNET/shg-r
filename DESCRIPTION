@@ -1,0 +1,13 @@
+Package: RcppSmokingHistoryGenerator
+Type: Package
+Title: R wrapper for the Smoking History Generator
+Version: 0.0.1
+Date: 2024-07-16
+Author: John Clarke
+Maintainer: John Clarke <john.clarke@cornerstonenw.com>
+Description: An R wrapper for the Smoking History Generator
+License: GNU3 (>= 3)
+Imports: Rcpp (>= 1.0.2)
+LinkingTo: Rcpp
+RoxygenNote: 6.0.1
+URL: https://github.com/CSNW/rcpp-shg
