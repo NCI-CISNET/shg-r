@@ -48,6 +48,23 @@ class Smoking_Simulator {
       enum Sex {SEX_Male = 0, SEX_Female, NUM_SEXES};
       enum Race {RACE_AllRaces = 0, NUM_RACES};
 
+      short gwPersonsInitAge;      // Age of Smoking Initiation
+      short gwPersonsCessAge;      // Age of Smoking Cessation
+      short gwPersonsAgeAtDeath;   // Age at death from COD other than lung cancer
+
+      // temporarily making this public so we can access them from RCPP class (should use getters eventually)
+      // Person Variables, Store the results for the last person simulated
+      short gwPersonsYOB;          // Year Of Birth
+      short gwPersonsRace;         // Race
+      short gwPersonsSex;          // Sex
+      //Moving public
+      //short gwPersonsInitAge;      // Age of Smoking Initiation
+      //short gwPersonsCessAge;      // Age of Smoking Cessation
+      SmokingIntensity     gwPersonsSmkIntensity; // The smoking intesity group for the person (smokers only)
+      double *gdPersonsCPDbyAge;   // Cigarettes smoked per day by age
+      double gdPersonsAvgCPD;      // Average num of Cigarettes smoked per day (used for COD in former smokers)
+
+
  	// Private Member Variables
    private:
 
@@ -91,16 +108,16 @@ class Smoking_Simulator {
       short gwImmediateCessYear;  // Year when all smokers automatically quit smoking. 0 = option not used.
       bool gbImmediateCessation;  // Is immediatte Cessation turned on
 
-      // Person Variables, Store the results for the last person simulated
-      short gwPersonsYOB;          // Year Of Birth
-      short gwPersonsRace;         // Race
-      short gwPersonsSex;          // Sex
-      short gwPersonsInitAge;      // Age of Smoking Initiation
-      short gwPersonsCessAge;      // Age of Smoking Cessation
-      short gwPersonsAgeAtDeath;   // Age at death from COD other than lung cancer
-      SmokingIntensity     gwPersonsSmkIntensity; // The smoking intesity group for the person (smokers only)
-      double *gdPersonsCPDbyAge;   // Cigarettes smoked per day by age
-      double gdPersonsAvgCPD;      // Average num of Cigarettes smoked per day (used for COD in former smokers)
+      // // Person Variables, Store the results for the last person simulated
+      // short gwPersonsYOB;          // Year Of Birth
+      // short gwPersonsRace;         // Race
+      // short gwPersonsSex;          // Sex
+      // //Moving public
+      // //short gwPersonsInitAge;      // Age of Smoking Initiation
+      // //short gwPersonsCessAge;      // Age of Smoking Cessation
+      // SmokingIntensity     gwPersonsSmkIntensity; // The smoking intesity group for the person (smokers only)
+      // double *gdPersonsCPDbyAge;   // Cigarettes smoked per day by age
+      // double gdPersonsAvgCPD;      // Average num of Cigarettes smoked per day (used for COD in former smokers)
 
       // Offset values for Probability Arrays
       long gwInitProbRaceOffset; // Initiation Array - Race Offset
@@ -144,6 +161,7 @@ class Smoking_Simulator {
       void OversamplePRNGs();
 
    public:
+      Smoking_Simulator();
       Smoking_Simulator(const char* sInitiationProbFile, const char* sCessationProbFile,
                         const char* sLifeTableFile,      const char* sCpdIntensityProbFile,
                         const char* sCpdDataFile,        unsigned long ulInitPRNGSeed,
@@ -160,7 +178,7 @@ class Smoking_Simulator {
       short GetYOBCohortGroup(short wYearBirth);
 
       void RunSimulation(const char* sInputFileName, const char* sOutputFileName = 0, bool bPrintToScreen = true);
-      void RunSimulation(short wRace, short wSex, short wYearBirth, FILE* pOutStream = 0);
+      void RunSimulationIndividual(short wRace, short wSex, short wYearBirth, FILE* pOutStream = 0);
 
       void SetOutputType(short wOutputType);
       void WriteAsData(FILE *pOutStream);
