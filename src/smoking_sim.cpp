@@ -1546,7 +1546,7 @@ void Smoking_Simulator::RunSimulation(const char* sInputFileName, const char* sO
          pTokenPtr= strtok(NULL, ";");
          wYOB = atoi(pTokenPtr);
 
-         RunSimulation(wRace, wSex, wYOB, pOutputFile);
+         RunSimulationIndividual(wRace, wSex, wYOB, pOutputFile);
          if (bPrintToScreen) 
             WriteToStream(stdout);
       }
@@ -1556,7 +1556,7 @@ void Smoking_Simulator::RunSimulation(const char* sInputFileName, const char* sO
          fclose(pOutputFile);
 
    } catch (SimException ex) {
-      ex.AddCallPath("RunSimulation(char*,char*,bool)");
+      ex.AddCallPath("RunSimulationIndividual(char*,char*,bool)");
       if (pInputFile != NULL)
          fclose(pInputFile);
       if (pOutputFile!=0)
@@ -1569,7 +1569,7 @@ void Smoking_Simulator::RunSimulation(const char* sInputFileName, const char* sO
 // Run the simulation for the race, sex and year of birth values provided.
 // Results are stored in the private members gwPersonsInitAge gwPersonsCessAge
 // If File* is supplied, results will be written to the stream specified.
-void Smoking_Simulator::RunSimulation(short wRace, short wSex, short wYearBirth, FILE* pOutStream) {
+void Smoking_Simulator::RunSimulationIndividual(short wRace, short wSex, short wYearBirth, FILE* pOutStream) {
 
    short    wYOBCohortGroup,
             wCurrentAge          = gwMinInitiationAge,
