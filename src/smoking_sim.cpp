@@ -16,6 +16,15 @@
 
 using namespace std;
 
+Smoking_Simulator::Smoking_Simulator() {
+   try {
+      Init();
+   } catch (SimException ex) {
+      ex.AddCallPath("Smoking_Simulator()");
+      Free();
+      throw ex;
+   }
+}
 // Constructor
 Smoking_Simulator::Smoking_Simulator(const char* sInitiationProbFile, const char* sCessationProbFile,
                                      const char* sLifeTableFile,      const char* sCpdIntensityProbFile,
