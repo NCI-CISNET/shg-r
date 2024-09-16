@@ -7,3 +7,4 @@ main.cpp
 .DS_Store
 .Rproj.user
 src/RcppSmokingHistoryGenerator.so
+.Rhistory
