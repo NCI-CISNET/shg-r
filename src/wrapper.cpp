@@ -109,10 +109,10 @@ public:
    // Eventually we should probably allow for a constructor that takes seeds
    SHGInterface()
    {
-      pSimulator = new Smoking_Simulator();
+      //Simulator = new Smoking_Simulator();
+      initialize();
    }
-
-   DataFrame runSim(int repeat)
+   bool initialize()
    {
       const char *sInitiationProbFile = "./inst/data/2017-05-03/lbc_shg_initiation.txt";
       const char *sCessationProbFile = "./inst/data/2017-05-03/lbc_shg_cessation.txt";
@@ -132,6 +132,11 @@ public:
                                          ulCessPRNGSeed, ulLifeTabSeed,
                                          ulIndivRndsSeed, wOutputType,
                                          wCessationYear);
+   }
+
+   DataFrame runSim(int repeat)
+   {
+
 
       short wRace = 0;
       short wSex = 0;
@@ -254,7 +259,8 @@ RCPP_MODULE(SmokingSimulator) {
 
    class_<SHGInterface>("SHGInterface")
        .constructor()
-       .method("runSim", &SHGInterface::runSim, "Generates a data frame of simulated smoking histories for n individuals");
+       .method("runSim", &SHGInterface::runSim, "Generates a data frame of simulated smoking histories for n individuals")
+       .method("initialize", &SHGInterface::initialize);
 }
 
 // [[Rcpp::export]]
