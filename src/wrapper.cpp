@@ -123,7 +123,7 @@ public:
       unsigned long ulCessPRNGSeed = 12345;
       unsigned long ulLifeTabSeed = 12345;
       unsigned long ulIndivRndsSeed = 12345;
-      short wOutputType = 1;
+      short wOutputType = 2; // data only?
       short wCessationYear = 0;
 
       pSimulator = new Smoking_Simulator(sInitiationProbFile, sCessationProbFile,
