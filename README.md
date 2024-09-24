@@ -7,6 +7,7 @@ Dependencies:
 install.packages("devtools")
 install.packages("Rcpp")
 install.packages("rstream")
+install.packages("rbenchmark")
 ```
 
 Ensure libraries are loaded
@@ -59,6 +60,7 @@ MRG_histories <- shg$runSim(1000)
 We can benchmark the two approaches like this
 ```R
 # Benchmark the 2 approaches (after instantiating the objects above)
+library(rbenchmark)
 n <- 100000
 results <- benchmark(
   SIM_MT = {
