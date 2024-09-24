@@ -1,9 +1,7 @@
 library(Rcpp)
 library(rbenchmark)
 library(rstream)
-###################
-#TODO NEXT -- replace the other RNGs with the queue method and compare the speed
-##################
+
 devtools::load_all() # recompiles the package if necessary
 devtools::load_all() # recompiles the package if necessary
 
@@ -18,16 +16,21 @@ rstream.nextsubstream(rng3)
 rng4 <- rstream.clone(rng3)
 rstream.nextsubstream(rng4)
 shg$initialize() # instantiates the Smoking_Simulator object in the interface
-shg$setRNGs(rng1, rng2, rng3, rng4) # after initialize so that they can hang off the object
 
-shg$setRNGtype("MT")
+shg$setRNGtype("MT") # Use internal (non-R) Mersenne Twister
 test <- shg$runSim(1000) # should be different (continues with same streams)
-shg$setRNGtype("rstream")
-test2 <- shg$runSim(1002) # should be same as first instance of test
 
+shg$setRNGs(rng1, rng2, rng3, rng4) # after initialize so that they can hang off the object
+shg$setRNGtype("rstream") # use MRG32k3a with substreams and batch generation
+test2 <- shg$runSim(1000) # should be same as first instance of test
+
+# TODO: investigate the following
+# NOTE: the first time the next segment is run, it can produce the following error:
+# Error in system.time(replicate(replications, { : external pointer is not valid
+# But if you re-run the segment, it appears to run without any errors
 
 # Benchmark the different approaches
-n <- 100000
+n <- 10000
 results <- benchmark(
   SIM_MT = {
     shg$setRNGtype("MT")
@@ -46,8 +49,7 @@ results <- results[, c("test", "elapsed", "relative")]
 # Print out the benchmark results
 print(results)
 
-
-# // Bonus: if we use rstream (MRG32k3a) we can parallelize the simulation at this juncture (each segment assigned a thread)
+# // Bonus: if we use rstream (MRG32k3a) we can parallelize the simulation (each segment assigned a thread)
 # // this is because MRG32k3a allows us to efficiently jump ahead in the stream using substreams; we cannot do that with MT.
 # // (so each of the 4 variates would have their own substream for each segment;
 # // and for each subsequent segement, we'd use subsequent substreams to ensure independence)
