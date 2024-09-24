@@ -8,6 +8,8 @@
 // NCI Contact: Rocky Feuer
 // Please view the HelpFile.txt file included with this source code for details pertaining to this version
 
+// TODO: Update attribution and dates above
+
 #pragma hdrstop
 #pragma argsused
 
@@ -42,8 +44,8 @@
 #define INITIATION_DATA_FILE "lbc_smokehist_initiation.txt"
 #define CESSATION_DATA_FILE "lbc_smokehist_cessation.txt"
 #define OTHER_COD_DATA_FILE "lbc_smokehist_oc_mortality.txt"
-#define CPD_INTENSITY_PROBS "lbc_smokehist_cpdintensityprobs.txt"  
-#define CPD_DATA_FILE "lbc_smokehist_cpd.txt" 
+#define CPD_INTENSITY_PROBS "lbc_smokehist_cpdintensityprobs.txt"
+#define CPD_DATA_FILE "lbc_smokehist_cpd.txt"
 
 #define VECTOR_DELIMITER ","
 #define MAX_NUM_REPS 1000000
@@ -94,25 +96,25 @@ void PropagateVersionInformation();
 
 #define STRICT_R_HEADERS
 #include <Rcpp.h>
-using namespace Rcpp;
-// #include <Rinternals.h>
-// #include <R.h>
-// #include <Rdefines.h>
+// [[Rcpp::depends(Rcpp)]]
+// [[Rcpp::depends(rstream)]]
 
+using namespace Rcpp;
 #define BUFSZ 512
 
-// We need to create a wrapper class rather than reference Smoking_Simulator directly 
-// because (among other constraints) RCPP does not support classes with constructors 
+// We need to create a wrapper class rather than reference Smoking_Simulator directly
+// because (among other constraints) RCPP does not support classes with constructors
 // that take more than 6 arguments
-class SHGInterface {
+class SHGInterface
+{
 public:
    // Eventually we should probably allow for a constructor that takes seeds
    SHGInterface()
    {
-      //Simulator = new Smoking_Simulator();
       initialize();
    }
-   bool initialize()
+
+   void initialize()
    {
       const char *sInitiationProbFile = "./inst/data/2017-05-03/lbc_shg_initiation.txt";
       const char *sCessationProbFile = "./inst/data/2017-05-03/lbc_shg_cessation.txt";
@@ -133,10 +135,41 @@ public:
                                          ulIndivRndsSeed, wOutputType,
                                          wCessationYear);
    }
+   // A simple toggle between using rstream RNG versus C++ MT
+   void setRNGtype(std::string RNGtype)
+   {
+      if (RNGtype == "rstream")
+      {
+         pSimulator->use_rstream = TRUE;
+      }
+      else
+      {
+         pSimulator->use_rstream = FALSE;
+      }
+   }
+
+   void setRNGs(SEXP rng1, SEXP rng2, SEXP rng3, SEXP rng4)
+   {
+
+      // Ensure that the inputs are correct S4 rstream.mrg32k3a objects
+      if (!Rf_inherits(rng1, "rstream.mrg32k3a") ||
+          !Rf_inherits(rng2, "rstream.mrg32k3a") ||
+          !Rf_inherits(rng3, "rstream.mrg32k3a") ||
+          !Rf_inherits(rng4, "rstream.mrg32k3a"))
+      {
+         stop("All RNGs must be of class rstream.mrg32k3a.");
+      }
+
+      // Could also clone and advance substreams here instead of externally
+      // Function next_substream = rstream_env["rstream.nextsubstream"]; //also resetsubstream
+      pSimulator->gpInitiationPRNG_R = rng1;
+      pSimulator->gpCessationPRNG_R = rng2;
+      pSimulator->gpLifeTablePRNG_R = rng3;
+      pSimulator->gpIndivRndsPRNG_R = rng4;
+   }
 
    DataFrame runSim(int repeat)
    {
-
 
       short wRace = 0;
       short wSex = 0;
@@ -151,32 +184,6 @@ public:
       {
          fprintf(pErrorStream, "\n<ERROR>\nSupplied Output file: %s, could not be opened for writing.\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n", sOutputFile);
       }
-
-      // Here we could
-      // 1. Pre-generate the 4 random number streams for a subset individuals (maybe 100K individuals => 32M random numbers = 32MB)
-      //  each individual needs roughly 320 random numbers
-      //   - Stream 1: Initiation: <100
-      //   - Stream 2: Cessation: <100
-      //   - Stream 3: Other COD: <100
-      //   - Stream 4: Individual: 20
-      // 2. Run the simulation for 10K inviduals (replacing calls to MT with calls to the pre-generated streams)
-      // 3. Repeat 1-2 until N individuals are simulated
-
-      // Pre-generating is not a recommended solution, but in this case we must weigh the cost switching the seed for each draw
-
-      // Bonus: if we use rstream (MRG32k3a) we can parallelize the simulation at this juncture (each segment assigned a thread)
-      // this is because MRG32k3a allows us to efficiently jump ahead in the stream using substreams; we cannot do that with MT.
-      // (so each of the 4 variates would have their own substream for each segment;
-      // and for each subsequent segement, we'd use subsequent substreams to ensure independence)
-      // eg: [(1,2,3,4), (5,6,7,8), (9,10,11,12), ...]
-      // I guess you could also just use a different set of (MT) seeds for each 100K, but no guarantee that the streams are independent
-
-      // TODO
-      // Is there a way to determine the exact number of RN needed for a given simulation (a priori) and/or do we need to add oversampling to ensure it is predictable?
-      // How to properly override the Smoking_Simulator::GetNextXXXXRand() methods and avoid initiating MT unecessarily. A strategy pattern is likely.
-      // If we change the RNG to MRG32k3a, it will be harder/longer to test equivalency between SHG with MT and SHG with MRG32k3a
-      // We'd also be stuck with rstream -- maybe we'd like to allow for the use of other RNGs in the future? A strategy pattern could help,
-      // but the underlying features are different -- namely the ability to jump ahead in the stream.
 
       std::vector<int> initiationAge;
       std::vector<int> cessationAge;
@@ -233,25 +240,35 @@ public:
       return df;
    }
 
+   double GetNextInitRand()
+   {
+      return pSimulator->GetNextInitRand();
+   }
+
+   double GetNextCessRand_R()
+   {
+      return pSimulator->GetNextCessRand_R();
+   }
+
+   // Just testing the MT
+   double GetNextCessRandMT()
+   {
+      return pSimulator->GetNextCessRandMT();
+   }
+
+   NumericVector GetNextCessRand_R_vector(int n)
+   {
+      return pSimulator->GetNextCessRand_R_vector(n);
+   }
+
    void RunWebVersion(const char *sInputFileName)
    {
       RunWebVersion(sInputFileName);
    }
 
-   // TODO NEXT: Copy RunWebVersion here
-   // TODO NEXT: Copy RunFromParameters here
-   // TODO NEXT: Copy AssignFilename here
-   // TODO NEXT: Copy ValidateParameters here
-
    const char *sInputFile;
    const char *sOutputFile;
    Smoking_Simulator *pSimulator = 0;
-
-   // //Free the dynamically allocated memory
-   // void SHGInterface::Free()
-   // {
-   //    delete pSimulator;
-   // }
 };
 
 RCPP_MODULE(SmokingSimulator) {
@@ -260,8 +277,14 @@ RCPP_MODULE(SmokingSimulator) {
    class_<SHGInterface>("SHGInterface")
        .constructor()
        .method("runSim", &SHGInterface::runSim, "Generates a data frame of simulated smoking histories for n individuals")
-       .method("initialize", &SHGInterface::initialize);
-}
+       .method("initialize", &SHGInterface::initialize)
+       .method("setRNGs", &SHGInterface::setRNGs)
+       .method("GetNextCessRand_R", &SHGInterface::GetNextCessRand_R)
+       .method("GetNextInitRand", &SHGInterface::GetNextInitRand)
+       .method("setRNGtype", &SHGInterface::setRNGtype)
+       .method("GetNextCessRand_R_vector", &SHGInterface::GetNextCessRand_R_vector)
+       .method("GetNextCessRandMT", &SHGInterface::GetNextCessRandMT);
+   }
 
 // [[Rcpp::export]]
 bool RunWebVersion() {
@@ -272,60 +295,6 @@ bool RunWebVersion() {
    RunWebVersion(sInputFileName);
    return true;
 }
-
-// // Run the application using the seeds and input/output stream
-// bool RunFromParameters(const char* sDataFileDir, char* sInitiationSeed,
-//                       char* sCessationSeed, char* sOtherCODSeed,
-//                       char* sIndivRndSeed, char* sInputFile,
-//                       char* sOutputFile, char* sOutputType,
-//                       char* sImmediateCess, char* sErrorMessage) {
-
-// 	bool						bReturnValue = true;
-//    short                wOutputType,
-//                         wCessationYear;
-// 	unsigned long 			ulInitiationSeed,
-// 					  			ulCessationSeed,
-//                         ulOtherCODSeed,
-//                         ulIndivRndSeed;
-//    char                *sInitiationFile = 0,
-//                        *sCessationFile = 0,
-//                        *sOtherCODFile = 0,
-//                        *sCPDIntensityFile = 0,
-//                        *sCPDDataFile = 0;
-// 	Smoking_Simulator	  *pSimulator  = 0;
-
-// 	try {
-//       sInitiationFile = AssignFilename(sDataFileDir, INITIATION_DATA_FILE);
-//       sCessationFile = AssignFilename(sDataFileDir, CESSATION_DATA_FILE);
-//       sOtherCODFile = AssignFilename(sDataFileDir, OTHER_COD_DATA_FILE);
-//       sCPDIntensityFile = AssignFilename(sDataFileDir, CPD_INTENSITY_PROBS);
-//       sCPDDataFile = AssignFilename(sDataFileDir, CPD_DATA_FILE);
-//       ulInitiationSeed = (unsigned long) atol(sInitiationSeed);
-//       ulCessationSeed = (unsigned long) atol(sCessationSeed);
-//       ulOtherCODSeed = (unsigned long) atol(sOtherCODSeed);
-//       ulIndivRndSeed = (unsigned long) atol(sIndivRndSeed);
-//       wOutputType = (short) atoi(sOutputType);
-//       wCessationYear = (short) atoi(sImmediateCess);
-
-//   		pSimulator = new Smoking_Simulator(sInitiationFile, sCessationFile, sOtherCODFile, sCPDIntensityFile, sCPDDataFile, 
-//                                          ulInitiationSeed, ulCessationSeed, ulOtherCODSeed, ulIndivRndSeed,  
-//                                          wOutputType, wCessationYear);
-
-
-//       pSimulator->RunSimulation(sInputFile, sOutputFile, false);
-
-//    } catch (SimException ex) {
-//       sprintf(sErrorMessage, "%s", ex.GetError());
-// 		bReturnValue = false;
-//    } catch(...) {
-//       sprintf(sErrorMessage, "Unknown Error Occurred\n");
-// 		bReturnValue = false;
-//    }
-
-// 	delete pSimulator;
-//    delete [] sInitiationFile; delete [] sCessationFile; delete [] sOtherCODFile; delete [] sCPDIntensityFile; delete [] sCPDDataFile;
-// 	return bReturnValue;
-// }
 
 // Returns a string containing the directory and filename concatenated together
 char* AssignFilename(const char* sDirectory, const char * sFilename) {
@@ -670,7 +639,7 @@ int RunWebVersion(const char * sInputFileName)
 	 fprintf(stdout,"Specified error file: %s could not be opened for writing.\n", sErrorFile);
          bRunApp = false;
       }
-   } 
+   }
 
    if (bRunApp) {
       // Make sure all necessary values were received
@@ -761,7 +730,7 @@ int RunWebVersion(const char * sInputFileName)
          fprintf(pErrorStream,"\n<ERROR>\nInvalid Number of Repetitions: %s,\n Value must be a positive integer with a max value of %d.\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
                  sPARAM_NumReps,MAX_NUM_REPS);
          bRunApp = false;
-      } 
+      }
       else if (sPARAM_NumReps!=NULL && !bHaveVectorValues) {
          bUseNumReps = true;
          lNumReps    = atol(sPARAM_NumReps);
@@ -774,7 +743,7 @@ int RunWebVersion(const char * sInputFileName)
    }  // end if (bRunApp)
 
 
-   if (bRunApp) { 
+   if (bRunApp) {
       // Still can run, try to open the output file
       pOutStream   = fopen(sOutputFile,"w");
       if (pOutStream == NULL) {
@@ -791,9 +760,9 @@ int RunWebVersion(const char * sInputFileName)
       wValuesPerParam[3] = CountVectorValues(sPARAM_NumReps);
       wMaxNumPerParam = 1;
       for (i=0; i < 4; i++) {
-      	if ((wValuesPerParam[i] > wMaxNumPerParam) && 
-             (wMaxNumPerParam > 1) || 
-             (wMaxNumPerParam > 1 && 
+      	if ((wValuesPerParam[i] > wMaxNumPerParam) &&
+             (wMaxNumPerParam > 1) ||
+             (wMaxNumPerParam > 1 &&
               (wValuesPerParam[i] != wMaxNumPerParam && wValuesPerParam[i] > 1))) {
 
             bRunApp = false;
@@ -910,15 +879,15 @@ int RunWebVersion(const char * sInputFileName)
                   bRunApp = (ex.GetType() == SimException::NON_FATAL);
                   fprintf(pOutStream,"<RESULT>\nERROR\n</RESULT>\n");
                }
-               if (!gWithHoldTags) 
+               if (!gWithHoldTags)
                   fprintf(pOutStream,"</RUN>\n</SIMULATION>\n");
             }
-	      }  
+	      }
       } else if (bUseNumReps) {
-         if (!gWithHoldTags) 
+         if (!gWithHoldTags)
             fprintf(pOutStream,"<SIMULATION>\n");
          WriteInputTag(pOutStream,sPARAM_Race,sPARAM_Sex,sPARAM_YOB,sPARAM_NumReps);
-         if (!gWithHoldTags) 
+         if (!gWithHoldTags)
             fprintf(pOutStream,"<RUN>\n");
          for (j=0; j<lNumReps && bRunApp; j++) {
             try {
@@ -930,7 +899,7 @@ int RunWebVersion(const char * sInputFileName)
                fprintf(pOutStream,"<RESULT>\nERROR\n</RESULT>\n");
             }
          }
-         if (!gWithHoldTags) 
+         if (!gWithHoldTags)
             fprintf(pOutStream,"</RUN>\n</SIMULATION>\n");
       } else {
          try {
@@ -938,7 +907,7 @@ int RunWebVersion(const char * sInputFileName)
             WriteInputTag(pOutStream,sPARAM_Race,sPARAM_Sex,sPARAM_YOB,sPARAM_NumReps);
             fprintf(pOutStream,"<RUN>\n");
             pSimulator->RunSimulationIndividual(atoi(sPARAM_Race),atoi(sPARAM_Sex),atoi(sPARAM_YOB),pOutStream);
-            if (!gWithHoldTags) 
+            if (!gWithHoldTags)
                fprintf(pOutStream,"</RUN>\n</SIMULATION>\n");
          } catch (SimException ex) {
             fprintf(pErrorStream,"\n<ERROR>\n%s\n</ERROR>\n",ex.GetError());
@@ -1063,7 +1032,7 @@ char* Str_toupper(char *s) {
 		s++;
 	}
 	return p;
-}	
+}
 
 char* Str_tolower(char *s) {
 	char* p = s;
@@ -1072,7 +1041,7 @@ char* Str_tolower(char *s) {
 		s++;
 	}
 	return p;
-}	
+}
 //Writes out tagged information about the program to pOutStream
 void WriteRunInfoTag(FILE* pOutStream, std::string sVersion, const char* sInitSeed,
                      const char* sCessSeed, const char* sOCDSeed, const char* sMiscSeed,
