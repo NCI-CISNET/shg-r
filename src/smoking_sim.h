@@ -6,6 +6,13 @@
 // Author: Martin Krapcho & Ben Racine
 // E-Mail: KrapchoM@imsweb.com & ben.racine@cornerstonenw.com
 // NCI Contacts: Rocky Feuer
+#include <Rcpp.h>
+// [[Rcpp::depends(Rcpp)]]
+// [[Rcpp::depends(rstream)]]
+
+#include <queue> // Include the stack header
+#include <algorithm> // For std::copy
+#include <stdexcept> // For throwing exceptions
 
 #ifndef _SMOKING_SIM_H
 #define _SMOKING_SIM_H
@@ -52,7 +59,7 @@ class Smoking_Simulator {
       short gwPersonsCessAge;      // Age of Smoking Cessation
       short gwPersonsAgeAtDeath;   // Age at death from COD other than lung cancer
 
-      // temporarily making this public so we can access them from RCPP class (should use getters eventually)
+      // TODO: temporarily making this public so we can access them from RCPP class (should use getters eventually)
       // Person Variables, Store the results for the last person simulated
       short gwPersonsYOB;          // Year Of Birth
       short gwPersonsRace;         // Race
@@ -64,17 +71,54 @@ class Smoking_Simulator {
       double *gdPersonsCPDbyAge;   // Cigarettes smoked per day by age
       double gdPersonsAvgCPD;      // Average num of Cigarettes smoked per day (used for COD in former smokers)
 
+      // PRNG instances
+      // TODO: should we rather use pointers here?
+      // TODO: should these be private with set methods?
+      Rcpp::RObject gpInitiationPRNG_R;
+      Rcpp::RObject gpCessationPRNG_R;
+      Rcpp::RObject gpLifeTablePRNG_R;
+      Rcpp::RObject gpIndivRndsPRNG_R;
 
- 	// Private Member Variables
+      Rcpp::Environment rstream_env;
+      Rcpp::Function rand_sample;
+
+      double GetNextInitRand();
+      double GetNextCessRand();
+      double GetNextLifeTabRand();
+      double GetNextRandForIndiv();
+
+      double GetNextCessRand_R();                          // temporary for testing only
+      Rcpp::NumericVector GetNextCessRand_R_vector(int n); // temporary for testing only
+      bool use_rstream = FALSE;                            // temporary toggle between MT and rstream
+
+      int gsRNGBatchSize = 1000000; // TODO: Eval optimal batch size
+      
+      // NEED TO INITIALIZE THESE IN THE CONSTRUCTOR perhaps: gsInitiationVector(gsRNGBatchSize)
+      // Rcpp::NumericVector gsInitiationVector;
+      Rcpp::NumericVector gsInitiationVector = Rcpp::NumericVector(gsRNGBatchSize);
+      Rcpp::NumericVector gsCessationVector = Rcpp::NumericVector(gsRNGBatchSize);
+      Rcpp::NumericVector gsLifeTableVector = Rcpp::NumericVector(gsRNGBatchSize);
+      Rcpp::NumericVector gsIndivRndsVector = Rcpp::NumericVector(gsRNGBatchSize);
+
+      double getNextRandFromRstream(int &counter, Rcpp::NumericVector &vector, Rcpp::RObject &rng);
+
+      // Just for testing the MT
+      double GetNextCessRandMT();
+
+      int gsInitiationCounter = gsRNGBatchSize;
+      int gsCessationCounter = gsRNGBatchSize;
+      int gsLifeTableCounter = gsRNGBatchSize;
+      int gsIndivRndsCounter = gsRNGBatchSize;
+
+      // Private Member Variables
    private:
-
       // Psuedo Random Number Generator Variables
-      MersenneTwister *gpInitiationPRNG;  // PRNG for Initiation Probabilities
-      MersenneTwister *gpCessationPRNG;   // PRNG for Cessation Probabilities
-      MersenneTwister *gpLifeTablePRNG;   // PRNG for Other COD Probabilities
-      MersenneTwister *gpIndivRndsPRNG;   // PRNG for all "random" variables that only
-                                          // need one value per individual (ie smoking intensity quintile)
-                                          // Program will allow 20 of these values per individual
+      MersenneTwister *gpInitiationPRNG; // PRNG for Initiation Probabilities
+      MersenneTwister *gpCessationPRNG;  // PRNG for Cessation Probabilities
+      MersenneTwister *gpLifeTablePRNG;  // PRNG for Other COD Probabilities
+      MersenneTwister *gpIndivRndsPRNG;  // PRNG for all "random" variables that only
+                                         // need one value per individual (ie smoking intensity quintile)
+                                         // Program will allow 20 of these values per individual
 
       // Probability Arrays
       double *gdInitiationProbs;  // Prob of initiation by race/sex/year of birth and age
@@ -84,7 +128,7 @@ class Smoking_Simulator {
 
       // Cigarettes per day by race, sex, YOB and age (and smoking intensity? %bjr)
       long double *gdCigarettesPerDay;
-      
+
 
       // Data limit variables
       short gwNumBirthCohorts;    // Number of birth cohorts Available
@@ -112,7 +156,7 @@ class Smoking_Simulator {
       // short gwPersonsYOB;          // Year Of Birth
       // short gwPersonsRace;         // Race
       // short gwPersonsSex;          // Sex
-      // //Moving public
+      // // TODO: Moving public
       // //short gwPersonsInitAge;      // Age of Smoking Initiation
       // //short gwPersonsCessAge;      // Age of Smoking Cessation
       // SmokingIntensity     gwPersonsSmkIntensity; // The smoking intesity group for the person (smokers only)
@@ -149,10 +193,11 @@ class Smoking_Simulator {
       void CalcCigarettesPerDay();
       void CalcCigarettesPerDaySwitch();
       short GetAgeOfDeathFromOtherCOD(short wStartAge, short wEndAge, SmokingStatus eStatus, bool &bWentPastData);
-      double GetNextInitRand();
-      double GetNextCessRand();
-      double GetNextLifeTabRand();
-      double GetNextRandForIndiv();
+      // Temporarily making public
+      // double GetNextInitRand();
+      // double GetNextCessRand();
+      // double GetNextLifeTabRand();
+      // double GetNextRandForIndiv();
       void InitPRNGs(unsigned long ulInitSeed, unsigned long ulCessSeed, unsigned long ulLifeTabSeed, unsigned long ulIndRndsSeed);
       void LoadCPDIntensityProbs(const char* sDataFileName);
       void LoadCPDFile(const char* sCpdDataFile);

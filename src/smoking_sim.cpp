@@ -7,6 +7,10 @@
 // E-Mail: KrapchoM@imsweb.com & ben.racine@cornerstonenw.com
 // NCI Contact: Rocky Feuer
 
+#include <Rcpp.h>
+// [[Rcpp::depends(Rcpp)]]
+// [[Rcpp::depends(rstream)]]
+
 #include "smoking_sim.h"
 #include <string>
 #include <limits>
@@ -16,7 +20,10 @@
 
 using namespace std;
 
-Smoking_Simulator::Smoking_Simulator() {
+Smoking_Simulator::Smoking_Simulator() : rand_sample(Rcpp::Environment::namespace_env("rstream")["rstream.sample"]){
+// The rand_sample segment above initializes for R
+// TODO: maybe there is a better way to do this
+
    try {
       Init();
    } catch (SimException ex) {
@@ -26,14 +33,23 @@ Smoking_Simulator::Smoking_Simulator() {
    }
 }
 // Constructor
-Smoking_Simulator::Smoking_Simulator(const char* sInitiationProbFile, const char* sCessationProbFile,
+Smoking_Simulator::Smoking_Simulator (const char* sInitiationProbFile, const char* sCessationProbFile,
                                      const char* sLifeTableFile,      const char* sCpdIntensityProbFile,
                                      const char* sCpdDataFile,        unsigned long ulInitPRNGSeed,
                                      unsigned long ulCessPRNGSeed,    unsigned long ulLifeTabSeed,
                                      unsigned long ulIndivRndsSeed,   short wOutputType,
-                                     short wCessationYear) {
+                                     short wCessationYear)
+  : rand_sample(Rcpp::Environment::namespace_env("rstream")["rstream.sample"])
+// The rand_sample segment above initializes for R
+// TODO: maybe there is a better way to do this
+
+  {
    char sErrorMessage[300];
+    // rstream_env = Rcpp::Environment::namespace_env("rstream");
+    // rand_sample = rstream_env["rstream.sample"];
+
    try {
+      Rcpp::Rcout << "CSNW Debug: batch size = " << gsRNGBatchSize << ", vector size = " << gsCessationVector.size() << std::endl;
       Init();
       LoadProbabilityData(sInitiationProbFile, Smoking_Simulator::DATA_Initiation);
       LoadProbabilityData(sCessationProbFile, Smoking_Simulator::DATA_Cessation);
@@ -43,7 +59,7 @@ Smoking_Simulator::Smoking_Simulator(const char* sInitiationProbFile, const char
       InitPRNGs(ulInitPRNGSeed, ulCessPRNGSeed, ulLifeTabSeed, ulIndivRndsSeed);
       SetOutputType(wOutputType);
 
-      // Immediate Cessation Values are initialized to 0 and false respectively, 
+      // Immediate Cessation Values are initialized to 0 and false respectively,
       // Check to see if they need to be changed.
       if ((wCessationYear != 0) || (wCessationYear >= wMIN_IMMEDIATE_CESSATION_YEAR && wCessationYear <= wSIM_CUTOFF_YEAR)) {
          gwImmediateCessYear = wCessationYear;
@@ -67,7 +83,7 @@ Smoking_Simulator::~Smoking_Simulator() {
 
 // Calculate the number of cigarettes smoked per day for people that initiate smoking.
 // This function first categorizes the person into one of five intensity groups (light to heavy smokers)
-// The intensity groups comes from a probability by age lookup table, a random number is given to the individual and then 
+// The intensity groups comes from a probability by age lookup table, a random number is given to the individual and then
 // looked up based on initiation age
 // If the person begins smoking before age 30
 //   - The number of cigarettes per day comes from an uptake formula that calculates the cigarettes smoked
@@ -111,7 +127,7 @@ void Smoking_Simulator::CalcCigarettesPerDay() {
 
       // Get the age for intensity probabilities lookup
       // Initiation Ages below the min age use the min intensity age probabilities
-      if (gwPersonsInitAge < gwIntensityMinAge) {      
+      if (gwPersonsInitAge < gwIntensityMinAge) {
          wIntensityLookupAge = gwIntensityMinAge;
       // Initiation Ages above the max age use the max intensity age probabilities
       } else if (gwPersonsInitAge > gwIntensityMaxAge) {
@@ -133,7 +149,7 @@ void Smoking_Simulator::CalcCigarettesPerDay() {
             bValueFound = true;
          }
       }
-      // If the value was not found, assume that the probabilties did not correctly sum to one, 
+      // If the value was not found, assume that the probabilties did not correctly sum to one,
       // and assign the person to the last quintile
       if (!bValueFound) {
          gwPersonsSmkIntensity = (SmokingIntensity)(SMKR_NumGroups - 1);
@@ -142,7 +158,7 @@ void Smoking_Simulator::CalcCigarettesPerDay() {
       gdTempIntensityProb = dIntensityProb;
 
       // Set up the array for storing the number of cigarettes smoked per day by age
-      if (gwPersonsCessAge == -999) { 
+      if (gwPersonsCessAge == -999) {
          // Person does not quit smoking
          wYearsAsSmoker = (wSIM_CUTOFF_YEAR - (gwPersonsYOB + gwPersonsInitAge)) + 1;
       } else {
@@ -200,7 +216,7 @@ void Smoking_Simulator::CalcCigarettesPerDay() {
 	 else {
 	    throw SimException("Error", "gwPersonSex is neither SEX_male nor SEX_female");
 	 }
-	 
+
          // Calculate the Quintile Scaling factor as (cigarettes per day at age 30)/(Uptake at age 30)
          dScalingFactor = gdCigarettesPerDay[lCpdStartIndex] / dUptakeAtCpdStart;
 
@@ -249,7 +265,7 @@ void Smoking_Simulator::CalcCigarettesPerDay() {
          dSumOfCpd += gdPersonsCPDbyAge[i - gwPersonsInitAge];
       }
 
-      // Calculate average cigarettes smoked per day for the individual  
+      // Calculate average cigarettes smoked per day for the individual
       gdPersonsAvgCPD = dSumOfCpd / (double)wYearsAsSmoker;
 
    } catch(SimException ex) {
@@ -275,7 +291,7 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
             // finalAge,
             nColumns;
    short    group=0; 	    // A.G.: If left uninitialized, compiler complains it may be used uninitialized
-	   
+
 
 
    long     lCpdStartIndex       // Index to start at for look up of cigarettes per day
@@ -298,7 +314,7 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
 
    long     cpdGroupOverLife[nRows];
    double   filteredCPDGroups[nValues],
-            // filteredCPDGroupsCumSum[nValues], 
+            // filteredCPDGroupsCumSum[nValues],
             // pSwitchCPDGroups[(nRows - 1) * nColumns],
             // pSwitchCPDGroupsCumSum[(nRows - 1) * nColumns],
             Tij[nColumns * nColumns],
@@ -390,7 +406,7 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
                   for (l = 0; l < n; l++) {
                      term1 -= Tij[m * nColumns + l];
                   }
-                  if (min(term1, term2) < 0) 
+                  if (min(term1, term2) < 0)
                      Tij[m * nColumns + n] = 0;
                   else
                      Tij[m * nColumns + n] = min(term1, term2);
@@ -422,7 +438,7 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
                if (roll > switchProbs[j])
                   group += 1;
             }
-         } 
+         }
 
          cpdGroupOverLife[i] = group;
       }
@@ -459,8 +475,8 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
          }
          dSumOfCpd += gdPersonsCPDbyAge[m];
       }
-      
-      // Calculate average cigarettes smoked per day for the individual  
+
+      // Calculate average cigarettes smoked per day for the individual
       gdPersonsAvgCPD = dSumOfCpd / (double)wYearsAsSmoker;
 
    } catch(SimException ex) {
@@ -543,7 +559,7 @@ short Smoking_Simulator::GetAgeOfDeathFromOtherCOD(short wStartAge, short wEndAg
             wReturnAge = wCurrentAge;
          }
 
-         // If the probability was missing, it was coded as -1, life table 
+         // If the probability was missing, it was coded as -1, life table
          // checking can stop once a -1 is reached
          if (dCurrLifeTabProb < 0) {
              bWentPastData = true;
@@ -560,7 +576,7 @@ short Smoking_Simulator::GetAgeOfDeathFromOtherCOD(short wStartAge, short wEndAg
 // Get the minimum year of birth value
 short Smoking_Simulator::GetMinYearOfBirth() {
    if (gwYOBCohortStartYrs== NULL)
-      throw SimException("GetMinYearOfBirth()", 
+      throw SimException("GetMinYearOfBirth()",
          "Call to start year of birth cohort values (gwYOBCohortStartYrs) prior to initialization.");
    return gwYOBCohortStartYrs[0];
 }
@@ -568,41 +584,218 @@ short Smoking_Simulator::GetMinYearOfBirth() {
 // Get the maximum year of birth value
 short Smoking_Simulator::GetMaxYearOfBirth() {
    if (gwYOBCohortEndYrs == NULL)
-      throw SimException("GetMaxYearOfBirth()", 
+      throw SimException("GetMaxYearOfBirth()",
          "Call to end year of birth cohort values (gwYOBCohortEndYrs) prior to initialization.");
    return gwYOBCohortEndYrs[gwNumBirthCohorts-1];
 }
 
-double Smoking_Simulator::GetNextCessRand() {
-   double dReturnValue;
-   if (gpCessationPRNG == NULL)
-      throw SimException("GetNextCessRand()", 
-         "Call to PRNG before PRNG has been initialized with a seed.");
-   dReturnValue = gpCessationPRNG->genrand_real1();
+using namespace Rcpp;
+
+double Smoking_Simulator::GetNextCessRand_R() {
+  double dReturnValue;
+  dReturnValue = as<NumericVector>(rand_sample(gpCessationPRNG_R, 1))[0]; // returns a vector even for 1 number
+  return dReturnValue;
+}
+
+Rcpp::NumericVector Smoking_Simulator::GetNextCessRand_R_vector(int n) {
+  Rcpp::NumericVector dReturnValue;
+  dReturnValue = as<NumericVector>(rand_sample(gpCessationPRNG_R, n)); // returns a vector even for 1 number
+  return dReturnValue;
+}
+
+// Just for testing the MT
+double Smoking_Simulator::GetNextCessRandMT() {
+  return gpCessationPRNG->genrand_real1();
+}
+
+double Smoking_Simulator::getNextRandFromRstream(int &counter, NumericVector &vector, Rcpp::RObject &rng)
+{
+   // This helper function helps avoid the overhead of calling rand_sample for every draw
+   // It is used by the 4 random variates
+   //   if (counter >= vector.size()) {
+   //     Rcpp::Rcout << "CSNW Error: counter out of bounds" << std::endl;
+   //     //Rcpp::Rcout << "Debug: counter = " << counter << ", vector size = " << vector.size() << std::endl;
+   //     counter = 0; // Reset counter to avoid out of bounds access
+   //   }
+   if (counter >= gsRNGBatchSize)
+   { // || counter == 0) {
+      // pre-sample n numbers, overwriting existing vector
+      vector = as<NumericVector>(rand_sample(rng, gsRNGBatchSize));
+      counter = 1; // restart at 1; FIFO
+   }
+   double dReturnValue = vector[counter];
+   counter++;
    return dReturnValue;
 }
 
-double Smoking_Simulator::GetNextInitRand() {
+double Smoking_Simulator::GetNextCessRand()
+{
    double dReturnValue;
-   if (gpInitiationPRNG == NULL)
-      throw SimException("GetNextInitRand()", "Call to PRNG before PRNG has been initialized with a seed.");
-   dReturnValue = gpInitiationPRNG->genrand_real1();
+   // if (gpCessationPRNG == NULL)
+   //    throw SimException("GetNextCessRand()",
+   //       "Call to PRNG before PRNG has been initialized with a seed.");
+   if (use_rstream)
+   {
+      // dReturnValue = as<NumericVector>(rand_sample(gpCessationPRNG_R, 1))[0]; // returns a vector even for 1 number
+      //  if (gsCessationCounter >= gsCessationVector.size()) {
+      //     Rcpp::Rcout << "CSNW Debug: Cess counter = " << gsCessationCounter << ", vector size = " << gsCessationVector.size() << std::endl;
+      //  }
+      dReturnValue = getNextRandFromRstream(gsCessationCounter, gsCessationVector, gpCessationPRNG_R);
+      // This helper function helps avoid the overhead of calling rand_sample for every draw
+      // It is used by the 4 random variates
+      // if (gsCessationCounter >= gsRNGBatchSize) { // || counter == 0) {
+      //    // pre-sample n numbers, overwriting existing vector
+      //    gsCessationVector = as<Rcpp::NumericVector>(rand_sample(gpCessationPRNG_R, gsRNGBatchSize));
+      //    gsCessationCounter = 1; // restart at 1; FIFO
+      // }
+      // double dReturnValue = gsCessationVector[gsCessationCounter];
+      // gsCessationCounter++;
+      return dReturnValue;
+   }
+   else
+   {
+      dReturnValue = gpCessationPRNG->genrand_real1();
+   }
+
+   return dReturnValue;
+}
+double Smoking_Simulator::GetNextInitRand()
+{
+   double dReturnValue;
+   // if (gpInitiationPRNG == NULL)
+   //    throw SimException("GetNextInitRand()", "Call to PRNG before PRNG has been initialized with a seed.");
+
+   if (use_rstream)
+   {
+      // Very slow due to RNG state switching at every draw
+      // dReturnValue = as<NumericVector>(rand_sample(gpInitiationPRNG_R, 1))[0]; // returns a vector even for 1 number
+
+      // Refactor seems to slow things down when we use for more than one RNG.
+      // if (gsInitiationCounter >= gsCessationVector.size()) {
+      //    Rcpp::Rcout << "CSNW Debug: Initiation counter = " << gsInitiationCounter << ", vector size = " << gsInitiationVector.size() << std::endl;
+      // }
+      dReturnValue = getNextRandFromRstream(gsInitiationCounter, gsInitiationVector, gpInitiationPRNG_R);
+
+      // Before refactoring we had:
+      // if (gsInitiationCounter >= gsRNGBatchSize) { // || counter == 0) {
+      //    // pre-sample n numbers, overwriting existing vector
+      //    gsInitiationVector = as<Rcpp::NumericVector>(rand_sample(gpInitiationPRNG_R, gsRNGBatchSize));
+      //    gsInitiationCounter = 1; // restart at 1; FIFO
+      // }
+      // double dReturnValue = gsInitiationVector[gsInitiationCounter];
+      // gsInitiationCounter++;
+      // return dReturnValue;
+   }
+
+   else
+   {
+      dReturnValue = gpInitiationPRNG->genrand_real1();
+   }
+   return dReturnValue;
+}
+// double Smoking_Simulator::GetNextInitRand() {
+//    double dReturnValue;
+//    // if (gpInitiationPRNG == NULL)
+//    //    throw SimException("GetNextInitRand()", "Call to PRNG before PRNG has been initialized with a seed.");
+
+//    if (use_rstream) {
+//     // To expensive due to RNG state switching at every draw
+//     //dReturnValue = as<NumericVector>(rand_sample(gpInitiationPRNG_R, 1))[0]; // returns a vector even for 1 number
+
+//     if (gsInitiationCounter == 0){
+//       // refactor if this works
+//       int n = 10000;
+//       gsInitiationVector = as<NumericVector>(rand_sample(gpInitiationPRNG_R, n));
+//       gsInitiationCounter = n;
+//     }
+//     // Get the top number from the queue
+//     dReturnValue = gsInitiationVector[gsInitiationCounter];
+//     gsInitiationCounter--;
+//     // gsCessationQueue.pop(); // Remove the number from the queue
+//    }
+
+//    else {
+//      dReturnValue = gpInitiationPRNG->genrand_real1();
+//    }
+//    return dReturnValue;
+// }
+
+double Smoking_Simulator::GetNextLifeTabRand()
+{
+   double dReturnValue;
+   // if (gpLifeTablePRNG == NULL)
+   //    throw SimException("GetNextLifeTabRand()", "Call to PRNG before PRNG has been initialized with a seed.");
+   if (use_rstream)
+   {
+      // Very slow due to RNG state switching at every draw
+      // dReturnValue = as<NumericVector>(rand_sample(gpLifeTablePRNG_R, 1))[0]; // returns a vector even for 1 number
+
+      // This is faster but not as fast as before refactoring
+      dReturnValue = getNextRandFromRstream(gsLifeTableCounter, gsLifeTableVector, gpLifeTablePRNG_R);
+
+      // Before refactoring we had:
+      // if (gsLifeTableCounter >= gsRNGBatchSize) { // || counter == 0) {
+      //    // pre-sample n numbers, overwriting existing vector
+      //    gsLifeTableVector = as<Rcpp::NumericVector>(rand_sample(gpLifeTablePRNG_R, gsRNGBatchSize));
+      //    gsLifeTableCounter = 1; // restart at 1; FIFO
+      // }
+      // double dReturnValue = gsLifeTableVector[gsLifeTableCounter];
+      // gsLifeTableCounter++;
+
+      // This might even be faster than the above but I'm not sure why (and it isn't correct, but worth keeping untill we can find out more)
+      //   if (gsLifeTableCounter == 0){
+      //     // refactor if this works
+      //     int n = gsRNGBatchSize;
+      //     gsLifeTableVector = as<NumericVector>(rand_sample(gpLifeTablePRNG_R, n));
+      //     gsLifeTableCounter = n;
+      //   }
+      //   // Get the top number from the queue
+      //   dReturnValue = gsLifeTableVector[gsLifeTableCounter];
+      //   gsLifeTableCounter--;
+   }
+   else
+      dReturnValue = gpLifeTablePRNG->genrand_real1();
+
    return dReturnValue;
 }
 
-double Smoking_Simulator::GetNextLifeTabRand() {
+double Smoking_Simulator::GetNextRandForIndiv()
+{
    double dReturnValue;
-   if (gpLifeTablePRNG == NULL)
-      throw SimException("GetNextLifeTabRand()", "Call to PRNG before PRNG has been initialized with a seed.");
-   dReturnValue = gpLifeTablePRNG->genrand_real1();
-   return dReturnValue;
-}
+   // if (gpIndivRndsPRNG == NULL)
+   //    throw SimException("GetNextRandForIndiv()", "Call to PRNG before PRNG has been initialized with a seed.");
 
-double Smoking_Simulator::GetNextRandForIndiv() {
-   double dReturnValue;
-   if (gpIndivRndsPRNG == NULL)
-      throw SimException("GetNextRandForIndiv()", "Call to PRNG before PRNG has been initialized with a seed.");
-   dReturnValue = gpIndivRndsPRNG->genrand_real1();
+   if (use_rstream)
+   {
+      // This is very slow for the reasons mentioned above
+      // dReturnValue = as<NumericVector>(rand_sample(gpIndivRndsPRNG_R, 1))[0]; // returns a vector even for 1 number
+
+      // This is faster but not as fast as before refactoring
+      dReturnValue = getNextRandFromRstream(gsIndivRndsCounter, gsIndivRndsVector, gpIndivRndsPRNG_R);
+
+      // This is what we had before refactoring
+      //   if (gsIndivRndsCounter >= gsRNGBatchSize) { // || counter == 0) {
+      //       // pre-sample n numbers, overwriting existing vector
+      //       gsIndivRndsVector = as<Rcpp::NumericVector>(rand_sample(gpIndivRndsPRNG_R, gsRNGBatchSize));
+      //       gsIndivRndsCounter = 1; // restart at 1; FIFO
+      //    }
+      //    double dReturnValue = gsIndivRndsVector[gsIndivRndsCounter];
+      //    gsIndivRndsCounter++;
+
+      // This might even be faster than the above but I'm not sure why (and it isn't correct, but worth keeping untill we can find out more)
+      //   if (gsIndivRndsCounter == 0){
+      //     // refactor if this works
+      //     int n = gsRNGBatchSize;
+      //     gsIndivRndsVector = as<NumericVector>(rand_sample(gpLifeTablePRNG_R, n));
+      //     gsIndivRndsCounter = n;
+      //   }
+      //   // Get the top number from the queue
+      //   dReturnValue = gsIndivRndsVector[gsIndivRndsCounter];
+      //   gsIndivRndsCounter--;
+   }
+
+   else
+      dReturnValue = gpIndivRndsPRNG->genrand_real1();
    return dReturnValue;
 }
 
@@ -672,8 +865,9 @@ void Smoking_Simulator::Init() {
 
    gbImmediateCessation = false;
    gwImmediateCessYear  = 0;
-}
 
+   // TODO: consider resetting rstream RNG counters and RNG vectors
+}
 
 void Smoking_Simulator::InitPRNGs(unsigned long ulInitSeed,    unsigned long ulCessSeed,
                                   unsigned long ulLifeTabSeed, unsigned long ulIndRndsSeed) {
@@ -726,7 +920,7 @@ void Smoking_Simulator::LoadCPDFile(const char* sCpdFile) {
 
    try {
 
-      if (gdInitiationProbs == NULL) 
+      if (gdInitiationProbs == NULL)
          throw SimException("Error", "The initiation probability file must be loaded before the Cigarettes per day data file.\n");
 
       /*
@@ -818,7 +1012,7 @@ void Smoking_Simulator::LoadCPDFile(const char* sCpdFile) {
       gdCigarettesPerDay = new long double[lCpdArraySize];
       lMaxLinesExpected  = lCpdArraySize/gwNumIntensityGrps;  //All of the intesity groups are on a single line per by-group
 
-      // 
+      //
       for (j = 0; j < lCpdArraySize; j++) {
          gdCigarettesPerDay[j] = -1;
       }
@@ -826,7 +1020,7 @@ void Smoking_Simulator::LoadCPDFile(const char* sCpdFile) {
       // Read in the Probability Data Lines
       // This subroutine will
       // - read in the variable values for the line
-      // - verify the values are valid (including checking the cohorts)   
+      // - verify the values are valid (including checking the cohorts)
       // - add the CPD value to the appropriate array location
       lNumLinesRead = 0;
 
@@ -1007,7 +1201,7 @@ void Smoking_Simulator::LoadCPDIntensityProbs(const char* sDataFileName) {
 
          // Validate values read in
          if (wRaceValue > wNumRaces) {
-            sprintf(sErrorMessage, "Invalid Race Value: %d\n Read from file %s at line number %ld", wRaceValue, 
+            sprintf(sErrorMessage, "Invalid Race Value: %d\n Read from file %s at line number %ld", wRaceValue,
                sDataFileName, lNumLinesRead);
             throw SimException("Error", sErrorMessage);
          }
@@ -1099,11 +1293,11 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
 
    try {
 
-      if ((eFileType != DATA_Initiation) && (eFileType != DATA_Cessation)) 
+      if ((eFileType != DATA_Initiation) && (eFileType != DATA_Cessation))
          throw SimException("Error", "Invalid File Type supplied to function.");
 
       if (eFileType == DATA_Cessation && (gdInitiationProbs==NULL)) {
-         throw SimException("Error", 
+         throw SimException("Error",
             "Attempt to load Cessation Probabilities before Initiation probabilities.\nInitiation data must be loaded first.\n");
       }
 
@@ -1229,7 +1423,7 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
          // Otherwise check the value against the value already in the array
          } else if (wCohortValue != gwYOBCohortStartYrs[i]) {
             sprintf(sErrorMessage, "Mismatching starting cohorts between Initiation and Cessation probability \
-               files\nFor range : 1\n%d read from initiation file.\n%d read from cessation file.", 
+               files\nFor range : 1\n%d read from initiation file.\n%d read from cessation file.",
                gwYOBCohortStartYrs[i], wCohortValue);
             throw SimException("Error", sErrorMessage);
          }
@@ -1556,7 +1750,7 @@ void Smoking_Simulator::RunSimulation(const char* sInputFileName, const char* sO
          wYOB = atoi(pTokenPtr);
 
          RunSimulationIndividual(wRace, wSex, wYOB, pOutputFile);
-         if (bPrintToScreen) 
+         if (bPrintToScreen)
             WriteToStream(stdout);
       }
 
@@ -1642,7 +1836,7 @@ void Smoking_Simulator::RunSimulationIndividual(short wRace, short wSex, short w
          dCurrInitiationRand = GetNextInitRand(); // Get random value from 0 to 1 range.
          dCurrInitiationProb = gdInitiationProbs[(wCurrentAge - gwMinInitiationAge) + wSearchOffset];
 
-         // If ImmediateCessation is turned on, check if the current year (birth year + current age) 
+         // If ImmediateCessation is turned on, check if the current year (birth year + current age)
          // is equal to or greater than the last year before cessation begins.
          if (gbImmediateCessation && ((gwPersonsYOB + wCurrentAge) >= (gwImmediateCessYear-1))) {
             bCanInitiate = false;
@@ -1653,7 +1847,7 @@ void Smoking_Simulator::RunSimulationIndividual(short wRace, short wSex, short w
             bPersonInitiated = true;
          }
 
-         // If the probability was missing, it was coded as -1, sim can 
+         // If the probability was missing, it was coded as -1, sim can
          // stop once one of these values are reached.
          if (dCurrInitiationProb < 0 || (((wCurrentAge+1) + gwPersonsYOB) > wSIM_CUTOFF_YEAR)) {
             bPassedCohortMaxAge = true;
@@ -1662,7 +1856,7 @@ void Smoking_Simulator::RunSimulationIndividual(short wRace, short wSex, short w
          // Increment the age if they did not initiate
          if (!bPersonInitiated) {
             wCurrentAge++;
-         } 
+         }
       }
 
       // Smoking Cessation Routine
@@ -1680,7 +1874,7 @@ void Smoking_Simulator::RunSimulationIndividual(short wRace, short wSex, short w
 
          while (!bPersonQuit && !bPassedCohortMaxAge && (wCurrentAge <= gwMaxCessationAge)) {
 
-            // If ImmediateCessation is turned on, check if the current year (birth year + current age) is 
+            // If ImmediateCessation is turned on, check if the current year (birth year + current age) is
             // equal to or greater than the last year before cessation begins.
             if (gbImmediateCessation && ((gwPersonsYOB + wCurrentAge) >= (gwImmediateCessYear-1))) {
                bForceCessation = true;
@@ -1694,9 +1888,9 @@ void Smoking_Simulator::RunSimulationIndividual(short wRace, short wSex, short w
                bPersonQuit = true;
             }
 
-            // If the probability was missing, it was coded as -1, 
+            // If the probability was missing, it was coded as -1,
             // simulation can stop once one of these values are reached.
-            if (dCurrCessationProb < 0 || (((wCurrentAge+1) + gwPersonsYOB) > wSIM_CUTOFF_YEAR)) 
+            if (dCurrCessationProb < 0 || (((wCurrentAge+1) + gwPersonsYOB) > wSIM_CUTOFF_YEAR))
                bPassedCohortMaxAge = true;
             //Age can be incremented either way here, unlike initiation
             wCurrentAge++;
@@ -1767,17 +1961,17 @@ void Smoking_Simulator::WriteToStream(FILE *pOutStream) {
    try {
       switch (geOutputType) {
          case OUT_TextReport:
-            WriteAsText(pOutStream); 
+            WriteAsText(pOutStream);
             break;
          case OUT_TimeLine:
-            WriteAsTimeline(pOutStream); 
+            WriteAsTimeline(pOutStream);
             break;
          case OUT_XML_Tags:
-            WriteAsXML(pOutStream); 
+            WriteAsXML(pOutStream);
             break;
          case OUT_DataOnly:
          default:
-            WriteAsData(pOutStream); 
+            WriteAsData(pOutStream);
             break;
       };
    } catch (SimException ex) {
@@ -1920,7 +2114,7 @@ void  Smoking_Simulator::WriteAsXML(FILE *pOutStream) {
    if (gwPersonsInitAge >= 0) {
       fprintf(pOutStream, "<SMOKING_HIST>\n");
       fprintf(pOutStream, "<INTENSITY>\n");
-      fprintf(pOutStream, "Not applicable in SHG v2\n"); 
+      fprintf(pOutStream, "Not applicable in SHG v2\n");
       fprintf(pOutStream, "</INTENSITY>\n");
 
       if (gwPersonsCessAge == -999) // Person does not quit smoking
@@ -1956,9 +2150,9 @@ void Smoking_Simulator::WriteAsData(FILE *pOutStream) {
    // Print out the smoking intensity group for the person and the cigarettes smoked per day
    // Print the intensity group as +1 its value so range of values is from 1 to 5.
    if (gwPersonsInitAge != -999) {
-      if (gwPersonsCessAge == -999) 
+      if (gwPersonsCessAge == -999)
          wYearsAsSmoker = wSIM_CUTOFF_YEAR - (gwPersonsYOB + gwPersonsInitAge) + 1;
-      else 
+      else
          wYearsAsSmoker = gwPersonsCessAge - gwPersonsInitAge + 1;
       for (i = 0; i < wYearsAsSmoker; i++) {
          if (i + gwPersonsInitAge < 100)
