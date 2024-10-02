@@ -8,3 +8,4 @@ main.cpp
 .Rproj.user
 src/RcppSmokingHistoryGenerator.so
 .Rhistory
+/out
