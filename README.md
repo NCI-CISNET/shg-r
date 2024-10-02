@@ -1,5 +1,9 @@
 # RcppSmokingHistoryGenerator
 
+  <!-- badges: start -->
+  [![R-CMD-check](https://github.com/CSNW/rcpp-shg/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/CSNW/rcpp-shg/actions/workflows/R-CMD-check.yaml)
+  <!-- badges: end -->
+
 ## Installation for developers
 Retrieve the  rcpp-shg` repo and open an R session in R (or R Studio)
 Dependencies:
