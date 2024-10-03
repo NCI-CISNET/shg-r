@@ -9,3 +9,4 @@ main.cpp
 src/RcppSmokingHistoryGenerator.so
 .Rhistory
 /out
+src/wrapper_backup.xcpp
