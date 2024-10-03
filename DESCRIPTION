@@ -7,7 +7,7 @@ Author: John Clarke
 Maintainer: John Clarke <john.clarke@cornerstonenw.com>
 Description: An R wrapper for the Smoking History Generator
 License: GNU3 (>= 3)
-Depends: rstream, Rcpp (>= 1.0.2)
 RoxygenNote: 6.0.1
 URL: https://github.com/CSNW/rcpp-shg
+Imports: rstream, Rcpp (>= 1.0.2)
 LinkingTo: Rcpp
