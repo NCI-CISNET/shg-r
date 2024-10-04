@@ -49,7 +49,7 @@ Smoking_Simulator::Smoking_Simulator (const char* sInitiationProbFile, const cha
     // rand_sample = rstream_env["rstream.sample"];
 
    try {
-      Rcpp::Rcout << "CSNW Debug: batch size = " << gsRNGBatchSize << ", vector size = " << gsCessationVector.size() << std::endl;
+      //Rcpp::Rcout << "CSNW Debug: batch size = " << gsRNGBatchSize << ", vector size = " << gsCessationVector.size() << std::endl;
       Init();
       LoadProbabilityData(sInitiationProbFile, Smoking_Simulator::DATA_Initiation);
       LoadProbabilityData(sCessationProbFile, Smoking_Simulator::DATA_Cessation);
@@ -1750,8 +1750,10 @@ void Smoking_Simulator::RunSimulation(const char* sInputFileName, const char* sO
          wYOB = atoi(pTokenPtr);
 
          RunSimulationIndividual(wRace, wSex, wYOB, pOutputFile);
-         if (bPrintToScreen)
-            WriteToStream(stdout);
+         // RCPP doesn't allow stdout to be written to, so this is commented out
+         // Suggest we use rather Rcpp:Rcout to write to the console
+         // if (bPrintToScreen)
+         //   WriteToStream(stdout);
       }
 
       fclose(pInputFile);
