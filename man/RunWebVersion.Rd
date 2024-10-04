@@ -10,7 +10,7 @@ RunWebVersion()
 bool
 }
 \description{
-TEST 1 Description of what the function does.
+Executes a simluation based on parameters from a single input file
 }
 \examples{
 RunWebVersion()

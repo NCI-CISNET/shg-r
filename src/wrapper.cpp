@@ -301,7 +301,13 @@ RCPP_MODULE(SmokingSimulator) {
        .method("GetNextCessRand_R_vector", &SHGInterface::GetNextCessRand_R_vector, "Test")
        .method("GetNextCessRandMT", &SHGInterface::GetNextCessRandMT, "Test");
    }
-
+//' RunWebVersion
+//'
+//' Executes a simluation based on parameters from a single input file
+//'
+//' @return bool
+//' @examples
+//' RunWebVersion()
 // [[Rcpp::export]]
 bool RunWebVersion() {
    // Just stubbing this in here for reference in case we want to avoid the RCPP_MODULE macro
