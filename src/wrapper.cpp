@@ -105,6 +105,15 @@ using namespace Rcpp;
 // We need to create a wrapper class rather than reference Smoking_Simulator directly
 // because (among other constraints) RCPP does not support classes with constructors
 // that take more than 6 arguments
+
+// SHGInterface
+//' SHGInterface Class
+//' @name SHGInterface
+//' @title Test title SHGInterface
+//' @aliases SHGInterface
+//' @export
+//' @description TEST Type the name of the class to see its methods
+//' @field new Constructor
 class SHGInterface
 {
 public:
@@ -274,6 +283,13 @@ public:
 RCPP_MODULE(SmokingSimulator) {
    using namespace Rcpp;
 
+// Rcpp_SHGInterface
+//' Rcpp_SHGInterface Class
+//' @name Rcpp_SHGInterface
+//' @title Test title SHGInterface
+//' @export
+//' @description TEST Type the name of the class to see its methods
+//' @field new Constructor
    class_<SHGInterface>("SHGInterface")
        .constructor()
        .method("runSim", &SHGInterface::runSim, "Generates a data frame of simulated smoking histories for n individuals")
