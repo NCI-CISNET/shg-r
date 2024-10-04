@@ -293,13 +293,13 @@ RCPP_MODULE(SmokingSimulator) {
    class_<SHGInterface>("SHGInterface")
        .constructor()
        .method("runSim", &SHGInterface::runSim, "Generates a data frame of simulated smoking histories for n individuals")
-       .method("initialize", &SHGInterface::initialize)
-       .method("setRNGs", &SHGInterface::setRNGs)
-       .method("GetNextCessRand_R", &SHGInterface::GetNextCessRand_R)
-       .method("GetNextInitRand", &SHGInterface::GetNextInitRand)
-       .method("setRNGtype", &SHGInterface::setRNGtype)
-       .method("GetNextCessRand_R_vector", &SHGInterface::GetNextCessRand_R_vector)
-       .method("GetNextCessRandMT", &SHGInterface::GetNextCessRandMT);
+       .method("initialize", &SHGInterface::initialize, "Test")
+       .method("setRNGs", &SHGInterface::setRNGs, "Test")
+       .method("GetNextCessRand_R", &SHGInterface::GetNextCessRand_R, "Test")
+       .method("GetNextInitRand", &SHGInterface::GetNextInitRand, "Test")
+       .method("setRNGtype", &SHGInterface::setRNGtype, "Test")
+       .method("GetNextCessRand_R_vector", &SHGInterface::GetNextCessRand_R_vector, "Test")
+       .method("GetNextCessRandMT", &SHGInterface::GetNextCessRandMT, "Test");
    }
 
 // [[Rcpp::export]]
