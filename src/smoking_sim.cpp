@@ -936,7 +936,10 @@ void Smoking_Simulator::LoadCPDFile(const char* sCpdFile) {
 
 	   // Read in the first line of the file. Line contains the line number where the data in the file begins
       // This is to allow documentation to be placed in the input file
-	   fgets(sInputLine, 3000, pCpdFile);
+    if (fgets(sInputLine, 3000, pCpdFile) == NULL) {
+        Rcpp::stop("Error in file %s, End of File reached before location of first data line as specified in line 1\n", sCpdFile);
+        throw SimException("Error", sErrorMessage);
+    }
       // if (sInputLine == NULL) might always be false. TODO Check this and similar lines
 	   // if (sInputLine == NULL) {
 	   //    Rcpp::stop(sErrorMessage, "Error reading first DATA line of file %s", sCpdFile);
@@ -964,7 +967,10 @@ void Smoking_Simulator::LoadCPDFile(const char* sCpdFile) {
       // Read in the First data line which contains the # of race values, # of sex values,
       // # of birth cohort group values, the minimum age in the data, the maximum age age in the data
       // and the number of smoking intensity groups, in the order they are listed here.
-      fgets(sInputLine, 3000, pCpdFile);
+      if (fgets(sInputLine, 3000, pCpdFile) == NULL) {
+        Rcpp::stop("Error in file %s, End of File reached before location of first data line as specified in line 1\n", sCpdFile);
+        throw SimException("Error", sErrorMessage);
+      }
 
       // if (sInputLine == NULL) {
 	   //    Rcpp::stop(sErrorMessage,"Error reading first DATA line of file %s", sCpdFile);
@@ -1126,7 +1132,11 @@ void Smoking_Simulator::LoadCPDIntensityProbs(const char* sDataFileName) {
 
 	   // Read in the first line of the file.  Line contains the line number where the data in the file begins
       // This is to allow documentation to be placed in the input file
-	   fgets(sInputLine, 3000, pProbabilityFile);
+      if (fgets(sInputLine, 3000, pProbabilityFile) == NULL) {
+         Rcpp::stop("Error in file %s, End of File reached before location of first data line as specified in line 1\n", sDataFileName);
+         throw SimException("Error", sErrorMessage);
+      }
+
 	   // if (sInputLine == NULL) {
 	   //    Rcpp::stop(sErrorMessage, "Error reading first DATA line of file %s", sDataFileName);
 	   //    throw SimException("Error", sErrorMessage);
@@ -1151,7 +1161,11 @@ void Smoking_Simulator::LoadCPDIntensityProbs(const char* sDataFileName) {
       // Read in the First data line which contains the # of race values, # of sex values,
       // # of birth cohort group values, the minimum inititaion age and the maximum initiation age
       // in the order they are listed here.
-      fgets(sInputLine, 3000, pProbabilityFile);
+      if (fgets(sInputLine, 3000, pProbabilityFile) == NULL) {
+         Rcpp::stop("Error in file %s, End of File reached before location of first data line as specified in line 1\n", sDataFileName);
+         throw SimException("Error", sErrorMessage);
+      }
+
 
       // if (sInputLine == NULL) {
 	   //    Rcpp::stop(sErrorMessage, "Error reading first DATA line of file %s", sDataFileName);
@@ -1310,7 +1324,11 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
 
 	   //Read in the first line of the file. Line contains the line number where the data in the file begins
       // This allows documentation to be placed in the input file
-	   fgets(sInputLine, 3000, pProbabilityFile);
+      if (fgets(sInputLine, 3000, pProbabilityFile) == NULL) {
+         Rcpp::stop("Error in file %s, End of File reached before location of first data line as specified in line 1\n", sDataFileName);
+         throw SimException("Error", sErrorMessage);
+      }
+
 	   // if (sInputLine == NULL) {
 	   //    Rcpp::stop(sErrorMessage, "Error reading first DATA line of file %s", sDataFileName);
 	   //    throw SimException("Error", sErrorMessage);
@@ -1336,7 +1354,11 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
       // Read in the First data line which contains the # of race values, # of sex values,
       // # of birth cohort group values, the minimum inititaion age and the maximum initiation age
       // in the order they are listed here.
-      fgets(sInputLine, 3000, pProbabilityFile);
+      if (fgets(sInputLine, 3000, pProbabilityFile) == NULL) {
+         Rcpp::stop("Error in file %s, End of File reached before location of first data line as specified in line 1\n", sDataFileName);
+         throw SimException("Error", sErrorMessage);
+      }
+      //fgets(sInputLine, 3000, pProbabilityFile);
 
       // if (sInputLine == NULL) {
 	   //    Rcpp::stop(sErrorMessage, "Error reading first DATA line of file %s", sDataFileName);
@@ -1400,7 +1422,10 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
       }
 
       // Read in the second dataline, this contains 3 column labels followed by the YOB cohort ranges
-      fgets(sInputLine, 3000, pProbabilityFile);
+      if (fgets(sInputLine, 3000, pProbabilityFile) == NULL) {
+        Rcpp::stop("Error in file %s, End of File reached before location of first data line as specified in line 1\n", sDataFileName);
+        throw SimException("Error", sErrorMessage);
+      }
 
       // if (sInputLine == NULL) {
 	   //    Rcpp::stop(sErrorMessage, "Error reading second DATA line of file %s", sDataFileName);
@@ -1554,7 +1579,10 @@ void Smoking_Simulator::LoadOtherCODFile(const char* sLifeTableFileName) {
 
 	   // Read in the first line of the file. Line contains the line number where the data in the file begins
       // This is to allow documentation to be placed in the input file
-	   fgets(sInputLine, 3000, pLifeTableFile);
+      if (fgets(sInputLine, 3000, pLifeTableFile) == NULL) {
+         Rcpp::stop("Error in file %s, End of File reached before location of first data line as specified in line 1\n", sLifeTableFileName);
+         throw SimException("Error", sErrorMessage);
+      }
 
 	   // if (sInputLine == NULL) {
 	   //    Rcpp::stop(sErrorMessage, "Error reading first DATA line of file %s", sLifeTableFileName);
@@ -1581,8 +1609,11 @@ void Smoking_Simulator::LoadOtherCODFile(const char* sLifeTableFileName) {
       // Read in the First data line which contains the # of race values, # of sex values,
       // the min year of birth, the max year of birth, the min age and the maximum age
       // in the order they are listed here.
-      fgets(sInputLine, 3000, pLifeTableFile);
-
+      if (fgets(sInputLine, 3000, pLifeTableFile) == NULL) {
+         Rcpp::stop("Error in file %s, End of File reached before location of first data line as specified in line 1\n", sLifeTableFileName);
+         throw SimException("Error", sErrorMessage);
+      }
+      
       // if (sInputLine == NULL) {
 	   //    Rcpp::stop(sErrorMessage, "Error reading first DATA line of file %s", sLifeTableFileName);
 	   //    throw SimException("Error", sErrorMessage);
