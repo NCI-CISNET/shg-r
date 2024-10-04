@@ -938,10 +938,10 @@ void Smoking_Simulator::LoadCPDFile(const char* sCpdFile) {
       // This is to allow documentation to be placed in the input file
 	   fgets(sInputLine, 3000, pCpdFile);
       // if (sInputLine == NULL) might always be false. TODO Check this and similar lines
-	   if (sInputLine == NULL) {
-	      Rcpp::stop(sErrorMessage, "Error reading first DATA line of file %s", sCpdFile);
-	      throw SimException("Error", sErrorMessage);
-	   }
+	   // if (sInputLine == NULL) {
+	   //    Rcpp::stop(sErrorMessage, "Error reading first DATA line of file %s", sCpdFile);
+	   //    throw SimException("Error", sErrorMessage);
+	   // }
 
 	   pTokenPtr = strtok(sInputLine, ",");
       wFirstDataLine = atoi(pTokenPtr);
@@ -966,10 +966,10 @@ void Smoking_Simulator::LoadCPDFile(const char* sCpdFile) {
       // and the number of smoking intensity groups, in the order they are listed here.
       fgets(sInputLine, 3000, pCpdFile);
 
-      if (sInputLine == NULL) {
-	      Rcpp::stop(sErrorMessage,"Error reading first DATA line of file %s", sCpdFile);
-	      throw SimException("Error", sErrorMessage);
-	   }
+      // if (sInputLine == NULL) {
+	   //    Rcpp::stop(sErrorMessage,"Error reading first DATA line of file %s", sCpdFile);
+	   //    throw SimException("Error", sErrorMessage);
+	   // }
 
       pTokenPtr       = strtok(sInputLine, ",");
       wRaceValue      = atoi(pTokenPtr);     pTokenPtr = strtok(NULL, ",");
@@ -1127,10 +1127,10 @@ void Smoking_Simulator::LoadCPDIntensityProbs(const char* sDataFileName) {
 	   // Read in the first line of the file.  Line contains the line number where the data in the file begins
       // This is to allow documentation to be placed in the input file
 	   fgets(sInputLine, 3000, pProbabilityFile);
-	   if (sInputLine == NULL) {
-	      Rcpp::stop(sErrorMessage, "Error reading first DATA line of file %s", sDataFileName);
-	      throw SimException("Error", sErrorMessage);
-	   }
+	   // if (sInputLine == NULL) {
+	   //    Rcpp::stop(sErrorMessage, "Error reading first DATA line of file %s", sDataFileName);
+	   //    throw SimException("Error", sErrorMessage);
+	   // }
 	   pTokenPtr = strtok(sInputLine, ",");
       wFirstDataLine = atoi(pTokenPtr);
       if (wFirstDataLine <= 1) {
@@ -1153,10 +1153,10 @@ void Smoking_Simulator::LoadCPDIntensityProbs(const char* sDataFileName) {
       // in the order they are listed here.
       fgets(sInputLine, 3000, pProbabilityFile);
 
-      if (sInputLine == NULL) {
-	      Rcpp::stop(sErrorMessage, "Error reading first DATA line of file %s", sDataFileName);
-	      throw SimException("Error", sErrorMessage);
-	   }
+      // if (sInputLine == NULL) {
+	   //    Rcpp::stop(sErrorMessage, "Error reading first DATA line of file %s", sDataFileName);
+	   //    throw SimException("Error", sErrorMessage);
+	   // }
 
       pTokenPtr      = strtok(sInputLine, ",");
       wNumRaces      = atoi(pTokenPtr);   pTokenPtr = strtok(NULL, ",");
@@ -1311,10 +1311,10 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
 	   //Read in the first line of the file. Line contains the line number where the data in the file begins
       // This allows documentation to be placed in the input file
 	   fgets(sInputLine, 3000, pProbabilityFile);
-	   if (sInputLine == NULL) {
-	      Rcpp::stop(sErrorMessage, "Error reading first DATA line of file %s", sDataFileName);
-	      throw SimException("Error", sErrorMessage);
-	   }
+	   // if (sInputLine == NULL) {
+	   //    Rcpp::stop(sErrorMessage, "Error reading first DATA line of file %s", sDataFileName);
+	   //    throw SimException("Error", sErrorMessage);
+	   // }
 
 	   pTokenPtr = strtok(sInputLine, ",");
       wFirstDataLine = atoi(pTokenPtr);
@@ -1338,10 +1338,10 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
       // in the order they are listed here.
       fgets(sInputLine, 3000, pProbabilityFile);
 
-      if (sInputLine == NULL) {
-	      Rcpp::stop(sErrorMessage, "Error reading first DATA line of file %s", sDataFileName);
-	      throw SimException("Error", sErrorMessage);
-	   }
+      // if (sInputLine == NULL) {
+	   //    Rcpp::stop(sErrorMessage, "Error reading first DATA line of file %s", sDataFileName);
+	   //    throw SimException("Error", sErrorMessage);
+	   // }
 
       pTokenPtr = strtok(sInputLine, ",");
       wRaceValue = atoi(pTokenPtr);
@@ -1402,10 +1402,10 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
       // Read in the second dataline, this contains 3 column labels followed by the YOB cohort ranges
       fgets(sInputLine, 3000, pProbabilityFile);
 
-      if (sInputLine == NULL) {
-	      Rcpp::stop(sErrorMessage, "Error reading second DATA line of file %s", sDataFileName);
-	      throw SimException("Error", sErrorMessage);
-	   }
+      // if (sInputLine == NULL) {
+	   //    Rcpp::stop(sErrorMessage, "Error reading second DATA line of file %s", sDataFileName);
+	   //    throw SimException("Error", sErrorMessage);
+	   // }
 
       pTokenPtr= strtok(sInputLine, ",");
       pTokenPtr= strtok(NULL, ",");
@@ -1556,10 +1556,10 @@ void Smoking_Simulator::LoadOtherCODFile(const char* sLifeTableFileName) {
       // This is to allow documentation to be placed in the input file
 	   fgets(sInputLine, 3000, pLifeTableFile);
 
-	   if (sInputLine == NULL) {
-	      Rcpp::stop(sErrorMessage, "Error reading first DATA line of file %s", sLifeTableFileName);
-	      throw SimException("Error", sErrorMessage);
-	   }
+	   // if (sInputLine == NULL) {
+	   //    Rcpp::stop(sErrorMessage, "Error reading first DATA line of file %s", sLifeTableFileName);
+	   //    throw SimException("Error", sErrorMessage);
+	   // }
 
 	   pTokenPtr      = strtok(sInputLine, ",");
       wFirstDataLine = atoi(pTokenPtr);
@@ -1583,10 +1583,10 @@ void Smoking_Simulator::LoadOtherCODFile(const char* sLifeTableFileName) {
       // in the order they are listed here.
       fgets(sInputLine, 3000, pLifeTableFile);
 
-      if (sInputLine == NULL) {
-	      Rcpp::stop(sErrorMessage, "Error reading first DATA line of file %s", sLifeTableFileName);
-	      throw SimException("Error", sErrorMessage);
-	   }
+      // if (sInputLine == NULL) {
+	   //    Rcpp::stop(sErrorMessage, "Error reading first DATA line of file %s", sLifeTableFileName);
+	   //    throw SimException("Error", sErrorMessage);
+	   // }
 
       pTokenPtr          = strtok(sInputLine, ",");
       wRaceValue         = atoi(pTokenPtr);

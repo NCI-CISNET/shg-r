@@ -4,7 +4,7 @@
 
 \title{Class \code{"Rcpp_SHGInterface"}}
 \description{
-%%  ~~ A concise (1-5 lines) description of what the class is. ~~
+This is a description.
 }
 \section{Extends}{
 Class \code{"\linkS4class{C++Object}"}, directly.
@@ -13,20 +13,19 @@ All reference classes extend and inherit methods from \code{"\linkS4class{envRef
 
 }
 \references{
-%%  ~~put references to the literature/web site here~~
+These are my references
 }
 \author{
-%%  ~~who you are~~
+I am the author
 }
 \note{
-%%  ~~further notes~~
+Further Notes
 }
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~
 
 \seealso{
-%%  ~~objects to See Also as \code{\link{~~fun~~}}, ~~~
-%%  ~~or \code{\linkS4class{CLASSNAME}} for links to other classes ~~~
+See also Sample
 }
 \examples{
 showClass("Rcpp_SHGInterface")
