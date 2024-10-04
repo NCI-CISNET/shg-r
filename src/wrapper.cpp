@@ -125,11 +125,11 @@ public:
 
    void initialize()
    {
-      const char *sInitiationProbFile = "./inst/data/2017-05-03/lbc_shg_initiation.txt";
-      const char *sCessationProbFile = "./inst/data/2017-05-03/lbc_shg_cessation.txt";
-      const char *sLifeTableFile = "./inst/data/2017-05-03/lbc_smokehist_oc_mortality.txt";
+      const char *sInitiationProbFile = "./inst/inputs/2017-05-03/lbc_shg_initiation.txt";
+      const char *sCessationProbFile = "./inst/inputs/2017-05-03/lbc_shg_cessation.txt";
+      const char *sLifeTableFile = "./inst/inputs/2017-05-03/lbc_smokehist_oc_mortality.txt";
       const char *sCpdIntensityProbFile = ""; // no longer used?
-      const char *sCpdDataFile = "./inst/data/2017-05-03/lbc_shg_cpd.txt";
+      const char *sCpdDataFile = "./inst/inputs/2017-05-03/lbc_shg_cpd.txt";
       unsigned long ulInitPRNGSeed = 12345;
       unsigned long ulCessPRNGSeed = 12345;
       unsigned long ulLifeTabSeed = 12345;
@@ -306,7 +306,7 @@ RCPP_MODULE(SmokingSimulator) {
 bool RunWebVersion() {
    // Just stubbing this in here for reference in case we want to avoid the RCPP_MODULE macro
    // depends on having an input file which we probably don't want
-   const char *sInputFileName = "./inst/data/test_input.txt";
+   const char *sInputFileName = "./inst/inputs/test_input.txt";
    // RunFromParameters(sInputFileName, ...);
    RunWebVersion(sInputFileName);
    return true;
