@@ -645,14 +645,14 @@ int RunWebVersion(const char * sInputFileName)
 
       // Check for the error file string, open it if it exists, otherwise, open the default error file
       if (sErrorFile == NULL) {
-         fprintf(stdout,"Name for Error log file was not found in input file: %s",sInputFileName);
+         Rcpp::Rcout << "Name for Error log file was not found in input file: " << sInputFileName;
          bRunApp = false;
       } else {
          pErrorStream = fopen(sErrorFile,"w");
       }
 
       if (bRunApp && pErrorStream == NULL) {
-	 fprintf(stdout,"Specified error file: %s could not be opened for writing.\n", sErrorFile);
+	      Rcpp::Rcout << "Specified error file could not be opened for writing: " << sErrorFile;
          bRunApp = false;
       }
    }
@@ -974,7 +974,7 @@ bool IsPosLongInt(const char* sValue) {
    bool bReturnValue;
    long lUpperValue = MAX(long);
 
-   sprintf(sUpperValue, "%ld", lUpperValue);
+   Rcpp::stop(sUpperValue, "%ld", lUpperValue);
 
    bReturnValue = ((strspn( sValue, "0123456789" ) == strlen(sValue)) &&
                    ((strlen(sValue) < strlen(sUpperValue)) ||
@@ -989,7 +989,7 @@ bool IsPosShortInt(const char* sValue) {
    char 	sUpperValue[100]; // Max short int value is shorter than 100 digits
    bool 	bReturnValue;
    short wUpperValue      = MAX(short);
-   sprintf(sUpperValue,"%d", wUpperValue);
+   Rcpp::stop(sUpperValue,"%d", wUpperValue);
    bReturnValue = ((strspn( sValue, "0123456789" ) == strlen(sValue)) &&
                    ((strlen(sValue) < strlen(sUpperValue)) ||
                     ((strlen(sValue) == strlen(sUpperValue)) &&
