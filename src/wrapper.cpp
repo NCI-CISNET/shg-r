@@ -396,7 +396,7 @@ int RunWebVersion(const char * sInputFileName)
    pInputFile = fopen(sInputFileName,"r");
 
    if (pInputFile == NULL) {
-      fprintf(stdout, "The specified input file does not exist or could not be opened.\n");
+      Rcpp::Rcout << "The specified input file does not exist or could not be opened.\n" << sInputFileName;
       bRunApp = false;
    }
 
