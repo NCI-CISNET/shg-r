@@ -10,8 +10,8 @@
 
 // TODO: Update attribution and dates above
 
-#pragma hdrstop
-#pragma argsused
+//#pragma hdrstop
+//#pragma argsused
 
 #include <cstdlib>
 #include <cstring>
@@ -183,8 +183,9 @@ public:
       short wRace = 0;
       short wSex = 0;
       short wYearBirth = 1950;
-      FILE *pInputFile = 0,
-           *pOutStream = 0,
+      
+      //*pInputFile = 0,
+      FILE *pOutStream = 0,
            *pErrorStream = 0;
       const char *sOutputFile = "./out/test_output_from_module.txt";
 
@@ -782,6 +783,8 @@ int RunWebVersion(const char * sInputFileName)
       wValuesPerParam[3] = CountVectorValues(sPARAM_NumReps);
       wMaxNumPerParam = 1;
       for (i=0; i < 4; i++) {
+         // TODO: suggest putting wrapping but need to test to make sure it doesn't change current behavior
+         //(((wValuesPerParam[i] > wMaxNumPerParam) && (wMaxNumPerParam > 1)) ...
       	if ((wValuesPerParam[i] > wMaxNumPerParam) &&
              (wMaxNumPerParam > 1) ||
              (wMaxNumPerParam > 1 &&
