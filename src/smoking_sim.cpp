@@ -312,14 +312,15 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
    nRows = nValues / nColumns;
 
 
-   long     cpdGroupOverLife[nRows];
-   double   filteredCPDGroups[nValues],
+   std::vector<long>     cpdGroupOverLife(nRows);
+   std::vector<double>   filteredCPDGroups(nValues);
             // filteredCPDGroupsCumSum[nValues],
             // pSwitchCPDGroups[(nRows - 1) * nColumns],
             // pSwitchCPDGroupsCumSum[(nRows - 1) * nColumns],
-            Tij[nColumns * nColumns],
-            r0[nColumns],
-            r1[nColumns];
+   std::vector<double>    Tij(nColumns * nColumns);
+   std::vector<double>    r0(nColumns);
+   std::vector<double>    r1(nColumns);
+
 
    try {
 
@@ -355,7 +356,7 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
       }
 
       double term1, term2;
-      double switchProbs[nColumns];
+      std::vector<double> switchProbs(nColumns);
       double sum;
 
       for (i = 0; i < nRows ; i++) {
@@ -418,11 +419,11 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
                switchProbs[j] = Tij[group * nColumns + j] / r0[group];
             }
 
-            double sumProbs;
-            sumProbs = 0;
-            for (m = 0; m < nColumns; m++) {
-               sumProbs += switchProbs[m];
-            }
+            // double sumProbs;
+            // sumProbs = 0;
+            // for (m = 0; m < nColumns; m++) {
+            //    sumProbs += switchProbs[m];
+            // }
 
             // Do the cumulative sum across them
             sum = 0;
