@@ -32,6 +32,7 @@
 #include <iostream>
 #include <algorithm>
 
+#include "wrapper.h"
 #include "smoking_sim.h"
 #include "sim_exception.h"
 
@@ -114,16 +115,16 @@ using namespace Rcpp;
 //' @export
 //' @description TEST Type the name of the class to see its methods
 //' @field new Constructor
-class SHGInterface
-{
-public:
+// class SHGInterface
+// {
+// public:
    // Eventually we should probably allow for a constructor that takes seeds
-   SHGInterface()
+   SHGInterface::SHGInterface()
    {
       initialize();
    }
 
-   void initialize()
+   void SHGInterface::initialize()
    {
       const char *sInitiationProbFile = "./inst/inputs/2017-05-03/lbc_shg_initiation.txt";
       const char *sCessationProbFile = "./inst/inputs/2017-05-03/lbc_shg_cessation.txt";
@@ -145,7 +146,7 @@ public:
                                          wCessationYear);
    }
    // A simple toggle between using rstream RNG versus C++ MT
-   void setRNGtype(std::string RNGtype)
+   void SHGInterface::setRNGtype(std::string RNGtype)
    {
       if (RNGtype == "rstream")
       {
@@ -157,7 +158,7 @@ public:
       }
    }
 
-   void setRNGs(SEXP rng1, SEXP rng2, SEXP rng3, SEXP rng4)
+   void SHGInterface::setRNGs(SEXP rng1, SEXP rng2, SEXP rng3, SEXP rng4)
    {
 
       // Ensure that the inputs are correct S4 rstream.mrg32k3a objects
@@ -176,13 +177,12 @@ public:
       pSimulator->gpLifeTablePRNG_R = rng3;
       pSimulator->gpIndivRndsPRNG_R = rng4;
    }
-
-   DataFrame runSim(int repeat)
+   Rcpp::DataFrame SHGInterface::runSim(int repeat, short wRace, short wSex, short wYearBirth)
    {
-
-      short wRace = 0;
-      short wSex = 0;
-      short wYearBirth = 1950;
+      //Rcpp::Rcout << "RunSim" << repeat;
+      // short wRace = 0;
+      // short wSex = 0;
+      // short wYearBirth = 1950;
       
       //*pInputFile = 0,
       FILE *pOutStream = 0,
@@ -250,36 +250,38 @@ public:
       return df;
    }
 
-   double GetNextInitRand()
-   {
-      return pSimulator->GetNextInitRand();
-   }
+   // double GetNextInitRand()
+   // {
+   //    return pSimulator->GetNextInitRand();
+   // }
 
-   double GetNextCessRand_R()
-   {
-      return pSimulator->GetNextCessRand_R();
-   }
+   // double GetNextCessRand_R()
+   // {
+   //    return pSimulator->GetNextCessRand_R();
+   // }
 
-   // Just testing the MT
-   double GetNextCessRandMT()
-   {
-      return pSimulator->GetNextCessRandMT();
-   }
+   // // Just testing the MT
+   // double GetNextCessRandMT()
+   // {
+   //    return pSimulator->GetNextCessRandMT();
+   // }
 
-   NumericVector GetNextCessRand_R_vector(int n)
-   {
-      return pSimulator->GetNextCessRand_R_vector(n);
-   }
+   // NumericVector GetNextCessRand_R_vector(int n)
+   // {
+   //    return pSimulator->GetNextCessRand_R_vector(n);
+   // }
 
-   void RunWebVersion(const char *sInputFileName)
+   void SHGInterface::runSimFromInputFile(const char *sInputFileName)
    {
+      // TODO: consider moving the function here
       RunWebVersion(sInputFileName);
+      return;
    }
 
-   const char *sInputFile;
-   const char *sOutputFile;
-   Smoking_Simulator *pSimulator = 0;
-};
+   // const char *sInputFile;
+   // const char *sOutputFile;
+   // Smoking_Simulator *pSimulator = 0;
+
 
 RCPP_MODULE(SmokingSimulator) {
    using namespace Rcpp;
@@ -294,13 +296,15 @@ RCPP_MODULE(SmokingSimulator) {
    class_<SHGInterface>("SHGInterface")
        .constructor()
        .method("runSim", &SHGInterface::runSim, "Generates a data frame of simulated smoking histories for n individuals")
+       
        .method("initialize", &SHGInterface::initialize, "Test")
        .method("setRNGs", &SHGInterface::setRNGs, "Test")
-       .method("GetNextCessRand_R", &SHGInterface::GetNextCessRand_R, "Test")
-       .method("GetNextInitRand", &SHGInterface::GetNextInitRand, "Test")
-       .method("setRNGtype", &SHGInterface::setRNGtype, "Test")
-       .method("GetNextCessRand_R_vector", &SHGInterface::GetNextCessRand_R_vector, "Test")
-       .method("GetNextCessRandMT", &SHGInterface::GetNextCessRandMT, "Test");
+       //.method("GetNextCessRand_R", &SHGInterface::GetNextCessRand_R, "Test")
+       //.method("GetNextInitRand", &SHGInterface::GetNextInitRand, "Test")
+       .method("runSimFromInputFile", &SHGInterface::runSimFromInputFile, "Generates a data frame of simulated smoking histories with parameters based on input file")
+       .method("setRNGtype", &SHGInterface::setRNGtype, "Test");
+       //.method("GetNextCessRand_R_vector", &SHGInterface::GetNextCessRand_R_vector, "Test")
+       //.method("GetNextCessRandMT", &SHGInterface::GetNextCessRandMT, "Test");
    }
 //' RunWebVersion
 //'
@@ -309,15 +313,15 @@ RCPP_MODULE(SmokingSimulator) {
 //' @return bool
 //' @examples
 //' RunWebVersion()
-// [[Rcpp::export]]
-bool RunWebVersion() {
-   // Just stubbing this in here for reference in case we want to avoid the RCPP_MODULE macro
-   // depends on having an input file which we probably don't want
-   const char *sInputFileName = "./inst/inputs/test_input.txt";
-   // RunFromParameters(sInputFileName, ...);
-   RunWebVersion(sInputFileName);
-   return true;
-}
+// ..[[Rcpp::export]]
+// bool RunWebVersion() {
+//    // Just stubbing this in here for reference in case we want to avoid the RCPP_MODULE macro
+//    // depends on having an input file which we probably don't want
+//    const char *sInputFileName = "./inst/inputs/test_input.txt";
+//    // RunFromParameters(sInputFileName, ...);
+//    RunWebVersion(sInputFileName);
+//    return true;
+// }
 
 // Returns a string containing the directory and filename concatenated together
 char* AssignFilename(const char* sDirectory, const char * sFilename) {
@@ -668,12 +672,12 @@ int RunWebVersion(const char * sInputFileName)
       // Make sure all necessary values were received
       // Check Seeds
       if (sSEED_Init == NULL) {
-         fprintf(pErrorStream,"\n<ERROR>\nSeed for Initiation PRNG was not found in input file: %s\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
-                 sInputFileName);
+        fprintf(pErrorStream,"\n<ERROR>\nSeed for Initiation PRNG was not found in input file: %s\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
+                sInputFileName);
          bRunApp = false;
       } else if (!IsValidSeed(sSEED_Init)) {
-         fprintf(pErrorStream,"\n<ERROR>\nInvalid Initiation PRNG Seed: %s found in input file: %s\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
-                 sSEED_Init,sInputFileName);
+        fprintf(pErrorStream,"\n<ERROR>\nInvalid Initiation PRNG Seed: %s found in input file: %s\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
+                sSEED_Init,sInputFileName);
          bRunApp = false;
       }
       if (sSEED_Cess == NULL) {
