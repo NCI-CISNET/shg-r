@@ -787,10 +787,9 @@ int RunWebVersion(const char * sInputFileName)
       wValuesPerParam[3] = CountVectorValues(sPARAM_NumReps);
       wMaxNumPerParam = 1;
       for (i=0; i < 4; i++) {
-         // TODO: suggest putting wrapping but need to test to make sure it doesn't change current behavior
-         //(((wValuesPerParam[i] > wMaxNumPerParam) && (wMaxNumPerParam > 1)) ...
-      	if ((wValuesPerParam[i] > wMaxNumPerParam) &&
-             (wMaxNumPerParam > 1) ||
+         // WARNING : this condition is potentially slightly different than the original code
+         // There was a [-Wlogical-op-parentheses] warning in R CMD check
+      	if (((wValuesPerParam[i] > wMaxNumPerParam) && (wMaxNumPerParam > 1)) ||
              (wMaxNumPerParam > 1 &&
               (wValuesPerParam[i] != wMaxNumPerParam && wValuesPerParam[i] > 1))) {
 
@@ -987,7 +986,8 @@ bool IsPosLongInt(const char* sValue) {
    bool bReturnValue;
    long lUpperValue = MAX(long);
 
-   Rcpp::stop(sUpperValue, "%ld", lUpperValue);
+   // rusing snprintf instead of sprintf to comply with R CMD check
+   snprintf(sUpperValue, sizeof(sUpperValue), "%ld", lUpperValue);
 
    bReturnValue = ((strspn( sValue, "0123456789" ) == strlen(sValue)) &&
                    ((strlen(sValue) < strlen(sUpperValue)) ||
@@ -1002,7 +1002,9 @@ bool IsPosShortInt(const char* sValue) {
    char 	sUpperValue[100]; // Max short int value is shorter than 100 digits
    bool 	bReturnValue;
    short wUpperValue      = MAX(short);
-   Rcpp::stop(sUpperValue,"%d", wUpperValue);
+
+   // rusing snprintf instead of sprintf to comply with R CMD check
+   snprintf(sUpperValue, sizeof(sUpperValue), "%d", wUpperValue);
    bReturnValue = ((strspn( sValue, "0123456789" ) == strlen(sValue)) &&
                    ((strlen(sValue) < strlen(sUpperValue)) ||
                     ((strlen(sValue) == strlen(sUpperValue)) &&
