@@ -25,7 +25,5 @@ NULL
 #' @return bool
 #' @examples
 #' RunWebVersion()
-RunWebVersion <- function() {
-    .Call(`_RcppSmokingHistoryGenerator_RunWebVersion`)
-}
+NULL
 
