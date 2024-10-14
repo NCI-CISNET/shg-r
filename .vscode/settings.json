@@ -51,6 +51,12 @@
         "unordered_map": "cpp",
         "variant": "cpp",
         "vector": "cpp",
-        "algorithm": "cpp"
+        "algorithm": "cpp",
+        "__tree": "cpp",
+        "csetjmp": "cpp",
+        "list": "cpp",
+        "map": "cpp",
+        "set": "cpp",
+        "unordered_set": "cpp"
     }
 }
