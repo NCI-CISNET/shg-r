@@ -1,0 +1,7 @@
+{
+"miDebuggerPath": "c:\\mingw\\bin\\gdb.exe",
+"sourceFileMap": {
+    "/build/gcc-4.8-fNUjSI/gcc-4.8-4.8.4/build/i686-linux-gnu/libstdc++-v3/include/i686-linux-gnu": "/usr/include/i686-linux-gnu/c++/4.8",
+    "/build/gcc-4.8-fNUjSI/gcc-4.8-4.8.4/build/i686-linux-gnu/libstdc++-v3/include": "/usr/include/c++/4.8"
+    }
+}
