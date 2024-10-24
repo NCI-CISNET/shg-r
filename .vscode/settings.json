@@ -63,5 +63,10 @@
         "charconv": "cpp",
         "forward_list": "cpp",
         "future": "cpp"
+    },
+    "files.exclude": {
+        "**/*.o": true,
+        "**/*.html": true,
+        "**/*.so": true
     }
 }
