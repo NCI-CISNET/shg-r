@@ -15,6 +15,7 @@
 #include "rng_strategy.h"
 #include <string.h>
 #include <iostream>
+#include <mutex>
 
 #ifdef IS_RCPP
 #include <Rcpp.h>
