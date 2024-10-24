@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdio.h>
+#include <cstdarg>
 
 #include <mutex>
 #include <vector>
