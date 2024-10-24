@@ -145,38 +145,38 @@ using namespace Rcpp;
                                          ulIndivRndsSeed, wOutputType,
                                          wCessationYear);
    }
-   // A simple toggle between using rstream RNG versus C++ MT
-   void SHGInterface::setRNGtype(std::string RNGtype)
-   {
-      if (RNGtype == "rstream")
-      {
-         pSimulator->use_rstream = TRUE;
-      }
-      else
-      {
-         pSimulator->use_rstream = FALSE;
-      }
-   }
+   // // A simple toggle between using rstream RNG versus C++ MT
+   // void SHGInterface::setRNGtype(std::string RNGtype)
+   // {
+   //    if (RNGtype == "rstream")
+   //    {
+   //       pSimulator->use_rstream = TRUE;
+   //    }
+   //    else
+   //    {
+   //       pSimulator->use_rstream = FALSE;
+   //    }
+   // }
 
-   void SHGInterface::setRNGs(SEXP rng1, SEXP rng2, SEXP rng3, SEXP rng4)
-   {
+   // void SHGInterface::setRNGs(SEXP rng1, SEXP rng2, SEXP rng3, SEXP rng4)
+   // {
 
-      // Ensure that the inputs are correct S4 rstream.mrg32k3a objects
-      if (!Rf_inherits(rng1, "rstream.mrg32k3a") ||
-          !Rf_inherits(rng2, "rstream.mrg32k3a") ||
-          !Rf_inherits(rng3, "rstream.mrg32k3a") ||
-          !Rf_inherits(rng4, "rstream.mrg32k3a"))
-      {
-         stop("All RNGs must be of class rstream.mrg32k3a.");
-      }
+   //    // Ensure that the inputs are correct S4 rstream.mrg32k3a objects
+   //    if (!Rf_inherits(rng1, "rstream.mrg32k3a") ||
+   //        !Rf_inherits(rng2, "rstream.mrg32k3a") ||
+   //        !Rf_inherits(rng3, "rstream.mrg32k3a") ||
+   //        !Rf_inherits(rng4, "rstream.mrg32k3a"))
+   //    {
+   //       stop("All RNGs must be of class rstream.mrg32k3a.");
+   //    }
 
-      // Could also clone and advance substreams here instead of externally
-      // Function next_substream = rstream_env["rstream.nextsubstream"]; //also resetsubstream
-      pSimulator->gpInitiationPRNG_R = rng1;
-      pSimulator->gpCessationPRNG_R = rng2;
-      pSimulator->gpLifeTablePRNG_R = rng3;
-      pSimulator->gpIndivRndsPRNG_R = rng4;
-   }
+   //    // Could also clone and advance substreams here instead of externally
+   //    // Function next_substream = rstream_env["rstream.nextsubstream"]; //also resetsubstream
+   //    pSimulator->gpInitiationPRNG_R = rng1;
+   //    pSimulator->gpCessationPRNG_R = rng2;
+   //    pSimulator->gpLifeTablePRNG_R = rng3;
+   //    pSimulator->gpIndivRndsPRNG_R = rng4;
+   // }
    Rcpp::DataFrame SHGInterface::runSim(int repeat, short wRace, short wSex, short wYearBirth)
    {
       //Rcpp::Rcout << "RunSim" << repeat;
@@ -194,6 +194,8 @@ using namespace Rcpp;
       {
          fprintf(pErrorStream, "\n<ERROR>\nSupplied Output file: %s, could not be opened for writing.\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n", sOutputFile);
       }
+      // Trying this to prevent an output file from being created
+      pOutStream = NULL;
 
       std::vector<int> initiationAge;
       std::vector<int> cessationAge;
@@ -205,32 +207,36 @@ using namespace Rcpp;
       string cpd;
       short wYearsAsSmoker, i;
 
+//#TODO Why is this not running as fast as in C++ directly? (5.9 secs versus 1 sec for 100,000)
+//#Also, can we toggle writing to a file?
+//#offer the ability to have SHG CLI loop through a fixed race, sex, cohort, and just supply the repeat value. Would that be quicker?
+
       for (int j = 0; j < repeat; j++)
       {
-         pSimulator->RunSimulationIndividual(wRace, wSex, wYearBirth, pOutStream);
+         pSimulator->RunSimulationSingle(wRace, wSex, wYearBirth, pOutStream);
 
          // For now these 3 are typically all the same in a given run, but we could add more variation
          race.push_back(wRace);
          sex.push_back(wSex);
          yearBirth.push_back(wYearBirth);
 
-         initiationAge.push_back(pSimulator->gwPersonsInitAge);
-         cessationAge.push_back(pSimulator->gwPersonsCessAge);
-         ageAtDeath.push_back(pSimulator->gwPersonsAgeAtDeath);
+         initiationAge.push_back(pSimulator->GetPersonsInitAge());
+         cessationAge.push_back(pSimulator->GetPersonsCessAge());
+         ageAtDeath.push_back(pSimulator->GetPersonsAgeAtDeath());
 
          // Print out the smoking intensity group for the person and the cigarettes smoked per day
          // Print the intensity group as +1 its value so range of values is from 1 to 5.
          cpd = "";
-         if (pSimulator->gwPersonsInitAge != -999)
+         if (pSimulator->GetPersonsInitAge() != -999)
          {
-            if (pSimulator->gwPersonsCessAge == -999)
-               wYearsAsSmoker = wSIM_CUTOFF_YEAR - (pSimulator->gwPersonsYOB + pSimulator->gwPersonsInitAge) + 1;
+            if (pSimulator->GetPersonsCessAge() == -999)
+               wYearsAsSmoker = wSIM_CUTOFF_YEAR - (pSimulator->GetPersonsYOB() + pSimulator->GetPersonsInitAge()) + 1;
             else
-               wYearsAsSmoker = pSimulator->gwPersonsCessAge - pSimulator->gwPersonsInitAge + 1;
+               wYearsAsSmoker = pSimulator->GetPersonsCessAge() - pSimulator->GetPersonsInitAge() + 1;
             for (i = 0; i < wYearsAsSmoker; i++)
             {
-               if (i + pSimulator->gwPersonsInitAge < 100)
-                  cpd += std::to_string(i + pSimulator->gwPersonsInitAge) + " (" + std::to_string(static_cast<int>(pSimulator->gdPersonsCPDbyAge[i])) + "), ";
+               if (i + pSimulator->GetPersonsInitAge() < 100)
+                  cpd += std::to_string(i + pSimulator->GetPersonsInitAge()) + " (" + std::to_string(static_cast<int>(pSimulator->GetPersonsCPDbyAge()[i])) + "), ";
             }
          }
          cpdString.push_back(cpd);
@@ -295,14 +301,14 @@ RCPP_MODULE(SmokingSimulator) {
 //' @field new Constructor
    class_<SHGInterface>("SHGInterface")
        .constructor()
-       .method("runSim", &SHGInterface::runSim, "Generates a data frame of simulated smoking histories for n individuals")
+       .method("runSim", &SHGInterface::runSim, "Generates a data frame of simulated smoking histories for n individuals");
        
-       .method("initialize", &SHGInterface::initialize, "Test")
-       .method("setRNGs", &SHGInterface::setRNGs, "Test")
+       //.method("initialize", &SHGInterface::initialize, "Test")
+       //.method("setRNGs", &SHGInterface::setRNGs, "Test")
        //.method("GetNextCessRand_R", &SHGInterface::GetNextCessRand_R, "Test")
        //.method("GetNextInitRand", &SHGInterface::GetNextInitRand, "Test")
-       .method("runSimFromInputFile", &SHGInterface::runSimFromInputFile, "Generates a data frame of simulated smoking histories with parameters based on input file")
-       .method("setRNGtype", &SHGInterface::setRNGtype, "Test");
+       //.method("runSimFromInputFile", &SHGInterface::runSimFromInputFile, "Generates a data frame of simulated smoking histories with parameters based on input file")
+       //.method("setRNGtype", &SHGInterface::setRNGtype, "Test");
        //.method("GetNextCessRand_R_vector", &SHGInterface::GetNextCessRand_R_vector, "Test")
        //.method("GetNextCessRandMT", &SHGInterface::GetNextCessRandMT, "Test");
    }
@@ -887,7 +893,7 @@ int RunWebVersion(const char * sInputFileName)
                lNumReps = atol(sVecValues[3]);
                for (j=0; j<lNumReps && bRunApp;j++) {
                   try {
-                     pSimulator->RunSimulationIndividual(atoi(sVecValues[0]), atoi(sVecValues[1]),
+                     pSimulator->RunSimulationSingle(atoi(sVecValues[0]), atoi(sVecValues[1]),
                                                atoi(sVecValues[2]), pOutStream);
                   } catch (SimException ex) {
             	      fprintf(pErrorStream,"\n<ERROR>\n%s\n</ERROR>\n",ex.GetError());
