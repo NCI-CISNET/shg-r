@@ -261,21 +261,8 @@ using namespace Rcpp;
    //    return pSimulator->GetNextInitRand();
    // }
 
-   // double GetNextCessRand_R()
-   // {
-   //    return pSimulator->GetNextCessRand_R();
-   // }
 
-   // // Just testing the MT
-   // double GetNextCessRandMT()
-   // {
-   //    return pSimulator->GetNextCessRandMT();
-   // }
 
-   // NumericVector GetNextCessRand_R_vector(int n)
-   // {
-   //    return pSimulator->GetNextCessRand_R_vector(n);
-   // }
 
    void SHGInterface::runSimFromInputFile(const char *sInputFileName)
    {
@@ -283,11 +270,6 @@ using namespace Rcpp;
       RunWebVersion(sInputFileName);
       return;
    }
-
-   // const char *sInputFile;
-   // const char *sOutputFile;
-   // Smoking_Simulator *pSimulator = 0;
-
 
 RCPP_MODULE(SmokingSimulator) {
    using namespace Rcpp;

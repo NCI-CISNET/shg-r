@@ -59,6 +59,9 @@
         "set": "cpp",
         "unordered_set": "cpp",
         "memory": "cpp",
-        "print": "cpp"
+        "print": "cpp",
+        "charconv": "cpp",
+        "forward_list": "cpp",
+        "future": "cpp"
     }
 }
