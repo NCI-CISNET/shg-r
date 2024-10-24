@@ -1125,12 +1125,15 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
       // Read in the First data line which contains the # of race values, # of sex values,
       // # of birth cohort group values, the minimum inititaion age and the maximum initiation age
       // in the order they are listed here.
-      fgets(sInputLine, 3000, pProbabilityFile);
+      if (fgets(sInputLine, sizeof(sInputLine), pProbabilityFile) == NULL) {
+         sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Error reading first DATA line of file %s", sDataFileName);
+         throw SimException("Error", sErrorMessage);
+      }
 
-      if (sInputLine == NULL) {
-	      sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Error reading first DATA line of file %s", sDataFileName);
-	      throw SimException("Error", sErrorMessage);
-	   }
+      // if (sInputLine == NULL) {
+	   //    sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Error reading first DATA line of file %s", sDataFileName);
+	   //    throw SimException("Error", sErrorMessage);
+	   // }
 
       pTokenPtr = strtok(sInputLine, ",");
       wRaceValue = atoi(pTokenPtr);
