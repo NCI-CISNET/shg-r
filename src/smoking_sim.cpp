@@ -20,6 +20,7 @@
 #include <stdio.h>
 
 #include <mutex>
+
 #include "rng_strategy.h"
 using namespace std;
 
@@ -338,9 +339,9 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
          throw SimException("Error", "One or more of the data components for cigarettes \nper day calculation has not been initialized.\n");
       */
 
-      if (gwPersonsInitAge == -999)
+      if (gwPersonsInitAge == -999){
          throw SimException("Error", "CalcCigarettesPerDay should not be called for \nindividuals that do not initiate smoking.\n");
-
+      }
       // Using the offset formula...
       lCpdStartIndex = (glCpdRaceOffset * (gwPersonsRace)) +
                        (glCpdSexOffset * (gwPersonsSex)) +
@@ -683,7 +684,7 @@ void Smoking_Simulator::setRNGStrategy(RNG_Strategy* rngStrategy) {
 // is sorted by race, sex , YOB cohort, age and intensity group
 // The data will be stored in an array that is offset by race, sex, year of birth
 // age and smoking intensity level
-void Smoking_Simulator::LoadCPDFile(const char* sCpdFile) {
+
 
 void Smoking_Simulator::LoadCPDFile(const char* sCpdFile) {
 std::lock_guard<std::mutex> lock(dataMutex);
@@ -1531,8 +1532,9 @@ void Smoking_Simulator::RunSimulation(const char* sInputFileName, const char* sO
          wYOB = atoi(pTokenPtr);
 
          RunSimulationSingle(wRace, wSex, wYOB, pOutputFile);
-         if (bPrintToScreen) 
-            WriteToStream(stdout);
+         // TODO Add compiler flag to enable/disable print to screen or send to RCPP print function
+         // if (bPrintToScreen) 
+         //    WriteToStream(stdout);
       }
 
       fclose(pInputFile);
