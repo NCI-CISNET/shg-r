@@ -19,6 +19,7 @@
 #include <math.h>
 #include <stdio.h>
 
+#include <mutex>
 #include "rng_strategy.h"
 using namespace std;
 
@@ -684,6 +685,8 @@ void Smoking_Simulator::setRNGStrategy(RNG_Strategy* rngStrategy) {
 // age and smoking intensity level
 void Smoking_Simulator::LoadCPDFile(const char* sCpdFile) {
 
+void Smoking_Simulator::LoadCPDFile(const char* sCpdFile) {
+std::lock_guard<std::mutex> lock(dataMutex);
    char     sInputLine[3001],
             sErrorMessage[500],
            *pTokenPtr            = 0;
@@ -1053,7 +1056,11 @@ void Smoking_Simulator::LoadCPDIntensityProbs(const char* sDataFileName) {
 }
 
 // Load the probability initiation/cessation data files.
+std::mutex Smoking_Simulator::dataMutex;
+
 void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType eFileType) {
+   std::lock_guard<std::mutex> lock(dataMutex); // Lock the mutex to ensure thread safety
+
 
    char     sInputLine[3001],
             sErrorMessage[500],
@@ -1301,7 +1308,7 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
 
 // Load the probability initiation/cessation data files.
 void Smoking_Simulator::LoadOtherCODFile(const char* sLifeTableFileName) {
-
+std::lock_guard<std::mutex> lock(dataMutex);
    char     sInputLine[1001],
             sErrorMessage[500],
            *pTokenPtr            = 0;
