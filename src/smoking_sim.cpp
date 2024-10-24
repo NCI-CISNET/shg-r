@@ -7,9 +7,10 @@
 // E-Mail: KrapchoM@imsweb.com & ben.racine@cornerstonenw.com
 // NCI Contact: Rocky Feuer
 
+#ifdef IS_RCPP
 #include <Rcpp.h>
 // [[Rcpp::depends(Rcpp)]]
-// [[Rcpp::depends(rstream)]]
+#endif
 
 #include "smoking_sim.h"
 #include <string>
@@ -18,54 +19,69 @@
 #include <math.h>
 #include <stdio.h>
 
+#include "rng_strategy.h"
 using namespace std;
 
-Smoking_Simulator::Smoking_Simulator() : rand_sample(Rcpp::Environment::namespace_env("rstream")["rstream.sample"]){
-// The rand_sample segment above initializes for R
-// TODO: maybe there is a better way to do this
-
-   try {
-      Init();
-   } catch (SimException ex) {
-      ex.AddCallPath("Smoking_Simulator()");
-      Free();
-      throw ex;
-   }
-}
-// Constructor
-Smoking_Simulator::Smoking_Simulator (const char* sInitiationProbFile, const char* sCessationProbFile,
+// Constructor for RunWebVersion call in main (removed the PRNG seeds as they are set in the RNG strategy)
+Smoking_Simulator::Smoking_Simulator(const char* sInitiationProbFile, const char* sCessationProbFile,
                                      const char* sLifeTableFile,      const char* sCpdIntensityProbFile,
-                                     const char* sCpdDataFile,        unsigned long ulInitPRNGSeed,
-                                     unsigned long ulCessPRNGSeed,    unsigned long ulLifeTabSeed,
-                                     unsigned long ulIndivRndsSeed,   short wOutputType,
-                                     short wCessationYear)
-  : rand_sample(Rcpp::Environment::namespace_env("rstream")["rstream.sample"])
-// The rand_sample segment above initializes for R
-// TODO: maybe there is a better way to do this
+                                     const char* sCpdDataFile,        short wOutputType,
+                                     short wCessationYear) { 
 
-  {
    char sErrorMessage[300];
-    // rstream_env = Rcpp::Environment::namespace_env("rstream");
-    // rand_sample = rstream_env["rstream.sample"];
-
    try {
-      //Rcpp::Rcout << "CSNW Debug: batch size = " << gsRNGBatchSize << ", vector size = " << gsCessationVector.size() << std::endl;
       Init();
       LoadProbabilityData(sInitiationProbFile, Smoking_Simulator::DATA_Initiation);
       LoadProbabilityData(sCessationProbFile, Smoking_Simulator::DATA_Cessation);
       LoadCPDFile(sCpdDataFile);
       LoadOtherCODFile(sLifeTableFile);
 
-      InitPRNGs(ulInitPRNGSeed, ulCessPRNGSeed, ulLifeTabSeed, ulIndivRndsSeed);
       SetOutputType(wOutputType);
 
-      // Immediate Cessation Values are initialized to 0 and false respectively,
+      // Immediate Cessation Values are initialized to 0 and false respectively, 
       // Check to see if they need to be changed.
       if ((wCessationYear != 0) || (wCessationYear >= wMIN_IMMEDIATE_CESSATION_YEAR && wCessationYear <= wSIM_CUTOFF_YEAR)) {
          gwImmediateCessYear = wCessationYear;
          gbImmediateCessation = true;
       } else if ( wCessationYear != 0) {
-         Rcpp::stop(sErrorMessage, "Invalid Value for Immediate Cessation Year.\n \
+         sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid Value for Immediate Cessation Year.\n \
+            Valid values are 0 and the range %d to %d.\n", wMIN_IMMEDIATE_CESSATION_YEAR, wSIM_CUTOFF_YEAR);
+         throw SimException("Error", sErrorMessage);
+      }
+    } catch (SimException ex) {
+      ex.AddCallPath("Smoking_Simulator()");
+      Free();
+      throw ex;
+    }
+}
+// Legacy Constructor
+Smoking_Simulator::Smoking_Simulator(const char* sInitiationProbFile, const char* sCessationProbFile,
+                                     const char* sLifeTableFile,      const char* sCpdIntensityProbFile,
+                                     const char* sCpdDataFile,        unsigned long ulInitPRNGSeed,
+                                     unsigned long ulCessPRNGSeed,    unsigned long ulLifeTableSeed,
+                                     unsigned long ulIndivRndsSeed,   short wOutputType,
+                                     short wCessationYear) { 
+
+   char sErrorMessage[300];
+   try {
+      Init();
+      LoadProbabilityData(sInitiationProbFile, Smoking_Simulator::DATA_Initiation);
+      LoadProbabilityData(sCessationProbFile, Smoking_Simulator::DATA_Cessation);
+      LoadCPDFile(sCpdDataFile);
+      LoadOtherCODFile(sLifeTableFile);
+   
+      // To maintain the legacy constructor signature, we need to initialize default Mersenne Twister strategy here
+      MersenneTwisterRNG* pRngStrategy = new MersenneTwisterRNG(ulInitPRNGSeed, ulCessPRNGSeed, ulLifeTableSeed, ulIndivRndsSeed);
+      setRNGStrategy(pRngStrategy);
+      SetOutputType(wOutputType);
+
+      // Immediate Cessation Values are initialized to 0 and false respectively, 
+      // Check to see if they need to be changed.
+      if ((wCessationYear != 0) || (wCessationYear >= wMIN_IMMEDIATE_CESSATION_YEAR && wCessationYear <= wSIM_CUTOFF_YEAR)) {
+         gwImmediateCessYear = wCessationYear;
+         gbImmediateCessation = true;
+      } else if ( wCessationYear != 0) {
+         sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid Value for Immediate Cessation Year.\n \
             Valid values are 0 and the range %d to %d.\n", wMIN_IMMEDIATE_CESSATION_YEAR, wSIM_CUTOFF_YEAR);
          throw SimException("Error", sErrorMessage);
       }
@@ -83,7 +99,7 @@ Smoking_Simulator::~Smoking_Simulator() {
 
 // Calculate the number of cigarettes smoked per day for people that initiate smoking.
 // This function first categorizes the person into one of five intensity groups (light to heavy smokers)
-// The intensity groups comes from a probability by age lookup table, a random number is given to the individual and then
+// The intensity groups comes from a probability by age lookup table, a random number is given to the individual and then 
 // looked up based on initiation age
 // If the person begins smoking before age 30
 //   - The number of cigarettes per day comes from an uptake formula that calculates the cigarettes smoked
@@ -92,7 +108,7 @@ Smoking_Simulator::~Smoking_Simulator() {
 // The cigarettes smoked per day for ages 30+ come directly from the gdCigarettesPerDay array.
 void Smoking_Simulator::CalcCigarettesPerDay() {
 
-   //char     sErrorMessage[500];
+   char     sErrorMessage[500];
    short    wIntensityLookupAge,  // Age to look up in the smoking intensity groups
             wIntensityIndex,      // Index to start at for look up of the smoking intensity groups
             wYearsAsSmoker,       // Number of years in which person was a smoker.
@@ -104,7 +120,7 @@ void Smoking_Simulator::CalcCigarettesPerDay() {
    long     lCpdStartIndex,       // Index to start at for look up of cigarettes per day
             lCurrCpdIndex;        // Current index in cigarettes per day array
    double   dIntensityProb,       // Probability to find in the lookup tables
-            // dCpsForStartAge,      // The cigarettes per day for first age (in birth cohort) that has Cigarettes per day data
+            dCpsForStartAge,      // The cigarettes per day for first age (in birth cohort) that has Cigarettes per day data
             dUptake,              // Uptake formula results for persons current age
             dUptakeAtCpdStart,    // Uptake formula results at age 30
             dScalingFactor,       // (Cigarettes per day at age 30)/(Uptake formula at age 30)
@@ -113,7 +129,7 @@ void Smoking_Simulator::CalcCigarettesPerDay() {
 
    try {
 
-      if (gdCigarettesPerDay == 0 || gdIntensityProbs == 0 || gpIndivRndsPRNG == 0) {
+      if (gdCigarettesPerDay == 0 || gdIntensityProbs == 0 ) { // || gpIndividualRNG == 0) {
          throw SimException("Error", "One or more of the data components for cigarettes \nper \
             day calculation has not been initialized.\n");
       }
@@ -127,7 +143,7 @@ void Smoking_Simulator::CalcCigarettesPerDay() {
 
       // Get the age for intensity probabilities lookup
       // Initiation Ages below the min age use the min intensity age probabilities
-      if (gwPersonsInitAge < gwIntensityMinAge) {
+      if (gwPersonsInitAge < gwIntensityMinAge) {      
          wIntensityLookupAge = gwIntensityMinAge;
       // Initiation Ages above the max age use the max intensity age probabilities
       } else if (gwPersonsInitAge > gwIntensityMaxAge) {
@@ -149,7 +165,7 @@ void Smoking_Simulator::CalcCigarettesPerDay() {
             bValueFound = true;
          }
       }
-      // If the value was not found, assume that the probabilties did not correctly sum to one,
+      // If the value was not found, assume that the probabilties did not correctly sum to one, 
       // and assign the person to the last quintile
       if (!bValueFound) {
          gwPersonsSmkIntensity = (SmokingIntensity)(SMKR_NumGroups - 1);
@@ -158,7 +174,7 @@ void Smoking_Simulator::CalcCigarettesPerDay() {
       gdTempIntensityProb = dIntensityProb;
 
       // Set up the array for storing the number of cigarettes smoked per day by age
-      if (gwPersonsCessAge == -999) {
+      if (gwPersonsCessAge == -999) { 
          // Person does not quit smoking
          wYearsAsSmoker = (wSIM_CUTOFF_YEAR - (gwPersonsYOB + gwPersonsInitAge)) + 1;
       } else {
@@ -213,9 +229,6 @@ void Smoking_Simulator::CalcCigarettesPerDay() {
                                 (0.00163 * pow(max(79, ((wPersonsYOB + wStartAgeInCpdData) - 1900)), 2)) -
                                 (3.473 * wStartAgeInCpdData) + (32.800 * sqrt(wStartAgeInCpdData));
          }
-	 else {
-	    throw SimException("Error", "gwPersonSex is neither SEX_male nor SEX_female");
-	 }
 
          // Calculate the Quintile Scaling factor as (cigarettes per day at age 30)/(Uptake at age 30)
          dScalingFactor = gdCigarettesPerDay[lCpdStartIndex] / dUptakeAtCpdStart;
@@ -232,9 +245,7 @@ void Smoking_Simulator::CalcCigarettesPerDay() {
                          (0.00163 * pow(max(79, ((wPersonsYOB + i) - 1900)), 2)) -
                          (3.473 * i) + (32.800 * sqrt(i));
             }
-	    else {
-	       throw SimException("Error", "gwPersonSex is neither SEX_male nor SEX_female");
-	    }
+
             // In the younger ages, the uptake formula might return a negative value, use 0.10 in these cases
             if (dUptake < 0) {
                dUptake = 0.10;
@@ -265,7 +276,7 @@ void Smoking_Simulator::CalcCigarettesPerDay() {
          dSumOfCpd += gdPersonsCPDbyAge[i - gwPersonsInitAge];
       }
 
-      // Calculate average cigarettes smoked per day for the individual
+      // Calculate average cigarettes smoked per day for the individual  
       gdPersonsAvgCPD = dSumOfCpd / (double)wYearsAsSmoker;
 
    } catch(SimException ex) {
@@ -278,34 +289,31 @@ void Smoking_Simulator::CalcCigarettesPerDay() {
 // Switching algorithm documentation
 void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
 
-   // char     sErrorMessage[500];
-   short    // wIntensityLookupAge,  // Age to look up in the smoking intensity groups
-            // wIntensityIndex,      // Index to start at for look up of the smoking intensity groups
+   char     sErrorMessage[500];
+   short    wIntensityLookupAge,  // Age to look up in the smoking intensity groups
+            wIntensityIndex,      // Index to start at for look up of the smoking intensity groups
             wYearsAsSmoker,       // Number of years in which person was a smoker.
-            // wStartAgeInCpdData,   // The first age that has Cigarettes per day data in the table for the person's year of birth
-            // wEndLoop,             // Age at which to end the uptake formula calculation
-            // wLookupStartAge,      // Age to start at when getting the cigarettes per day directly from the data array
-            // wPersonsYOB,          // Copy of gwPersonsYOB, when the year of birth is less than 1900, 1900 is used in the equation
-            i, j, l, m, n,
+            wStartAgeInCpdData,   // The first age that has Cigarettes per day data in the table for the person's year of birth
+            wEndLoop,             // Age at which to end the uptake formula calculation
+            wLookupStartAge,      // Age to start at when getting the cigarettes per day directly from the data array
+            wPersonsYOB,          // Copy of gwPersonsYOB, when the year of birth is less than 1900, 1900 is used in the equation
+            i, j, k, l, m, n, o,
+            group,
             nRows,
-            // finalAge,
+            finalAge,
             nColumns;
-   short    group=0; 	    // A.G.: If left uninitialized, compiler complains it may be used uninitialized
-
-
-
-   long     lCpdStartIndex       // Index to start at for look up of cigarettes per day
-            // ,lCurrCpdIndex        // Current index in cigarettes per day array
-            ;
-   double   // dIntensityProb,       // Probability to find in the lookup tables
-            // dCpsForStartAge,      // The cigarettes per day for first age (in birth cohort) that has Cigarettes per day data
-            // dUptake,              // Uptake formula results for persons current age
-            // dUptakeAtCpdStart,    // Uptake formula results at age 30
-            // dScalingFactor,       // (Cigarettes per day at age 30) / (Uptake formula at age 30)
+   long     lCpdStartIndex,       // Index to start at for look up of cigarettes per day
+            lCurrCpdIndex;        // Current index in cigarettes per day array
+   double   dIntensityProb,       // Probability to find in the lookup tables
+            dCpsForStartAge,      // The cigarettes per day for first age (in birth cohort) that has Cigarettes per day data
+            dUptake,              // Uptake formula results for persons current age
+            dUptakeAtCpdStart,    // Uptake formula results at age 30
+            dScalingFactor,       // (Cigarettes per day at age 30) / (Uptake formula at age 30)
             dSumOfCpd = 0,        // Sum of the annual cigarettes per day value (used to get average)
-            roll;
-
-   // bool     bValueFound;
+            prob,
+            roll,
+            tempSum;
+   bool     bValueFound;
 
    long     nValues = glCpdYOBOffset;
    nColumns = gwNumSmokingGrps;
@@ -325,7 +333,7 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
    try {
 
       /*
-      if (gdCigarettesPerDay == 0 || gdIntensityProbs == 0 || gpIndivRndsPRNG == 0)
+      if (gdCigarettesPerDay == 0 || gdIntensityProbs == 0 || gpIndividualRNG == 0)
          throw SimException("Error", "One or more of the data components for cigarettes \nper day calculation has not been initialized.\n");
       */
 
@@ -407,7 +415,7 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
                   for (l = 0; l < n; l++) {
                      term1 -= Tij[m * nColumns + l];
                   }
-                  if (min(term1, term2) < 0)
+                  if (min(term1, term2) < 0) 
                      Tij[m * nColumns + n] = 0;
                   else
                      Tij[m * nColumns + n] = min(term1, term2);
@@ -416,14 +424,14 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
 
             // Normalize Tij to obtain distribution from which one can sample
             for (j = 0; j < nColumns; j++) {
-               switchProbs[j] = Tij[group * nColumns + j] / r0[group];
+               switchProbs[j] = Tij[group, group * nColumns + j] / r0[group];
             }
 
-            // double sumProbs;
-            // sumProbs = 0;
-            // for (m = 0; m < nColumns; m++) {
-            //    sumProbs += switchProbs[m];
-            // }
+            double sumProbs;
+            sumProbs = 0;
+            for (m = 0; m < nColumns; m++) {
+               sumProbs += switchProbs[m];
+            }
 
             // Do the cumulative sum across them
             sum = 0;
@@ -439,7 +447,7 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
                if (roll > switchProbs[j])
                   group += 1;
             }
-         }
+         } 
 
          cpdGroupOverLife[i] = group;
       }
@@ -476,8 +484,8 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
          }
          dSumOfCpd += gdPersonsCPDbyAge[m];
       }
-
-      // Calculate average cigarettes smoked per day for the individual
+      
+      // Calculate average cigarettes smoked per day for the individual  
       gdPersonsAvgCPD = dSumOfCpd / (double)wYearsAsSmoker;
 
    } catch(SimException ex) {
@@ -497,10 +505,7 @@ void Smoking_Simulator::Free()
    delete [] gwYOBCohortStartYrs;  gwYOBCohortStartYrs  = 0;
    delete [] gwYOBCohortEndYrs;    gwYOBCohortEndYrs    = 0;
    delete [] gdPersonsCPDbyAge;    gdPersonsCPDbyAge    = 0;
-   delete gpInitiationPRNG;        gpInitiationPRNG     = 0;
-   delete gpCessationPRNG;         gpCessationPRNG      = 0;
-   delete gpLifeTablePRNG;         gpLifeTablePRNG      = 0;
-   delete gpIndivRndsPRNG;         gpIndivRndsPRNG      = 0;
+   delete gpRngStrategy;           gpRngStrategy          = 0;
 }
 
 // Get the age at death from a cause of death other than lung cancer.
@@ -513,7 +518,7 @@ short Smoking_Simulator::GetAgeOfDeathFromOtherCOD(short wStartAge, short wEndAg
    bool   bPersonAlive = true;
    long   lLifeTableOffset,
           lLifeTableLocation;
-   double dCurrLifeTabRand,
+   double dCurrLifeTableRand,
           dCurrLifeTabProb,
           dExcessRisk;
    char   sErrorMessage[300];
@@ -527,7 +532,7 @@ short Smoking_Simulator::GetAgeOfDeathFromOtherCOD(short wStartAge, short wEndAg
       for (wCurrentAge = wStartAge; wCurrentAge < wEndAge && bPersonAlive && !bWentPastData; wCurrentAge++) {
 
          lLifeTableLocation = (long(wCurrentAge-gwMinLifeTableAge)*glLifeTabAgeOffset) + lLifeTableOffset;
-         dCurrLifeTabRand = GetNextLifeTabRand(); //Get random value from 0 to 1 range.
+         dCurrLifeTableRand = GetNextLifeTableRand(); //Get random value from 0 to 1 range.
 
          switch (eStatus) {
 
@@ -551,16 +556,16 @@ short Smoking_Simulator::GetAgeOfDeathFromOtherCOD(short wStartAge, short wEndAg
                                     * dExcessRisk); break;
 
             default:
-               Rcpp::stop(sErrorMessage, "Invalid Smoking Status: %d.\n", eStatus);
+               sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid Smoking Status: %d.\n", eStatus);
                throw SimException("Error", sErrorMessage);
          }
 
-         if ( dCurrLifeTabRand <= dCurrLifeTabProb ) {
+         if ( dCurrLifeTableRand <= dCurrLifeTabProb ) {
             bPersonAlive = false;
             wReturnAge = wCurrentAge;
          }
 
-         // If the probability was missing, it was coded as -1, life table
+         // If the probability was missing, it was coded as -1, life table 
          // checking can stop once a -1 is reached
          if (dCurrLifeTabProb < 0) {
              bWentPastData = true;
@@ -577,7 +582,7 @@ short Smoking_Simulator::GetAgeOfDeathFromOtherCOD(short wStartAge, short wEndAg
 // Get the minimum year of birth value
 short Smoking_Simulator::GetMinYearOfBirth() {
    if (gwYOBCohortStartYrs== NULL)
-      throw SimException("GetMinYearOfBirth()",
+      throw SimException("GetMinYearOfBirth()", 
          "Call to start year of birth cohort values (gwYOBCohortStartYrs) prior to initialization.");
    return gwYOBCohortStartYrs[0];
 }
@@ -585,219 +590,25 @@ short Smoking_Simulator::GetMinYearOfBirth() {
 // Get the maximum year of birth value
 short Smoking_Simulator::GetMaxYearOfBirth() {
    if (gwYOBCohortEndYrs == NULL)
-      throw SimException("GetMaxYearOfBirth()",
+      throw SimException("GetMaxYearOfBirth()", 
          "Call to end year of birth cohort values (gwYOBCohortEndYrs) prior to initialization.");
    return gwYOBCohortEndYrs[gwNumBirthCohorts-1];
 }
 
-using namespace Rcpp;
-
-double Smoking_Simulator::GetNextCessRand_R() {
-  double dReturnValue;
-  dReturnValue = as<NumericVector>(rand_sample(gpCessationPRNG_R, 1))[0]; // returns a vector even for 1 number
-  return dReturnValue;
+double Smoking_Simulator::GetNextCessRand() {
+   return gpRngStrategy->getCessationRand();
 }
 
-Rcpp::NumericVector Smoking_Simulator::GetNextCessRand_R_vector(int n) {
-  Rcpp::NumericVector dReturnValue;
-  dReturnValue = as<NumericVector>(rand_sample(gpCessationPRNG_R, n)); // returns a vector even for 1 number
-  return dReturnValue;
+double Smoking_Simulator::GetNextInitRand() {
+   return gpRngStrategy->getInitiationRand();
 }
 
-// Just for testing the MT
-double Smoking_Simulator::GetNextCessRandMT() {
-  return gpCessationPRNG->genrand_real1();
+double Smoking_Simulator::GetNextLifeTableRand() {
+   return gpRngStrategy->getLifeTableRand();
 }
 
-double Smoking_Simulator::getNextRandFromRstream(int &counter, NumericVector &vector, Rcpp::RObject &rng)
-{
-   // This helper function helps avoid the overhead of calling rand_sample for every draw
-   // It is used by the 4 random variates
-   //   if (counter >= vector.size()) {
-   //     Rcpp::Rcout << "CSNW Error: counter out of bounds" << std::endl;
-   //     //Rcpp::Rcout << "Debug: counter = " << counter << ", vector size = " << vector.size() << std::endl;
-   //     counter = 0; // Reset counter to avoid out of bounds access
-   //   }
-   if (counter >= gsRNGBatchSize)
-   { // || counter == 0) {
-      // pre-sample n numbers, overwriting existing vector
-      vector = as<NumericVector>(rand_sample(rng, gsRNGBatchSize));
-      counter = 1; // restart at 1; FIFO
-   }
-   double dReturnValue = vector[counter];
-   counter++;
-   return dReturnValue;
-}
-
-double Smoking_Simulator::GetNextCessRand()
-{
-   double dReturnValue;
-   // if (gpCessationPRNG == NULL)
-   //    throw SimException("GetNextCessRand()",
-   //       "Call to PRNG before PRNG has been initialized with a seed.");
-   if (use_rstream)
-   {
-      // dReturnValue = as<NumericVector>(rand_sample(gpCessationPRNG_R, 1))[0]; // returns a vector even for 1 number
-      //  if (gsCessationCounter >= gsCessationVector.size()) {
-      //     Rcpp::Rcout << "CSNW Debug: Cess counter = " << gsCessationCounter << ", vector size = " << gsCessationVector.size() << std::endl;
-      //  }
-      dReturnValue = getNextRandFromRstream(gsCessationCounter, gsCessationVector, gpCessationPRNG_R);
-      // This helper function helps avoid the overhead of calling rand_sample for every draw
-      // It is used by the 4 random variates
-      // if (gsCessationCounter >= gsRNGBatchSize) { // || counter == 0) {
-      //    // pre-sample n numbers, overwriting existing vector
-      //    gsCessationVector = as<Rcpp::NumericVector>(rand_sample(gpCessationPRNG_R, gsRNGBatchSize));
-      //    gsCessationCounter = 1; // restart at 1; FIFO
-      // }
-      // double dReturnValue = gsCessationVector[gsCessationCounter];
-      // gsCessationCounter++;
-      return dReturnValue;
-   }
-   else
-   {
-      dReturnValue = gpCessationPRNG->genrand_real1();
-   }
-
-   return dReturnValue;
-}
-double Smoking_Simulator::GetNextInitRand()
-{
-   double dReturnValue;
-   // if (gpInitiationPRNG == NULL)
-   //    throw SimException("GetNextInitRand()", "Call to PRNG before PRNG has been initialized with a seed.");
-
-   if (use_rstream)
-   {
-      // Very slow due to RNG state switching at every draw
-      // dReturnValue = as<NumericVector>(rand_sample(gpInitiationPRNG_R, 1))[0]; // returns a vector even for 1 number
-
-      // Refactor seems to slow things down when we use for more than one RNG.
-      // if (gsInitiationCounter >= gsCessationVector.size()) {
-      //    Rcpp::Rcout << "CSNW Debug: Initiation counter = " << gsInitiationCounter << ", vector size = " << gsInitiationVector.size() << std::endl;
-      // }
-      dReturnValue = getNextRandFromRstream(gsInitiationCounter, gsInitiationVector, gpInitiationPRNG_R);
-
-      // Before refactoring we had:
-      // if (gsInitiationCounter >= gsRNGBatchSize) { // || counter == 0) {
-      //    // pre-sample n numbers, overwriting existing vector
-      //    gsInitiationVector = as<Rcpp::NumericVector>(rand_sample(gpInitiationPRNG_R, gsRNGBatchSize));
-      //    gsInitiationCounter = 1; // restart at 1; FIFO
-      // }
-      // double dReturnValue = gsInitiationVector[gsInitiationCounter];
-      // gsInitiationCounter++;
-      // return dReturnValue;
-   }
-
-   else
-   {
-      dReturnValue = gpInitiationPRNG->genrand_real1();
-   }
-   return dReturnValue;
-}
-// double Smoking_Simulator::GetNextInitRand() {
-//    double dReturnValue;
-//    // if (gpInitiationPRNG == NULL)
-//    //    throw SimException("GetNextInitRand()", "Call to PRNG before PRNG has been initialized with a seed.");
-
-//    if (use_rstream) {
-//     // To expensive due to RNG state switching at every draw
-//     //dReturnValue = as<NumericVector>(rand_sample(gpInitiationPRNG_R, 1))[0]; // returns a vector even for 1 number
-
-//     if (gsInitiationCounter == 0){
-//       // refactor if this works
-//       int n = 10000;
-//       gsInitiationVector = as<NumericVector>(rand_sample(gpInitiationPRNG_R, n));
-//       gsInitiationCounter = n;
-//     }
-//     // Get the top number from the queue
-//     dReturnValue = gsInitiationVector[gsInitiationCounter];
-//     gsInitiationCounter--;
-//     // gsCessationQueue.pop(); // Remove the number from the queue
-//    }
-
-//    else {
-//      dReturnValue = gpInitiationPRNG->genrand_real1();
-//    }
-//    return dReturnValue;
-// }
-
-double Smoking_Simulator::GetNextLifeTabRand()
-{
-   double dReturnValue;
-   // if (gpLifeTablePRNG == NULL)
-   //    throw SimException("GetNextLifeTabRand()", "Call to PRNG before PRNG has been initialized with a seed.");
-   if (use_rstream)
-   {
-      // Very slow due to RNG state switching at every draw
-      // dReturnValue = as<NumericVector>(rand_sample(gpLifeTablePRNG_R, 1))[0]; // returns a vector even for 1 number
-
-      // This is faster but not as fast as before refactoring
-      dReturnValue = getNextRandFromRstream(gsLifeTableCounter, gsLifeTableVector, gpLifeTablePRNG_R);
-
-      // Before refactoring we had:
-      // if (gsLifeTableCounter >= gsRNGBatchSize) { // || counter == 0) {
-      //    // pre-sample n numbers, overwriting existing vector
-      //    gsLifeTableVector = as<Rcpp::NumericVector>(rand_sample(gpLifeTablePRNG_R, gsRNGBatchSize));
-      //    gsLifeTableCounter = 1; // restart at 1; FIFO
-      // }
-      // double dReturnValue = gsLifeTableVector[gsLifeTableCounter];
-      // gsLifeTableCounter++;
-
-      // This might even be faster than the above but I'm not sure why (and it isn't correct, but worth keeping untill we can find out more)
-      //   if (gsLifeTableCounter == 0){
-      //     // refactor if this works
-      //     int n = gsRNGBatchSize;
-      //     gsLifeTableVector = as<NumericVector>(rand_sample(gpLifeTablePRNG_R, n));
-      //     gsLifeTableCounter = n;
-      //   }
-      //   // Get the top number from the queue
-      //   dReturnValue = gsLifeTableVector[gsLifeTableCounter];
-      //   gsLifeTableCounter--;
-   }
-   else
-      dReturnValue = gpLifeTablePRNG->genrand_real1();
-
-   return dReturnValue;
-}
-
-double Smoking_Simulator::GetNextRandForIndiv()
-{
-   double dReturnValue;
-   // if (gpIndivRndsPRNG == NULL)
-   //    throw SimException("GetNextRandForIndiv()", "Call to PRNG before PRNG has been initialized with a seed.");
-
-   if (use_rstream)
-   {
-      // This is very slow for the reasons mentioned above
-      // dReturnValue = as<NumericVector>(rand_sample(gpIndivRndsPRNG_R, 1))[0]; // returns a vector even for 1 number
-
-      // This is faster but not as fast as before refactoring
-      dReturnValue = getNextRandFromRstream(gsIndivRndsCounter, gsIndivRndsVector, gpIndivRndsPRNG_R);
-
-      // This is what we had before refactoring
-      //   if (gsIndivRndsCounter >= gsRNGBatchSize) { // || counter == 0) {
-      //       // pre-sample n numbers, overwriting existing vector
-      //       gsIndivRndsVector = as<Rcpp::NumericVector>(rand_sample(gpIndivRndsPRNG_R, gsRNGBatchSize));
-      //       gsIndivRndsCounter = 1; // restart at 1; FIFO
-      //    }
-      //    double dReturnValue = gsIndivRndsVector[gsIndivRndsCounter];
-      //    gsIndivRndsCounter++;
-
-      // This might even be faster than the above but I'm not sure why (and it isn't correct, but worth keeping untill we can find out more)
-      //   if (gsIndivRndsCounter == 0){
-      //     // refactor if this works
-      //     int n = gsRNGBatchSize;
-      //     gsIndivRndsVector = as<NumericVector>(rand_sample(gpLifeTablePRNG_R, n));
-      //     gsIndivRndsCounter = n;
-      //   }
-      //   // Get the top number from the queue
-      //   dReturnValue = gsIndivRndsVector[gsIndivRndsCounter];
-      //   gsIndivRndsCounter--;
-   }
-
-   else
-      dReturnValue = gpIndivRndsPRNG->genrand_real1();
-   return dReturnValue;
+double Smoking_Simulator::GetNextRandForIndiv() {
+   return gpRngStrategy->getIndividualRand();
 }
 
 // Get the birth cohort group that the year of birth corresponds to.
@@ -811,13 +622,13 @@ short Smoking_Simulator::GetYOBCohortGroup(short wYearBirth) {
    bool  bValueFound          = false;
 
    if (wYearBirth < gwYOBCohortStartYrs[0]) {
-      Rcpp::stop( sErrorMessage, "Year of Birth - %d is less than the minimum year of birth allowed - %d", \
+      sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Year of Birth - %d is less than the minimum year of birth allowed - %d", \
          wYearBirth, gwYOBCohortStartYrs[0] );
       throw SimException("GetYOBCohortGroup(short)", sErrorMessage);
    }
 
    if ( wYearBirth > gwYOBCohortEndYrs[gwNumBirthCohorts - 1] ) {
-      Rcpp::stop(sErrorMessage, "Year of Birth - %d is greater than the maximum year of birth allowed - %d", \
+      sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Year of Birth - %d is greater than the maximum year of birth allowed - %d", \
          wYearBirth, gwYOBCohortEndYrs[gwNumBirthCohorts - 1]);
       throw SimException("GetYOBCohortGroup(short)", sErrorMessage);
    }
@@ -847,12 +658,7 @@ void Smoking_Simulator::Init() {
    gwNumSexValues       = 0;
    gwNumRaceValues      = 0;
    gwNumBirthCohorts    = 0;
-
-   //Set pointers to zero
-   gpInitiationPRNG     = 0;
-   gpCessationPRNG      = 0;
-   gpLifeTablePRNG      = 0;
-   gpIndivRndsPRNG      = 0;
+   gpRngStrategy        = 0;
    gdInitiationProbs    = 0;
    gdCessationProbs     = 0;
    gdLifeTableProbs     = 0;
@@ -866,28 +672,10 @@ void Smoking_Simulator::Init() {
 
    gbImmediateCessation = false;
    gwImmediateCessYear  = 0;
-
-   // TODO: consider resetting rstream RNG counters and RNG vectors
 }
 
-void Smoking_Simulator::InitPRNGs(unsigned long ulInitSeed,    unsigned long ulCessSeed,
-                                  unsigned long ulLifeTabSeed, unsigned long ulIndRndsSeed) {
-
-   if (gpInitiationPRNG != NULL)
-      throw SimException("InitPRNGs()", "Initiation PRNG is already initialized.\n");
-   if (gpCessationPRNG != NULL)
-      throw SimException("InitPRNGs()", "Cessation PRNG is already initialized.\n");
-   if (gpLifeTablePRNG != NULL)
-      throw SimException("InitPRNGs()","Life Table PRNG is already initialized.\n");
-   if (gpIndivRndsPRNG != NULL) {
-      throw SimException("InitPRNGs()","The PRNG that generates random numbers for the \nindividual \
-         person is already initialized.\n");
-   }
-
-   gpInitiationPRNG = new MersenneTwister(ulInitSeed);
-   gpCessationPRNG  = new MersenneTwister(ulCessSeed);
-   gpLifeTablePRNG  = new MersenneTwister(ulLifeTabSeed);
-   gpIndivRndsPRNG  = new MersenneTwister(ulIndRndsSeed);
+void Smoking_Simulator::setRNGStrategy(RNG_Strategy* rngStrategy) {
+   gpRngStrategy = rngStrategy;
 }
 
 // Read in the cigarettes per day data file, this function assumes the data
@@ -908,7 +696,7 @@ void Smoking_Simulator::LoadCPDFile(const char* sCpdFile) {
    long     wFirstDataLine,
             wRaceValue,
             wSexValue,
-            wNumCohorts, // TODO: never used, perhaps can remove
+            wNumCohorts,
             wMinAgeValue,
             wMaxAgeValue,
             wCohortEndValue,
@@ -921,7 +709,7 @@ void Smoking_Simulator::LoadCPDFile(const char* sCpdFile) {
 
    try {
 
-      if (gdInitiationProbs == NULL)
+      if (gdInitiationProbs == NULL) 
          throw SimException("Error", "The initiation probability file must be loaded before the Cigarettes per day data file.\n");
 
       /*
@@ -931,27 +719,21 @@ void Smoking_Simulator::LoadCPDFile(const char* sCpdFile) {
 
       pCpdFile = fopen(sCpdFile, "r");
       if (pCpdFile == NULL) {
-	      Rcpp::stop(sErrorMessage, "The specified input file '%s' does not exist\n or could not be opened.\n\n", sCpdFile);
+	      sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "The specified input file '%s' does not exist\n or could not be opened.\n\n", sCpdFile);
 	      throw SimException("Error", sErrorMessage);
 	   }
 
 	   // Read in the first line of the file. Line contains the line number where the data in the file begins
       // This is to allow documentation to be placed in the input file
-    if (fgets(sInputLine, 3000, pCpdFile) == NULL) {
-        Rcpp::stop("Error in file %s, End of File reached before location of first data line as specified in line 1\n", sCpdFile);
-        throw SimException("Error", sErrorMessage);
-    }
-      // if (sInputLine == NULL) might always be false. TODO Check this and similar lines
-	   // if (sInputLine == NULL) {
-	   //    Rcpp::stop(sErrorMessage, "Error reading first DATA line of file %s", sCpdFile);
-	   //    throw SimException("Error", sErrorMessage);
-	   // }
-
+      if (fgets(sInputLine, 3000, pCpdFile) == NULL) {
+         sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Error reading first DATA line of file %s", sCpdFile);
+         throw SimException("Error", sErrorMessage);
+      }
 	   pTokenPtr = strtok(sInputLine, ",");
       wFirstDataLine = atoi(pTokenPtr);
 
       if (wFirstDataLine <= 1) {
-	      Rcpp::stop(sErrorMessage, "Invalid value: %ld for location of first data line read in from file %s", \
+	      sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid value: %d for location of first data line read in from file %s", \
             wFirstDataLine, sCpdFile);
 	      throw SimException("Error", sErrorMessage);
       }
@@ -959,7 +741,7 @@ void Smoking_Simulator::LoadCPDFile(const char* sCpdFile) {
       // Read in the Documentation lines, If the tag Version= is found, store it in the Version Num string for the file
       for (i = 2; i < wFirstDataLine; i++) {
          if ( fgets(sInputLine, 3000, pCpdFile) == NULL) {
-     	      Rcpp::stop(sErrorMessage, "Error in  file %s, End of File reached before location of first data line \
+     	      sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Error in  file %s, End of File reached before location of first data line \
                as specified in line 1\n", sCpdFile);
    	      throw SimException("Error", sErrorMessage);
          }
@@ -969,14 +751,9 @@ void Smoking_Simulator::LoadCPDFile(const char* sCpdFile) {
       // # of birth cohort group values, the minimum age in the data, the maximum age age in the data
       // and the number of smoking intensity groups, in the order they are listed here.
       if (fgets(sInputLine, 3000, pCpdFile) == NULL) {
-        Rcpp::stop("Error in file %s, End of File reached before location of first data line as specified in line 1\n", sCpdFile);
+        sim_snprintf(sErrorMessage, sizeof(sErrorMessage),"Error reading first DATA line of file %s", sCpdFile);
         throw SimException("Error", sErrorMessage);
       }
-
-      // if (sInputLine == NULL) {
-	   //    Rcpp::stop(sErrorMessage,"Error reading first DATA line of file %s", sCpdFile);
-	   //    throw SimException("Error", sErrorMessage);
-	   // }
 
       pTokenPtr       = strtok(sInputLine, ",");
       wRaceValue      = atoi(pTokenPtr);     pTokenPtr = strtok(NULL, ",");
@@ -990,14 +767,14 @@ void Smoking_Simulator::LoadCPDFile(const char* sCpdFile) {
 
       /*
       if ((wRaceValue != gwNumRaceValues) || (wSexValue != gwNumSexValues) || (wNumCohorts != gwNumBirthCohorts)) {
-         Rcpp::stop(sErrorMessage, "Mismatch between values defined from Initiation Prob Data file and this file.\n\
+         sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Mismatch between values defined from Initiation Prob Data file and this file.\n\
             Race: Init = %d, CPD = %d\nSex: Init = %d, CPD = %d\nNum Cohorts: Init = %d, CPD = %d\n", gwNumRaceValues, \
             wRaceValue, gwNumSexValues, wSexValue, gwNumBirthCohorts, wNumCohorts);
 	      throw SimException("Error", sErrorMessage);
       }
 
       if (wNumSmokingGrps != gwNumIntensityGrps) {
-         Rcpp::stop(sErrorMessage, "Mismatch between the number of smoking intensity groups defined in the Intensity \
+         sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Mismatch between the number of smoking intensity groups defined in the Intensity \
             Prob Data file and this file.\nIntensity file has %d groups, this file indicates %d groups.\n", gwNumIntensityGrps, \
             wNumSmokingGrps);
 	      throw SimException("Error", sErrorMessage);
@@ -1005,7 +782,7 @@ void Smoking_Simulator::LoadCPDFile(const char* sCpdFile) {
       */
 
       if (wMinAgeValue < 0 || wMaxAgeValue <= 0 || wMinAgeValue >=  wMaxAgeValue) {
-	      Rcpp::stop(sErrorMessage,"Invalid value(s) for minimum and maximum initiation ages\n read in from file %s",sCpdFile);
+	      sim_snprintf(sErrorMessage, sizeof(sErrorMessage),"Invalid value(s) for minimum and maximum initiation ages\n read in from file %s",sCpdFile);
          throw SimException("Error", sErrorMessage);
       }
 
@@ -1020,7 +797,7 @@ void Smoking_Simulator::LoadCPDFile(const char* sCpdFile) {
       gdCigarettesPerDay = new long double[lCpdArraySize];
       lMaxLinesExpected  = lCpdArraySize/gwNumIntensityGrps;  //All of the intesity groups are on a single line per by-group
 
-      //
+      // 
       for (j = 0; j < lCpdArraySize; j++) {
          gdCigarettesPerDay[j] = -1;
       }
@@ -1028,7 +805,7 @@ void Smoking_Simulator::LoadCPDFile(const char* sCpdFile) {
       // Read in the Probability Data Lines
       // This subroutine will
       // - read in the variable values for the line
-      // - verify the values are valid (including checking the cohorts)
+      // - verify the values are valid (including checking the cohorts)   
       // - add the CPD value to the appropriate array location
       lNumLinesRead = 0;
 
@@ -1047,7 +824,7 @@ void Smoking_Simulator::LoadCPDFile(const char* sCpdFile) {
 
          if (wCohortStartValue != gwYOBCohortStartYrs[wCurrCohort] ||
              wCohortEndValue != gwYOBCohortEndYrs[wCurrCohort]) {
-            Rcpp::stop(sErrorMessage, "The cohort range %ld - %ld in the Cigarettes per day file does not match the cohort \
+            sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "The cohort range %d - %d in the Cigarettes per day file does not match the cohort \
                range set by the initiation file.\n", wCohortStartValue, wCohortEndValue);
             throw SimException("Error", sErrorMessage);
          }
@@ -1056,14 +833,14 @@ void Smoking_Simulator::LoadCPDFile(const char* sCpdFile) {
          if (wAgeValue  < gwCpdMinAge  || wAgeValue > gwCpdMaxAge ||
              wRaceValue >= gwNumRaceValues || wRaceValue < 0 ||
              wSexValue  >= gwNumSexValues || wSexValue  < 0) {
-            Rcpp::stop(sErrorMessage, "Invalid By-Variable Combination, Race = %ld, Sex = %ld, Age = %ld\n Read form file %s \
+            sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid By-Variable Combination, Race = %d, Sex = %d, Age = %d\n Read form file %s \
                at line number %ld", wRaceValue, wSexValue, wAgeValue, sCpdFile, lNumLinesRead);
             throw SimException("Error", sErrorMessage);
          }
 
          // Probabilities are read in by smoking intesity group
          // Value assignment within the array is based on the offset formula
-         // fprintf($++std$out++$, "%d\n", lNumLinesRead);
+         // sim_fprintf(stdout, "%d\n", lNumLinesRead);
          // if (lNumLinesRead == 1101)
             // int r = 9;
 
@@ -1083,8 +860,8 @@ void Smoking_Simulator::LoadCPDFile(const char* sCpdFile) {
       }
 
       if (lNumLinesRead > lMaxLinesExpected) {
-         Rcpp::stop(sErrorMessage, "Too many lines (%ld) read from file %s.\n%ld were expected based on sex, race, birth cohort and \
-            age values specified in first line of file.", lNumLinesRead, sCpdFile, lMaxLinesExpected);
+         sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Too many lines read from file %s.\n%d were expected based on sex, race, birth cohort and \
+            age values specified in first line of file.", sCpdFile, lNumLinesRead,lMaxLinesExpected);
          throw SimException("Error", sErrorMessage);
       }
       // End Reading in the Probabilities File
@@ -1127,33 +904,28 @@ void Smoking_Simulator::LoadCPDIntensityProbs(const char* sDataFileName) {
    try {
       pProbabilityFile = fopen(sDataFileName, "r");
       if (pProbabilityFile == NULL) {
-	      Rcpp::stop(sErrorMessage, "The specified input file '%s' does not exist\n or could not be opened.\n\n", sDataFileName);
+	      sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "The specified input file '%s' does not exist\n or could not be opened.\n\n", sDataFileName);
 	      throw SimException("Error", sErrorMessage);
 	   }
 
 	   // Read in the first line of the file.  Line contains the line number where the data in the file begins
       // This is to allow documentation to be placed in the input file
       if (fgets(sInputLine, 3000, pProbabilityFile) == NULL) {
-         Rcpp::stop("Error in file %s, End of File reached before location of first data line as specified in line 1\n", sDataFileName);
+         sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Error reading first DATA line of file %s", sDataFileName);
          throw SimException("Error", sErrorMessage);
       }
-
-	   // if (sInputLine == NULL) {
-	   //    Rcpp::stop(sErrorMessage, "Error reading first DATA line of file %s", sDataFileName);
-	   //    throw SimException("Error", sErrorMessage);
-	   // }
 	   pTokenPtr = strtok(sInputLine, ",");
       wFirstDataLine = atoi(pTokenPtr);
       if (wFirstDataLine <= 1) {
-	      Rcpp::stop(sErrorMessage,  "Invalid value: %d for location of first data line read in from file %s", \
+	      sim_snprintf(sErrorMessage, sizeof(sErrorMessage),  "Invalid value: %d for location of first data line read in from file %s", \
             wFirstDataLine, sDataFileName);
 	      throw SimException("Error", sErrorMessage);
       }
 
       // Read in the Documentation lines, If the tag Version= is found, store it in the Version Num string for the file
       for (i = 2; i < wFirstDataLine; i++) {
-         if ( fgets(sInputLine, 3000, pProbabilityFile) == NULL) {
-     	      Rcpp::stop(sErrorMessage, "Error in  file %s, End of File reached before location of first data line as \
+         if (fgets(sInputLine, 3000, pProbabilityFile) == NULL) {
+     	      sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Error in  file %s, End of File reached before location of first data line as \
                specified in line 1\n", sDataFileName);
    	      throw SimException("Error", sErrorMessage);
          }
@@ -1163,15 +935,9 @@ void Smoking_Simulator::LoadCPDIntensityProbs(const char* sDataFileName) {
       // # of birth cohort group values, the minimum inititaion age and the maximum initiation age
       // in the order they are listed here.
       if (fgets(sInputLine, 3000, pProbabilityFile) == NULL) {
-         Rcpp::stop("Error in file %s, End of File reached before location of first data line as specified in line 1\n", sDataFileName);
+         sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Error reading first DATA line of file %s", sDataFileName);
          throw SimException("Error", sErrorMessage);
       }
-
-
-      // if (sInputLine == NULL) {
-	   //    Rcpp::stop(sErrorMessage, "Error reading first DATA line of file %s", sDataFileName);
-	   //    throw SimException("Error", sErrorMessage);
-	   // }
 
       pTokenPtr      = strtok(sInputLine, ",");
       wNumRaces      = atoi(pTokenPtr);   pTokenPtr = strtok(NULL, ",");
@@ -1184,14 +950,14 @@ void Smoking_Simulator::LoadCPDIntensityProbs(const char* sDataFileName) {
          throw SimException("Error", "Invalid value read in for # of smoking intensity groups.");
 
       if (wMinAgeValue < 0 || wMaxAgeValue <= 0 || wMinAgeValue >=  wMaxAgeValue) {
-	      Rcpp::stop(sErrorMessage, "Invalid value(s) for minimum and maximum initiation ages\n read in from file %s", \
+	      sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid value(s) for minimum and maximum initiation ages\n read in from file %s", \
             sDataFileName);
          throw SimException("Error", sErrorMessage);
       }
 
       if ((wNumRaces != gwNumRaceValues) || (wNumSexes != gwNumSexValues)) {
-         Rcpp::stop(sErrorMessage, "Mismatch between number of races and number of sexes in initiation file and cohorts from CPD Intensity \
-            file.\nRace: Init = %d, CPD = %d\nSex: Init = %d, CPD = %d\n", gwNumRaceValues, wNumRaces, gwNumSexValues, wNumSexes);
+         sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Mismatch between number of races and number of sexes in initiation file and cohorts from CPD Intensity \
+            file.\nRace: Init = %d, CPD = %d\nSex: Init = %d, CPD = %d\n", gwNumRaceValues, wRaceValue, gwNumSexValues, wSexValue);
 	      throw SimException("Error", sErrorMessage);
       }
 
@@ -1217,17 +983,17 @@ void Smoking_Simulator::LoadCPDIntensityProbs(const char* sDataFileName) {
 
          // Validate values read in
          if (wRaceValue > wNumRaces) {
-            Rcpp::stop(sErrorMessage, "Invalid Race Value: %d\n Read from file %s at line number %ld", wRaceValue,
+            sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid Race Value: %d\n Read from file %s at line number %ld", wRaceValue, 
                sDataFileName, lNumLinesRead);
             throw SimException("Error", sErrorMessage);
          }
          if (wSexValue > wNumSexes) {
-            Rcpp::stop(sErrorMessage, "Invalid Race Value: %d\n Read from file %s at line number %ld", wSexValue, \
+            sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid Race Value: %d\n Read from file %s at line number %ld", wSexValue, \
                sDataFileName, lNumLinesRead);
             throw SimException("Error", sErrorMessage);
          }
          if (wAgeValue < gwIntensityMinAge || wAgeValue > gwIntensityMaxAge) {
-            Rcpp::stop(sErrorMessage, "Invalid Age Value: %d\n Read from file %s at line number %ld", wAgeValue, \
+            sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid Age Value: %d\n Read from file %s at line number %ld", wAgeValue, \
                sDataFileName, lNumLinesRead);
             throw SimException("Error", sErrorMessage);
          }
@@ -1239,12 +1005,12 @@ void Smoking_Simulator::LoadCPDIntensityProbs(const char* sDataFileName) {
             if (strcmp(pTokenPtr, ".") != 0) {
                dCurrProbability  = atof(pTokenPtr);
                if ((dCurrProbability < 0) || (dCurrProbability > 1)) {
-                  Rcpp::stop(sErrorMessage, "Invalid Probability: %f read for Age : %d ,Intensity Group : %d\nRead \
+                  sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid Probability: %f read for Age : %d ,Intensity Group : %d\nRead \
                      from file %s at line number %ld.\n", dCurrProbability, wAgeValue, i, sDataFileName, lNumLinesRead);
                   throw SimException("Error",sErrorMessage);
                }
             } else {
-               Rcpp::stop(sErrorMessage, "Value missing for Age : %d ,Intensity Group : %d\nValue must contain a decimal palce.\n", wAgeValue,i);
+               sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Value missing for Age : %d ,Intensity Group : %d\nValue must contain a decimal palce.\n", wAgeValue,i);
                throw SimException("Error", sErrorMessage);
             }
 
@@ -1264,8 +1030,8 @@ void Smoking_Simulator::LoadCPDIntensityProbs(const char* sDataFileName) {
       }
 
       if (lNumLinesRead < lNumLinesExpected) {
-         Rcpp::stop(sErrorMessage, "Not enough lines (%ld) read from file %s.\n%ld were expected based on sex, race, birth cohort \
-            and age values specified in first line of file.", lNumLinesRead, sDataFileName, lNumLinesExpected);
+         sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Not enough lines read from file %s.\n%d were expected based on sex, race, birth cohort \
+            and age values specified in first line of file.", sDataFileName, lNumLinesRead, lNumLinesExpected);
          throw SimException("Error", sErrorMessage);
       }
 
@@ -1309,36 +1075,30 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
 
    try {
 
-      if ((eFileType != DATA_Initiation) && (eFileType != DATA_Cessation))
+      if ((eFileType != DATA_Initiation) && (eFileType != DATA_Cessation)) 
          throw SimException("Error", "Invalid File Type supplied to function.");
 
       if (eFileType == DATA_Cessation && (gdInitiationProbs==NULL)) {
-         throw SimException("Error",
+         throw SimException("Error", 
             "Attempt to load Cessation Probabilities before Initiation probabilities.\nInitiation data must be loaded first.\n");
       }
 
       pProbabilityFile = fopen(sDataFileName, "r");
       if (pProbabilityFile == NULL) {
-	      Rcpp::stop(sErrorMessage,"The specified input file '%s' does not exist\n or could not be opened.\n\n", sDataFileName);
+	      sim_snprintf(sErrorMessage, sizeof(sErrorMessage),"The specified input file '%s' does not exist\n or could not be opened.\n\n", sDataFileName);
 	      throw SimException("Error", sErrorMessage);
 	   }
 
 	   //Read in the first line of the file. Line contains the line number where the data in the file begins
       // This allows documentation to be placed in the input file
       if (fgets(sInputLine, 3000, pProbabilityFile) == NULL) {
-         Rcpp::stop("Error in file %s, End of File reached before location of first data line as specified in line 1\n", sDataFileName);
-         throw SimException("Error", sErrorMessage);
+         sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Error reading first DATA line of file %s", sDataFileName);
       }
-
-	   // if (sInputLine == NULL) {
-	   //    Rcpp::stop(sErrorMessage, "Error reading first DATA line of file %s", sDataFileName);
-	   //    throw SimException("Error", sErrorMessage);
-	   // }
 
 	   pTokenPtr = strtok(sInputLine, ",");
       wFirstDataLine = atoi(pTokenPtr);
       if (wFirstDataLine <= 1) {
-	      Rcpp::stop(sErrorMessage, "Invalid value: %d for location of first data line read in from file %s", \
+	      sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid value: %d for location of first data line read in from file %s", \
             wFirstDataLine, sDataFileName);
 	      throw SimException("Error", sErrorMessage);
       }
@@ -1346,7 +1106,7 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
       // Read in the Documentation lines, If the tag Version= is found, store it in the Version Num string for the file
       for (i = 2; i < wFirstDataLine; i++) {
          if ( fgets(sInputLine, 3000, pProbabilityFile) == NULL) {
-     	      Rcpp::stop(sErrorMessage, "Error in  file %s, End of File reached before location of first data line \
+     	      sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Error in  file %s, End of File reached before location of first data line \
                as specified in line 1\n", sDataFileName);
    	      throw SimException("Error", sErrorMessage);
          }
@@ -1355,16 +1115,12 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
       // Read in the First data line which contains the # of race values, # of sex values,
       // # of birth cohort group values, the minimum inititaion age and the maximum initiation age
       // in the order they are listed here.
-      if (fgets(sInputLine, 3000, pProbabilityFile) == NULL) {
-         Rcpp::stop("Error in file %s, End of File reached before location of first data line as specified in line 1\n", sDataFileName);
-         throw SimException("Error", sErrorMessage);
-      }
-      //fgets(sInputLine, 3000, pProbabilityFile);
+      fgets(sInputLine, 3000, pProbabilityFile);
 
-      // if (sInputLine == NULL) {
-	   //    Rcpp::stop(sErrorMessage, "Error reading first DATA line of file %s", sDataFileName);
-	   //    throw SimException("Error", sErrorMessage);
-	   // }
+      if (sInputLine == NULL) {
+	      sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Error reading first DATA line of file %s", sDataFileName);
+	      throw SimException("Error", sErrorMessage);
+	   }
 
       pTokenPtr = strtok(sInputLine, ",");
       wRaceValue = atoi(pTokenPtr);
@@ -1382,14 +1138,14 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
 
       if ((eFileType == DATA_Cessation) &&
          ((wRaceValue != gwNumRaceValues) || (wSexValue != gwNumSexValues) || (wCohortValue != gwNumBirthCohorts))) {
-         Rcpp::stop(sErrorMessage, "Mismatch between cohort values from Initiation and Cessation Files.\n\
+         sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Mismatch between cohort values from Initiation and Cessation Files.\n\
             Race: Init = %d, Cess = %d\nSex: Init = %d, Cess = %d\nNum Cohorts: Init = %d, Cess = %d\n", \
             gwNumRaceValues, wRaceValue, gwNumSexValues, wSexValue, gwNumBirthCohorts, wCohortValue);
 	      throw SimException("Error", sErrorMessage);
       }
 
       if (wMinAgeValue < 0 || wMaxAgeValue <= 0 || wMinAgeValue >=  wMaxAgeValue) {
-	      Rcpp::stop(sErrorMessage, "Invalid value(s) for minimum and maximum initiation ages\n read in from file %s", sDataFileName);
+	      sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid value(s) for minimum and maximum initiation ages\n read in from file %s", sDataFileName);
          throw SimException("Error", sErrorMessage);
       }
 
@@ -1424,14 +1180,9 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
 
       // Read in the second dataline, this contains 3 column labels followed by the YOB cohort ranges
       if (fgets(sInputLine, 3000, pProbabilityFile) == NULL) {
-        Rcpp::stop("Error in file %s, End of File reached before location of first data line as specified in line 1\n", sDataFileName);
+        sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Error reading second DATA line of file %s", sDataFileName);
         throw SimException("Error", sErrorMessage);
       }
-
-      // if (sInputLine == NULL) {
-	   //    Rcpp::stop(sErrorMessage, "Error reading second DATA line of file %s", sDataFileName);
-	   //    throw SimException("Error", sErrorMessage);
-	   // }
 
       pTokenPtr= strtok(sInputLine, ",");
       pTokenPtr= strtok(NULL, ",");
@@ -1449,8 +1200,8 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
 
          // Otherwise check the value against the value already in the array
          } else if (wCohortValue != gwYOBCohortStartYrs[i]) {
-            Rcpp::stop(sErrorMessage, "Mismatching starting cohorts between Initiation and Cessation probability \
-               files\nFor range : 1\n%d read from initiation file.\n%d read from cessation file.",
+            sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Mismatching starting cohorts between Initiation and Cessation probability \
+               files\nFor range : 1\n%d read from initiation file.\n%d read from cessation file.", 
                gwYOBCohortStartYrs[i], wCohortValue);
             throw SimException("Error", sErrorMessage);
          }
@@ -1463,7 +1214,7 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
             gwYOBCohortEndYrs[i] = wCohortValue;
          } else if (wCohortValue != gwYOBCohortEndYrs[i]) {
             // Otherwise check the value against the value already in the array
-            Rcpp::stop(sErrorMessage, "Mismatching starting cohorts between Initiation and Cessation probability files\n\
+            sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Mismatching starting cohorts between Initiation and Cessation probability files\n\
                For range : 1\n%d read from initiation file.\n%d read from cessation file.", gwYOBCohortEndYrs[i], wCohortValue);
             throw SimException("Error", sErrorMessage);
          }
@@ -1471,7 +1222,7 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
          // If its the initiation file, verify the values
          if ( (eFileType == DATA_Initiation) &&
               (gwYOBCohortStartYrs[i] < 0 || gwYOBCohortEndYrs[i] <= 0 || gwYOBCohortStartYrs[i] > gwYOBCohortEndYrs[i]) ) {
-            Rcpp::stop(sErrorMessage, \
+            sim_snprintf(sErrorMessage, sizeof(sErrorMessage), \
               "Invalid Year of Birth Cohort value(s).\nStart Year = %d, End Year = %d.\nRead in from file %s for cohort range: %d\n\n\n", \
               gwYOBCohortStartYrs[i], gwYOBCohortEndYrs[i], sDataFileName, i);
 
@@ -1493,7 +1244,7 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
          // Validate values read in
          if (wAgeValue  < wMinAgeValue || wAgeValue > wMaxAgeValue || wRaceValue >= gwNumRaceValues || wRaceValue < 0 ||
             wSexValue  >= gwNumSexValues  || wSexValue  < 0) {
-            Rcpp::stop(sErrorMessage, "Invalid By-Variable Combination, Race = %d, Sex = %d, Age = %d\n Read form file %s at line \
+            sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid By-Variable Combination, Race = %d, Sex = %d, Age = %d\n Read form file %s at line \
                number %ld", wRaceValue, wSexValue, wAgeValue, sDataFileName, lNumLinesRead);
             throw SimException("Error", sErrorMessage);
          }
@@ -1507,7 +1258,7 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
             if (strcmp(pTokenPtr, ".") != 0) {
                dCurrProbability  = atof(pTokenPtr);
                if ((dCurrProbability < 0) || (dCurrProbability > 1)) {
-                  Rcpp::stop(sErrorMessage, "Invalid Probability: %f read for Birth Cohort: %d - %d\nRead from file %s at line \
+                  sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid Probability: %f read for Birth Cohort: %d - %d\nRead from file %s at line \
                      number %ld.\n", dCurrProbability, gwYOBCohortStartYrs[i], gwYOBCohortEndYrs[i], sDataFileName, lNumLinesRead);
                   throw SimException("Error", sErrorMessage);
                }
@@ -1528,8 +1279,8 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
       }
 
       if (lNumLinesRead < lNumLinesExpected) {
-         Rcpp::stop(sErrorMessage,"Not enough lines (%ld) read from file %s.\n%ld were expected based on sex, race, birth cohort and age values \
-            specified in first line of file.", lNumLinesRead, sDataFileName, lNumLinesExpected);
+         sim_snprintf(sErrorMessage, sizeof(sErrorMessage),"Not enough lines read from file %s.\n%d were expected based on sex, race, birth cohort and age values \
+            specified in first line of file.", sDataFileName, lNumLinesRead, lNumLinesExpected);
          throw SimException("Error", sErrorMessage);
       }
 
@@ -1570,30 +1321,25 @@ void Smoking_Simulator::LoadOtherCODFile(const char* sLifeTableFileName) {
 
    try {
       if (gdInitiationProbs == NULL)
-         throw SimException("Error", "Initiation Probabilies must be loaded before the Life Table Probabilities.\n");
+         throw("Error", "Initiation Probabilies must be loaded before the Life Table Probabilities.\n");
 
       pLifeTableFile = fopen(sLifeTableFileName, "r");
       if (pLifeTableFile == NULL) {
-	      Rcpp::stop(sErrorMessage, "The specified input file '%s' does not exist\n or could not be opened.\n\n", sLifeTableFileName);
+	      sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "The specified input file '%s' does not exist\n or could not be opened.\n\n", sLifeTableFileName);
 	      throw SimException("Error", sErrorMessage);
 	   }
 
 	   // Read in the first line of the file. Line contains the line number where the data in the file begins
       // This is to allow documentation to be placed in the input file
       if (fgets(sInputLine, 3000, pLifeTableFile) == NULL) {
-         Rcpp::stop("Error in file %s, End of File reached before location of first data line as specified in line 1\n", sLifeTableFileName);
+         sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Error reading first DATA line of file %s", sLifeTableFileName);
          throw SimException("Error", sErrorMessage);
       }
-
-	   // if (sInputLine == NULL) {
-	   //    Rcpp::stop(sErrorMessage, "Error reading first DATA line of file %s", sLifeTableFileName);
-	   //    throw SimException("Error", sErrorMessage);
-	   // }
 
 	   pTokenPtr      = strtok(sInputLine, ",");
       wFirstDataLine = atoi(pTokenPtr);
       if (wFirstDataLine <= 1) {
-	      Rcpp::stop(sErrorMessage, "Invalid value: %d for location of first data line to read in from file %s", \
+	      sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid value: %d for location of first data line to read in from file %s", \
             wFirstDataLine, sLifeTableFileName);
 	      throw SimException("Error", sErrorMessage);
       }
@@ -1601,7 +1347,7 @@ void Smoking_Simulator::LoadOtherCODFile(const char* sLifeTableFileName) {
       // Read in the Documentation lines, If the tag Version= is found, store it in the Version Num string for the file
       for (i = 2; i < wFirstDataLine; i++) {
          if ( fgets(sInputLine, 3000, pLifeTableFile) == NULL) {
-   	      Rcpp::stop(sErrorMessage, "Error in  file %s, End of File reached before location of first data line as specified in line 1\n", \
+   	      sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Error in  file %s, End of File reached before location of first data line as specified in line 1\n", \ 
                sLifeTableFileName);
    	      throw SimException("Error", sErrorMessage);
          }
@@ -1611,14 +1357,9 @@ void Smoking_Simulator::LoadOtherCODFile(const char* sLifeTableFileName) {
       // the min year of birth, the max year of birth, the min age and the maximum age
       // in the order they are listed here.
       if (fgets(sInputLine, 3000, pLifeTableFile) == NULL) {
-         Rcpp::stop("Error in file %s, End of File reached before location of first data line as specified in line 1\n", sLifeTableFileName);
+         sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Error reading first DATA line of file %s", sLifeTableFileName);
          throw SimException("Error", sErrorMessage);
       }
-      
-      // if (sInputLine == NULL) {
-	   //    Rcpp::stop(sErrorMessage, "Error reading first DATA line of file %s", sLifeTableFileName);
-	   //    throw SimException("Error", sErrorMessage);
-	   // }
 
       pTokenPtr          = strtok(sInputLine, ",");
       wRaceValue         = atoi(pTokenPtr);
@@ -1638,7 +1379,7 @@ void Smoking_Simulator::LoadOtherCODFile(const char* sLifeTableFileName) {
       /*
       if ((wRaceValue != gwNumRaceValues) || (wSexValue != gwNumSexValues) ||
          (gwMinLifeTableYear > GetMinYearOfBirth()) || (gwMaxLifeTableYear < GetMaxYearOfBirth())) {
-         Rcpp::stop(sErrorMessage, "Mismatch between cohort values from Life Table file and cohorts from Initiation file.\
+         sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Mismatch between cohort values from Life Table file and cohorts from Initiation file.\
             \nRace: Init = %d, Life = %d\nSex: Init = %d, Life = %d\nMin Year Birth: Init = %d, Life = %d\nMax Year Birth: \
             Init = %d, Life = %d\n", gwNumRaceValues, wRaceValue, gwNumSexValues, wSexValue, GetMinYearOfBirth(), \
             gwMinLifeTableYear, GetMaxYearOfBirth(), gwMaxLifeTableYear);
@@ -1647,7 +1388,7 @@ void Smoking_Simulator::LoadOtherCODFile(const char* sLifeTableFileName) {
       */
 
       if (gwMinLifeTableAge < 0 || gwMaxLifeTableAge <= 0 || gwMinLifeTableAge >=  gwMaxLifeTableAge) {
-	      Rcpp::stop(sErrorMessage, "Invalid value(s) for minimum and maximum initiation ages\n read in from file %s", sLifeTableFileName);
+	      sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid value(s) for minimum and maximum initiation ages\n read in from file %s", sLifeTableFileName);
          throw SimException("Error", sErrorMessage);
       }
 
@@ -1686,7 +1427,7 @@ void Smoking_Simulator::LoadOtherCODFile(const char* sLifeTableFileName) {
             wRaceValue >= gwNumRaceValues      || wRaceValue < 0                ||
             wSexValue  >= gwNumSexValues       || wSexValue  < 0                ||
             wYearValue > gwMaxLifeTableYear   || wYearValue < gwMinLifeTableYear) {
-            Rcpp::stop(sErrorMessage, "Invalid By-Variable Combination, Race = %d, Sex = %d, Year = %d, Age = %d\n Read form file %s \
+            sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid By-Variable Combination, Race = %d, Sex = %d, Year = %d, Age = %d\n Read form file %s \
                at line number %ld", wRaceValue, wSexValue, wYearValue, wAgeValue, sLifeTableFileName, lNumLinesRead);
             throw SimException("Error", sErrorMessage);
          }
@@ -1697,7 +1438,7 @@ void Smoking_Simulator::LoadOtherCODFile(const char* sLifeTableFileName) {
             pTokenPtr = strtok(NULL, ",");
             dCurrProbability  = atof(pTokenPtr);
             if ((dCurrProbability < 0) || (dCurrProbability > 1)) {
-               Rcpp::stop(sErrorMessage, "Invalid Probability: %f read for Birth Cohort: %d - %d\nRead from file %s at line number %ld.\n", \
+               sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid Probability: %f read for Birth Cohort: %d - %d\nRead from file %s at line number %ld.\n", \
                   dCurrProbability, gwYOBCohortStartYrs[i], gwYOBCohortEndYrs[i], sLifeTableFileName, lNumLinesRead);
                throw SimException("Error", sErrorMessage);
             }
@@ -1711,7 +1452,7 @@ void Smoking_Simulator::LoadOtherCODFile(const char* sLifeTableFileName) {
       }
 
       if (lNumLinesRead > lMaxNumLines) {
-         Rcpp::stop(sErrorMessage, "Too many lines read from file %s.\n%ld max were expected based on sex, race, birth cohort and age\
+         sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Too many lines read from file %s.\n%ld max were expected based on sex, race, birth cohort and age\
             values specified in first line of file.\n%ld were read in.\n", sLifeTableFileName, lMaxNumLines, lNumLinesRead);
          throw SimException("Error", sErrorMessage);
       }
@@ -1782,11 +1523,9 @@ void Smoking_Simulator::RunSimulation(const char* sInputFileName, const char* sO
          pTokenPtr= strtok(NULL, ";");
          wYOB = atoi(pTokenPtr);
 
-         RunSimulationIndividual(wRace, wSex, wYOB, pOutputFile);
-         // RCPP doesn't allow stdout to be written to, so this is commented out
-         // Suggest we use rather Rcpp:Rcout to write to the console
-         // if (bPrintToScreen)
-         //   WriteToStream(stdout);
+         RunSimulationSingle(wRace, wSex, wYOB, pOutputFile);
+         if (bPrintToScreen) 
+            WriteToStream(stdout);
       }
 
       fclose(pInputFile);
@@ -1794,7 +1533,7 @@ void Smoking_Simulator::RunSimulation(const char* sInputFileName, const char* sO
          fclose(pOutputFile);
 
    } catch (SimException ex) {
-      ex.AddCallPath("RunSimulationIndividual(char*,char*,bool)");
+      ex.AddCallPath("RunSimulation(char*,char*,bool)");
       if (pInputFile != NULL)
          fclose(pInputFile);
       if (pOutputFile!=0)
@@ -1807,7 +1546,7 @@ void Smoking_Simulator::RunSimulation(const char* sInputFileName, const char* sO
 // Run the simulation for the race, sex and year of birth values provided.
 // Results are stored in the private members gwPersonsInitAge gwPersonsCessAge
 // If File* is supplied, results will be written to the stream specified.
-void Smoking_Simulator::RunSimulationIndividual(short wRace, short wSex, short wYearBirth, FILE* pOutStream) {
+void Smoking_Simulator::RunSimulationSingle(short wRace, short wSex, short wYearBirth, FILE* pOutStream) {
 
    short    wYOBCohortGroup,
             wCurrentAge          = gwMinInitiationAge,
@@ -1829,22 +1568,22 @@ void Smoking_Simulator::RunSimulationIndividual(short wRace, short wSex, short w
 
       // Validate Input
       if ((wYearBirth < GetMinYearOfBirth()) || (wYearBirth > 2100)) { // GetMaxYearOfBirth())) {
-         Rcpp::stop(sErrorMessage, "Invalid Year of Birth: %d, supplied to Smoking History Simulator.", wYearBirth);
+         sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid Year of Birth: %d, supplied to Smoking History Simulator.", wYearBirth);
          throw SimException("Error", sErrorMessage, SimException::NON_FATAL);
       }
 
       if ( (wSex < 0) || (wSex >= gwNumSexValues) ) {
-         Rcpp::stop(sErrorMessage, "Invalid Sex Value: %d, supplied to Smoking History Simulator.", wSex);
+         sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid Sex Value: %d, supplied to Smoking History Simulator.", wSex);
          throw SimException("Error", sErrorMessage, SimException::NON_FATAL);
       }
 
       if ( (wRace < 0) || (wRace >= gwNumRaceValues) ) {
-         Rcpp::stop(sErrorMessage, "Invalid Race Value: %d, supplied to Smoking History Simulator.", wRace);
+         sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid Race Value: %d, supplied to Smoking History Simulator.", wRace);
          throw SimException("Error", sErrorMessage, SimException::NON_FATAL);
       }
 
       if ( (wRace == 1) && (wSex == 1) ) {
-         Rcpp::stop(sErrorMessage, "Invalid Race/Sex Combination: %d/%d, supplied to Smoking History Simulator.", wRace, wSex);
+         sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid Race/Sex Combination: %d/%d, supplied to Smoking History Simulator.", wRace, wSex);
          throw SimException("Error", sErrorMessage, SimException::NON_FATAL);
       }
 
@@ -1985,7 +1724,7 @@ void  Smoking_Simulator::SetOutputType(short wOutputType) {
    OutputType  eOutputType;
    eOutputType = (OutputType)wOutputType;
    if ( (eOutputType < OUT_DataOnly) || (eOutputType >= OUT_Uninitialized)) {
-      Rcpp::stop(sErrorMessage, "Invalid Value supplied for Output Type : %d", wOutputType);
+      sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid Value supplied for Output Type : %d", wOutputType);
       throw SimException("SetOutputType(short)", sErrorMessage);
    }
    geOutputType = eOutputType;
@@ -2022,39 +1761,39 @@ void Smoking_Simulator::WriteAsText(FILE *pOutStream) {
    if (pOutStream == 0)
       throw SimException("WriteAsText(FILE *)","Supplied output File is not open for writing.");
 
-   fprintf(pOutStream, "========================================================\n");
-   fprintf(pOutStream, " Race:            %s\n", sRACE_LABELS[gwPersonsRace]);
-   fprintf(pOutStream, " Sex:             %s\n", sSEX_LABELS[gwPersonsSex]);
-   fprintf(pOutStream, " Year Of Birth:   %d\n", gwPersonsYOB);
+   sim_fprintf(pOutStream, "========================================================\n");
+   sim_fprintf(pOutStream, " Race:            %s\n", sRACE_LABELS[gwPersonsRace]);
+   sim_fprintf(pOutStream, " Sex:             %s\n", sSEX_LABELS[gwPersonsSex]);
+   sim_fprintf(pOutStream, " Year Of Birth:   %d\n", gwPersonsYOB);
 
    if (gwPersonsInitAge >= 0) {
-      fprintf(pOutStream," Initiation Age:  %d\n", gwPersonsInitAge);
+      sim_fprintf(pOutStream," Initiation Age:  %d\n", gwPersonsInitAge);
       if (gwPersonsCessAge >= 0)
-         fprintf(pOutStream, " Cessation Age:   %d\n", gwPersonsCessAge);
-      else fprintf(pOutStream, " Cessation Age:   Person Never Quit Smoking.\n"); } else {
-      fprintf(pOutStream, " Initiation Age:  Person Never Initiated Smoking.\n");
+         sim_fprintf(pOutStream, " Cessation Age:   %d\n", gwPersonsCessAge);
+      else sim_fprintf(pOutStream, " Cessation Age:   Person Never Quit Smoking.\n"); } else {
+      sim_fprintf(pOutStream, " Initiation Age:  Person Never Initiated Smoking.\n");
    }
 
    if (gwPersonsAgeAtDeath >= 0) {
-      fprintf(pOutStream, " Age At Death:    %d\n", gwPersonsAgeAtDeath);
+      sim_fprintf(pOutStream, " Age At Death:    %d\n", gwPersonsAgeAtDeath);
    } else {
-      fprintf(pOutStream, " Age At Death:    Person alive through %d.\n", wSIM_CUTOFF_YEAR);
+      sim_fprintf(pOutStream, " Age At Death:    Person alive through %d.\n", wSIM_CUTOFF_YEAR);
    }
 
    if (gwPersonsInitAge >= 0) {
-      fprintf(pOutStream, " People are not put into a smoker category for life in SHG v2.0.");
-      fprintf(pOutStream, " Intensity Probability : %f .\n", gdTempIntensityProb);
+      sim_fprintf(pOutStream, " People are not put into a smoker category for life in SHG v2.0.");
+      sim_fprintf(pOutStream, " Intensity Probability : %f .\n", gdTempIntensityProb);
 
       if (gwPersonsCessAge == -999)
          wYearsAsSmoker = (wSIM_CUTOFF_YEAR - (gwPersonsYOB+gwPersonsInitAge)) + 1;
       else
          wYearsAsSmoker = (gwPersonsCessAge - gwPersonsInitAge) + 1;
 
-      fprintf(pOutStream, " Age        Cigarettes per day\n");
+      sim_fprintf(pOutStream, " Age        Cigarettes per day\n");
 
       for (i=0; i<wYearsAsSmoker; i++) {
          if (i + gwPersonsInitAge < 100) {
-            fprintf(pOutStream, " %d         %f\n", (i+gwPersonsInitAge), gdPersonsCPDbyAge[i]);
+            sim_fprintf(pOutStream, " %d         %f\n", (i+gwPersonsInitAge), gdPersonsCPDbyAge[i]);
          }
       }
    }
@@ -2070,69 +1809,69 @@ void  Smoking_Simulator::WriteAsTimeline(FILE *pOutStream) {
       throw SimException("WriteAsTimeline(FILE *)", \
          "Supplied output File is not open for writing.");
 
-   fprintf(pOutStream, "Hist !%c %c %d ", sRACE_LABELS[gwPersonsRace][0], sSEX_LABELS[gwPersonsSex][0], gwPersonsYOB);
+   sim_fprintf(pOutStream, "Hist !%c %c %d ", sRACE_LABELS[gwPersonsRace][0], sSEX_LABELS[gwPersonsSex][0], gwPersonsYOB);
 
    if (gwPersonsInitAge >= 0 && gwPersonsCessAge >= 0)
-      fprintf(pOutStream, "%d %d ", gwPersonsInitAge, gwPersonsCessAge);
+      sim_fprintf(pOutStream, "%d %d ", gwPersonsInitAge, gwPersonsCessAge);
    else if (gwPersonsInitAge >= 0)
-      fprintf(pOutStream, "%d - ", gwPersonsInitAge);
+      sim_fprintf(pOutStream, "%d - ", gwPersonsInitAge);
    else
-      fprintf(pOutStream, "- - ");
+      sim_fprintf(pOutStream, "- - ");
 
    if (gwPersonsAgeAtDeath >= 0)
-      fprintf(pOutStream, "%d\n", gwPersonsAgeAtDeath);
+      sim_fprintf(pOutStream, "%d\n", gwPersonsAgeAtDeath);
    else
-      fprintf(pOutStream, "-\n");
+      sim_fprintf(pOutStream, "-\n");
 
-   fprintf(pOutStream, "Age  !");
+   sim_fprintf(pOutStream, "Age  !");
 
    for (i = 0; i < 17; i++)
-      fprintf(pOutStream, "----+");
+      sim_fprintf(pOutStream, "----+");
    wStopAge = wSIM_CUTOFF_YEAR - gwPersonsYOB;
 
    if (gwPersonsAgeAtDeath != 0)
-      fprintf(pOutStream, "\n%4d !", gwPersonsYOB);
+      sim_fprintf(pOutStream, "\n%4d !", gwPersonsYOB);
    else
-      fprintf(pOutStream, "\n%4d X", gwPersonsYOB);
+      sim_fprintf(pOutStream, "\n%4d X", gwPersonsYOB);
 
    if ( gwPersonsInitAge >= 0) {
       for (i = 1; i < gwPersonsInitAge; i++) {
          if (i != gwPersonsAgeAtDeath)
-            fprintf(pOutStream,"-");
+            sim_fprintf(pOutStream,"-");
          else
-            fprintf(pOutStream,"X");
+            sim_fprintf(pOutStream,"X");
       }
       if (gwPersonsCessAge >= 0) {
          for (i = gwPersonsInitAge; i < gwPersonsCessAge; i++) {
             if (i != gwPersonsAgeAtDeath)
-               fprintf(pOutStream,"s");
+               sim_fprintf(pOutStream,"s");
             else
-               fprintf(pOutStream,"X");
+               sim_fprintf(pOutStream,"X");
          }
          for (i = gwPersonsCessAge; i <= wStopAge; i++) {
             if (i != gwPersonsAgeAtDeath)
-               fprintf(pOutStream, "q");
+               sim_fprintf(pOutStream, "q");
             else
-               fprintf(pOutStream, "X");
+               sim_fprintf(pOutStream, "X");
          }
       } else {
          for (i = gwPersonsInitAge; i <= wStopAge; i++) {
             if (i != gwPersonsAgeAtDeath)
-               fprintf(pOutStream, "s");
+               sim_fprintf(pOutStream, "s");
             else
-               fprintf(pOutStream, "X");
+               sim_fprintf(pOutStream, "X");
             }
       }
    } else {
       for (i = 1; i <= wStopAge; i++) {
          if (i != gwPersonsAgeAtDeath)
-            fprintf(pOutStream, "-");
+            sim_fprintf(pOutStream, "-");
          else
-            fprintf(pOutStream, "X");
+            sim_fprintf(pOutStream, "X");
          }
       }
-   fprintf(pOutStream,"!%d\n", wSIM_CUTOFF_YEAR);
-   fprintf(pOutStream,"!The average cigarettes smoked per day by age is not available with this type of output\n");
+   sim_fprintf(pOutStream,"!%d\n", wSIM_CUTOFF_YEAR);
+   sim_fprintf(pOutStream,"!The average cigarettes smoked per day by age is not available with this type of output\n");
 }
 
 
@@ -2142,15 +1881,15 @@ void  Smoking_Simulator::WriteAsXML(FILE *pOutStream) {
    if (pOutStream == 0) {
       throw SimException("WriteAsTimeline(FILE *)", "Supplied output File is not open for writing.");
    }
-   fprintf(pOutStream, "<RESULT>\n");
-   fprintf(pOutStream, "<INITIATION_AGE>\n%d\n</INITIATION_AGE>\n", gwPersonsInitAge);
-   fprintf(pOutStream, "<CESSATION_AGE>\n%d\n</CESSATION_AGE>\n", gwPersonsCessAge);
-   fprintf(pOutStream, "<OCD_AGE>\n%d\n</OCD_AGE>\n", gwPersonsAgeAtDeath);
+   sim_fprintf(pOutStream, "<RESULT>\n");
+   sim_fprintf(pOutStream, "<INITIATION_AGE>\n%d\n</INITIATION_AGE>\n", gwPersonsInitAge);
+   sim_fprintf(pOutStream, "<CESSATION_AGE>\n%d\n</CESSATION_AGE>\n", gwPersonsCessAge);
+   sim_fprintf(pOutStream, "<OCD_AGE>\n%d\n</OCD_AGE>\n", gwPersonsAgeAtDeath);
    if (gwPersonsInitAge >= 0) {
-      fprintf(pOutStream, "<SMOKING_HIST>\n");
-      fprintf(pOutStream, "<INTENSITY>\n");
-      fprintf(pOutStream, "Not applicable in SHG v2\n");
-      fprintf(pOutStream, "</INTENSITY>\n");
+      sim_fprintf(pOutStream, "<SMOKING_HIST>\n");
+      sim_fprintf(pOutStream, "<INTENSITY>\n");
+      sim_fprintf(pOutStream, "Not applicable in SHG v2\n");
+      sim_fprintf(pOutStream, "</INTENSITY>\n");
 
       if (gwPersonsCessAge == -999) // Person does not quit smoking
          wYearsAsSmoker = (wSIM_CUTOFF_YEAR - (gwPersonsYOB+gwPersonsInitAge))+1;
@@ -2158,18 +1897,18 @@ void  Smoking_Simulator::WriteAsXML(FILE *pOutStream) {
          wYearsAsSmoker = (gwPersonsCessAge - gwPersonsInitAge) + 1;
 
       // Print out number of age_CPD Combos to expect
-      fprintf(pOutStream, "<AGE_CPD_COUNT>\n%d\n</AGE_CPD_COUNT>\n", wYearsAsSmoker);
+      sim_fprintf(pOutStream, "<AGE_CPD_COUNT>\n%d\n</AGE_CPD_COUNT>\n", wYearsAsSmoker);
       for (i = 0; i < wYearsAsSmoker; i++) {
          if (i + gwPersonsInitAge < 100) {
-            fprintf(pOutStream, "<AGE_CPD>\n");
-            fprintf(pOutStream, "<AGE>\n%d\n</AGE>\n", (i+gwPersonsInitAge));
-            fprintf(pOutStream, "<CPD>\n%f\n</CPD>\n", gdPersonsCPDbyAge[i]);
-            fprintf(pOutStream, "</AGE_CPD>\n");
+            sim_fprintf(pOutStream, "<AGE_CPD>\n");
+            sim_fprintf(pOutStream, "<AGE>\n%d\n</AGE>\n", (i+gwPersonsInitAge));
+            sim_fprintf(pOutStream, "<CPD>\n%f\n</CPD>\n", gdPersonsCPDbyAge[i]);
+            sim_fprintf(pOutStream, "</AGE_CPD>\n");
          }
       }
-      fprintf(pOutStream, "</SMOKING_HIST>\n");
+      sim_fprintf(pOutStream, "</SMOKING_HIST>\n");
    }
-   fprintf(pOutStream, "</RESULT>\n");
+   sim_fprintf(pOutStream, "</RESULT>\n");
 }
 
 // Write the results to pOutStream in a data style format
@@ -2179,7 +1918,7 @@ void Smoking_Simulator::WriteAsData(FILE *pOutStream) {
       throw SimException("WriteAsData(FILE *)", "Supplied output File is not open for writing.");
    }
 
-   fprintf(pOutStream, "%d;%d;%d;%d;%d;%d;", gwPersonsRace, gwPersonsSex, gwPersonsYOB, \
+   sim_fprintf(pOutStream, "%d;%d;%d;%d;%d;%d;", gwPersonsRace, gwPersonsSex, gwPersonsYOB, \
                        gwPersonsInitAge, gwPersonsCessAge, gwPersonsAgeAtDeath);
 
    // Print out the smoking intensity group for the person and the cigarettes smoked per day
@@ -2191,9 +1930,40 @@ void Smoking_Simulator::WriteAsData(FILE *pOutStream) {
          wYearsAsSmoker = gwPersonsCessAge - gwPersonsInitAge + 1;
       for (i = 0; i < wYearsAsSmoker; i++) {
          if (i + gwPersonsInitAge < 100)
-            fprintf(pOutStream, "%d;%.2f;", i + gwPersonsInitAge, gdPersonsCPDbyAge[i]);
+            sim_fprintf(pOutStream, "%d;%.2f;", i + gwPersonsInitAge, gdPersonsCPDbyAge[i]);
       }
    }
 
-   fprintf(pOutStream, "\n");
+   sim_fprintf(pOutStream, "\n");
+}
+
+// sim_fprintf is a function that has the same signature as fprintf and passes along the same arguments to vfprintf
+// RCPP does not allow sim_fprintf to be used, so this function is used to replace it
+// Include the arg -DIS_RCPP CXXFLAGS in the Makevars file (eg CXXFLAGS = -O3 -DIS_RCPP)
+void sim_fprintf(FILE* stream, const char* format, ...) {
+   va_list args;
+   va_start(args, format);
+   #ifdef IS_RCPP
+      //Rcpp::Rcout << vfmt::vformat(format, args);
+   #else
+      vfprintf(stream, format, args);
+   #endif
+   va_end(args);
+}
+
+// sim_snprintf is a function that has the same signature as snprintf and passes along the same arguments to vsnprintf
+// RCPP does not allow snprintf to be used, so this function is used to replace it
+// Include the arg -DIS_RCPP CXXFLAGS in the Makevars file (eg CXXFLAGS = -O3 -DIS_RCPP)
+void sim_snprintf(char* sMessage, size_t size, const char* format, ...) {
+   va_list args;
+   va_start(args, format);
+   #ifdef IS_RCPP
+      #include <Rcpp.h>
+      Rprintf(format, args);
+      Rcpp::stop(sMessage);
+   #else
+      vsnprintf(sMessage, size, format, args);
+   #endif
+
+   va_end(args);
 }
