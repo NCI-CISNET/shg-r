@@ -1,16 +1,48 @@
+# Specify the C++ standard
+CXX_STD = CXX11
+
+#PKG_CPPFLAGS="⁠$(R_HOME)/bin/Rscript -e "Rcpp:::CxxFlags()"
+#pkgbuild::compile_dll(path=".", debug=FALSE) <-- doesnt seem to remove debug
+#https://rdrr.io/cran/pkgbuild/man/compile_dll.html
+PKG_CPPFLAGS = -O2 -DIS_RCPP
+
+
+#PKG_BUILD_EXTRA_FLAGS = false
+
+#Sys.setenv(PKG_BUILD_EXTRA_FLAGS = "false")
+
+# Compiler flags (doesn't seem to affect how R compiles)
+
+#CXXFLAGS = -O1 -DIS_RCPP
+
+# pkgbuild::compiler_flags()
+
+# Include paths and compiler flags (this affects how R compliles the DLL)
+PKG_CXXFLAGS = -O3 -DIS_RCPP -I. -I/Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library/Rcpp/include -I$(R_HOME)/library/Rcpp/include
+
+# Linker flags and libraries
+#PKG_LIBS = 
+
+#CXX$FLAGS = -g -O0 -Wall
+
 # TODO: eventually rename to Makevars and use this for MacOS compiling. Currently it causes the build to fail.
 #CXX_STD = CXX11
-#PKG_CXXFLAGS = -I. -DGMP
+#CXXFLAGS = -O3 -DIS_RCPP
+
+#PKG_CXXFLAGS = -I. -I/Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library/Rcpp/include -I$(R_HOME)/library/Rcpp/include
+
+
+#PKG#_CXXFLAGS = -I. -DGMP
 #PKG_LIBS = $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) -lgm
-#CXXFLAGS = -g -O0
+#CXX$FLAGS = -g -O0
 
 ## from Makevars.in
 ## Compile as C++11
-##CXX_STD = CXX11
+#CXX_STD = CXX11
 
 ## GNU GMP support added by configure if found
 ## You can also enable allocation tracking by adding -DTRACK_ALLOC here
-##PKG_CXXFLAGS = -I. @GMP_CFLAGS@ -DR_BUILD
+##PKG_#CXXFLAGS = -I. @GMP_CFLAGS@ -DR_BUILD
 
 ## GNU GMP support added by configure if found
 ##PKG_LIBS = $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) @GMP_LIBS@
