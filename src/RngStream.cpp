@@ -214,33 +214,49 @@ int CheckSeed (const unsigned long seed[6])
     int i;
 
     for (i = 0; i < 3; ++i) {
+        #ifdef IS_RCPP
+        // Maybe add Rcpp::Stop() here
+        #else
         if (seed[i] >= m1) {
             cerr << "****************************************\n"
                  << "ERROR: Seed[" << i << "] >= 4294967087, Seed is not set."
                  << "\n****************************************\n\n";
             return (-1);
         }
+        #endif
     }
     for (i = 3; i < 6; ++i) {
         if (seed[i] >= m2) {
+            #ifdef IS_RCPP
+            // Maybe add Rcpp::Stop() here
+            #else
             cerr << "*****************************************\n"
                  << "ERROR: Seed[" << i << "] >= 4294944443, Seed is not set."
                  << "\n*****************************************\n\n";
             return (-1);
+            #endif
         }
     }
     if (seed[0] == 0 && seed[1] == 0 && seed[2] == 0) {
+        #ifdef IS_RCPP
+        // Maybe add Rcpp::Stop() here
+        #else
          cerr << "****************************\n"
               << "ERROR: First 3 seeds = 0.\n"
               << "****************************\n\n";
          return (-1);
+        #endif
     }
+    #ifdef IS_RCPP
+    // Maybe add Rcpp::Stop() here
+    #else
     if (seed[3] == 0 && seed[4] == 0 && seed[5] == 0) {
          cerr << "****************************\n"
               << "ERROR: Last 3 seeds = 0.\n"
               << "****************************\n\n";
          return (-1);
     }
+    #endif
 
     return 0;
 }
@@ -434,6 +450,9 @@ void RngStream::GetState (unsigned long seed[6]) const
 //-------------------------------------------------------------------------
 void RngStream::WriteState () const
 {
+    #ifdef IS_RCPP
+    // Maybe add Rcpp::Rcout here at some point
+    #else
     cout << "The current state of the Rngstream";
     if (name.size() > 0)
         cout << " " << name;
@@ -443,12 +462,16 @@ void RngStream::WriteState () const
         cout << static_cast<unsigned long> (Cg [i]) << ", ";
     }
     cout << static_cast<unsigned long> (Cg [5]) << " }\n\n";
+    #endif
 }
 
 
 //-------------------------------------------------------------------------
 void RngStream::WriteStateFull () const
 {
+    #ifdef IS_RCPP
+    // Maybe add Rcpp::Rcout here at some point
+    #else
     int i;
 
     cout << "The RngStream";
@@ -474,6 +497,7 @@ void RngStream::WriteStateFull () const
         cout << static_cast<unsigned long> (Cg [i]) << ", ";
     }
     cout << static_cast<unsigned long> (Cg [5]) << " }\n\n";
+    #endif
 }
 
 
