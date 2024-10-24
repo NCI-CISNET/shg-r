@@ -31,6 +31,8 @@
 #include <iterator>
 #include <iostream>
 #include <algorithm>
+#include <future>
+#include <thread>
 
 #include "wrapper.h"
 #include "smoking_sim.h"
@@ -77,7 +79,7 @@ bool IsPosShortInt(const char *sValue);
 bool IsValidNumReps(const char* sNumReps);
 bool IsValidSeed(const char* sSeedValue);
 void LoadValue(char* sDest, char* sSource, int iValueNum);
-void ModifyCutoffYear(char*);
+//void ModifyCutoffYear(char*);
 bool RunFromParameters(const char*, char*, char*, char*, char*, char*, char*, char*, char*, char*);
 void RunInfiniteLoop();
 void RunInterface();
@@ -124,6 +126,28 @@ using namespace Rcpp;
       initialize();
    }
 
+   Smoking_Simulator* SHGInterface::createSimulator()
+   {
+     const char *sInitiationProbFile = "./inst/inputs/2017-05-03/lbc_shg_initiation.txt";
+     const char *sCessationProbFile = "./inst/inputs/2017-05-03/lbc_shg_cessation.txt";
+     const char *sLifeTableFile = "./inst/inputs/2017-05-03/lbc_smokehist_oc_mortality.txt";
+     const char *sCpdIntensityProbFile = ""; // no longer used?
+     const char *sCpdDataFile = "./inst/inputs/2017-05-03/lbc_shg_cpd.txt";
+     unsigned long ulInitPRNGSeed = 12345;
+     unsigned long ulCessPRNGSeed = 12345;
+     unsigned long ulLifeTabSeed = 12345;
+     unsigned long ulIndivRndsSeed = 12345;
+     short wOutputType = 2; // data only?
+     short wCessationYear = 0;
+     return new Smoking_Simulator(sInitiationProbFile, sCessationProbFile,
+                           sLifeTableFile, sCpdIntensityProbFile,
+                           sCpdDataFile, ulInitPRNGSeed,
+                           ulCessPRNGSeed, ulLifeTabSeed,
+                           ulIndivRndsSeed, wOutputType,
+                           wCessationYear);
+     //return lSimulator;
+   }
+
    void SHGInterface::initialize()
    {
       const char *sInitiationProbFile = "./inst/inputs/2017-05-03/lbc_shg_initiation.txt";
@@ -145,39 +169,11 @@ using namespace Rcpp;
                                          ulIndivRndsSeed, wOutputType,
                                          wCessationYear);
    }
-   // // A simple toggle between using rstream RNG versus C++ MT
-   // void SHGInterface::setRNGtype(std::string RNGtype)
-   // {
-   //    if (RNGtype == "rstream")
-   //    {
-   //       pSimulator->use_rstream = TRUE;
-   //    }
-   //    else
-   //    {
-   //       pSimulator->use_rstream = FALSE;
-   //    }
-   // }
 
-   // void SHGInterface::setRNGs(SEXP rng1, SEXP rng2, SEXP rng3, SEXP rng4)
-   // {
+void SHGInterface::runSimSegment(int repeat, short wRace, short wSex, short wYearBirth,
+                                 std::vector<int>& initiationAge, std::vector<int>& cessationAge,
+                                 std::vector<int>& ageAtDeath, std::vector<std::string>& cpdString) {
 
-   //    // Ensure that the inputs are correct S4 rstream.mrg32k3a objects
-   //    if (!Rf_inherits(rng1, "rstream.mrg32k3a") ||
-   //        !Rf_inherits(rng2, "rstream.mrg32k3a") ||
-   //        !Rf_inherits(rng3, "rstream.mrg32k3a") ||
-   //        !Rf_inherits(rng4, "rstream.mrg32k3a"))
-   //    {
-   //       stop("All RNGs must be of class rstream.mrg32k3a.");
-   //    }
-
-   //    // Could also clone and advance substreams here instead of externally
-   //    // Function next_substream = rstream_env["rstream.nextsubstream"]; //also resetsubstream
-   //    pSimulator->gpInitiationPRNG_R = rng1;
-   //    pSimulator->gpCessationPRNG_R = rng2;
-   //    pSimulator->gpLifeTablePRNG_R = rng3;
-   //    pSimulator->gpIndivRndsPRNG_R = rng4;
-   // }
-   Rcpp::DataFrame SHGInterface::runSim(int repeat, short wRace, short wSex, short wYearBirth)
    {
       //Rcpp::Rcout << "RunSim" << repeat;
       // short wRace = 0;
@@ -197,71 +193,108 @@ using namespace Rcpp;
       // Trying this to prevent an output file from being created
       pOutStream = NULL;
 
-      std::vector<int> initiationAge;
-      std::vector<int> cessationAge;
-      std::vector<int> ageAtDeath;
-      std::vector<int> race;
-      std::vector<int> sex;
-      std::vector<int> yearBirth;
-      std::vector<string> cpdString;
       string cpd;
       short wYearsAsSmoker, i;
+      short sPersonsCPDbyAge;
+      short sPersonsInitAge, sPersonsCessAge, sPersonsAgeAtDeath;
 
-//#TODO Why is this not running as fast as in C++ directly? (5.9 secs versus 1 sec for 100,000)
-//#Also, can we toggle writing to a file?
-//#offer the ability to have SHG CLI loop through a fixed race, sex, cohort, and just supply the repeat value. Would that be quicker?
+      Smoking_Simulator* qSimulator = createSimulator();
 
       for (int j = 0; j < repeat; j++)
       {
-         pSimulator->RunSimulationSingle(wRace, wSex, wYearBirth, pOutStream);
+         qSimulator->RunSimulationSingle(wRace, wSex, wYearBirth, pOutStream);
 
          // For now these 3 are typically all the same in a given run, but we could add more variation
-         race.push_back(wRace);
-         sex.push_back(wSex);
-         yearBirth.push_back(wYearBirth);
+         //race.push_back(wRace);
+         //sex.push_back(wSex);
+         //yearBirth.push_back(wYearBirth);
 
-         initiationAge.push_back(pSimulator->GetPersonsInitAge());
-         cessationAge.push_back(pSimulator->GetPersonsCessAge());
-         ageAtDeath.push_back(pSimulator->GetPersonsAgeAtDeath());
+         sPersonsInitAge = qSimulator->GetPersonsInitAge();
+         sPersonsCessAge = qSimulator->GetPersonsCessAge();
+         sPersonsAgeAtDeath = qSimulator->GetPersonsAgeAtDeath();
+         initiationAge.push_back(sPersonsInitAge);
+         cessationAge.push_back(sPersonsCessAge );
+         ageAtDeath.push_back(sPersonsAgeAtDeath);
 
          // Print out the smoking intensity group for the person and the cigarettes smoked per day
          // Print the intensity group as +1 its value so range of values is from 1 to 5.
-         cpd = "";
-         if (pSimulator->GetPersonsInitAge() != -999)
-         {
-            if (pSimulator->GetPersonsCessAge() == -999)
-               wYearsAsSmoker = wSIM_CUTOFF_YEAR - (pSimulator->GetPersonsYOB() + pSimulator->GetPersonsInitAge()) + 1;
-            else
-               wYearsAsSmoker = pSimulator->GetPersonsCessAge() - pSimulator->GetPersonsInitAge() + 1;
-            for (i = 0; i < wYearsAsSmoker; i++)
-            {
-               if (i + pSimulator->GetPersonsInitAge() < 100)
-                  cpd += std::to_string(i + pSimulator->GetPersonsInitAge()) + " (" + std::to_string(static_cast<int>(pSimulator->GetPersonsCPDbyAge()[i])) + "), ";
-            }
-         }
-         cpdString.push_back(cpd);
+//***TODO: check gdPersonsCPDbyAge = new double[wYearsAsSmoker]; (it should be called in smoking_sim to initialize, but perhaps it is not)
+//***see CalcCigarettesPerDaySwitch()
+
+         // cpd = "";
+         // if (sPersonsInitAge != -999)
+         // {
+         //    if (sPersonsCessAge == -999)
+         //       wYearsAsSmoker = wSIM_CUTOFF_YEAR - (wYearBirth + sPersonsInitAge) + 1;
+         //    else
+         //       wYearsAsSmoker = sPersonsCessAge - sPersonsInitAge + 1;
+         //    for (i = 0; i < wYearsAsSmoker; i++)
+         //    {
+         //       if (i + sPersonsInitAge < 100)
+         //       {
+         //          sPersonsCPDbyAge = pSimulator->gdPersonsCPDbyAge[i];
+         //          cpd += std::to_string(i + sPersonsInitAge) + " (" + std::to_string(static_cast<int>(sPersonsCPDbyAge)) + "), ";
+         //       }
+         //    }
+         // }
+         // cpdString.push_back(cpd);
       }
 
       fclose(pOutStream);
-
-      DataFrame df = DataFrame::create(
-          _["race"] = race,
-          _["sex"] = sex,
-          _["yob"] = yearBirth,
-          _["smoking_initiation_age"] = initiationAge,
-          _["smoking_cessation_age"] = cessationAge,
-          _["oc_age_at_death"] = ageAtDeath,
-          _["smoking_cpd"] = cpdString);
-
-      return df;
+   }
    }
 
-   // double GetNextInitRand()
-   // {
-   //    return pSimulator->GetNextInitRand();
-   // }
+// Function to run simulations in parallel and combine results
+Rcpp::DataFrame SHGInterface::runSim(int repeat, short wRace, short wSex, short wYearBirth) {
+    int n = 10; // Number of parallel simulations
+    int repeat_per_sim = repeat / n;
 
+    // Vectors to store futures
+    std::vector<std::future<void>> futures;
+    std::vector<std::vector<int>> initiationAges(n), cessationAges(n), ageAtDeaths(n);
+    std::vector<std::vector<std::string>> cpdStrings(n);
 
+    // Launch simulations in parallel
+    for (int i = 0; i < n; ++i) {
+        futures.push_back(std::async(std::launch::async, &SHGInterface::runSimSegment, this,
+                                     repeat_per_sim, wRace, wSex, wYearBirth,
+                                     std::ref(initiationAges[i]), std::ref(cessationAges[i]),
+                                     std::ref(ageAtDeaths[i]), std::ref(cpdStrings[i])));
+    }
+
+    // Wait for all simulations to complete
+    for (auto& fut : futures) {
+        fut.get();
+    }
+
+    // Combine results
+    std::vector<int> combinedInitiationAge, combinedCessationAge, combinedAgeAtDeath;
+    std::vector<std::string> combinedCpdString;
+    std::vector<short> combinedWRace, combinedWSex;
+    std::vector<int> combinedWYearBirth;
+
+    for (int i = 0; i < n; ++i) {
+        combinedInitiationAge.insert(combinedInitiationAge.end(), initiationAges[i].begin(), initiationAges[i].end());
+        combinedCessationAge.insert(combinedCessationAge.end(), cessationAges[i].begin(), cessationAges[i].end());
+        combinedAgeAtDeath.insert(combinedAgeAtDeath.end(), ageAtDeaths[i].begin(), ageAtDeaths[i].end());
+        combinedCpdString.insert(combinedCpdString.end(), cpdStrings[i].begin(), cpdStrings[i].end());
+
+        combinedWRace.insert(combinedWRace.end(), initiationAges[i].size(), wRace);
+        combinedWSex.insert(combinedWSex.end(), initiationAges[i].size(), wSex);
+        combinedWYearBirth.insert(combinedWYearBirth.end(), initiationAges[i].size(), wYearBirth);
+    }
+
+    // Convert to Rcpp::DataFrame
+    return Rcpp::DataFrame::create(
+        Rcpp::Named("initiationAge") = combinedInitiationAge,
+        Rcpp::Named("cessationAge") = combinedCessationAge,
+        Rcpp::Named("ageAtDeath") = combinedAgeAtDeath,
+        //Rcpp::Named("cpdString") = combinedCpdString,  // Not yet implemented
+        Rcpp::Named("wRace") = combinedWRace,
+        Rcpp::Named("wSex") = combinedWSex,
+        Rcpp::Named("wYearBirth") = combinedWYearBirth
+    );
+}
 
 
    void SHGInterface::runSimFromInputFile(const char *sInputFileName)
@@ -1128,9 +1161,9 @@ void WriteInputTag(FILE* pOutStream, char* sRace, char* sSex, const char* sYearO
    }
 }
 
-void ModifyCutoffYear(char* newCutoff) {
-   wSIM_CUTOFF_YEAR = min(atoi(newCutoff), wSIM_CUTOFF_YEAR);
-}
+// void ModifyCutoffYear(char* newCutoff) {
+//    wSIM_CUTOFF_YEAR = min(atoi(newCutoff), wSIM_CUTOFF_YEAR);
+// }
 
 short min(short first, short second){
    if (first < second) {

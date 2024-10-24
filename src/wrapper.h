@@ -13,4 +13,10 @@ public:
     const char *sInputFile;
     const char *sOutputFile;
     Smoking_Simulator *pSimulator = 0;
+    Smoking_Simulator* createSimulator();
+
+    // Function to run a single simulation segment
+    void runSimSegment(int repeat, short wRace, short wSex, short wYearBirth,
+                       std::vector<int>& initiationAge, std::vector<int>& cessationAge,
+                       std::vector<int>& ageAtDeath, std::vector<std::string>& cpdString);
 };

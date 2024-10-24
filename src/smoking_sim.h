@@ -53,10 +53,14 @@ class Smoking_Simulator {
       enum Sex {SEX_Male = 0, SEX_Female, NUM_SEXES};
       enum Race {RACE_AllRaces = 0, NUM_RACES};
 
+      double *gdPersonsCPDbyAge;   // Cigarettes smoked per day by age
+
+
  	// Private Member Variables
    private:
       RNG_Strategy* gpRngStrategy;// Pointer to the RNG strategy (Mersenne Twister by default, RngStream, or a custom strategy)
-      
+      static std::mutex dataMutex; // Mutex to protect shared resources
+
       // Probability Arrays
       double *gdInitiationProbs;  // Prob of initiation by race/sex/year of birth and age
       double *gdCessationProbs;   // Prob of cessation by race/sex/year of birth and age
@@ -97,7 +101,7 @@ class Smoking_Simulator {
       short gwPersonsCessAge;      // Age of Smoking Cessation
       short gwPersonsAgeAtDeath;   // Age at death from COD other than lung cancer
       SmokingIntensity     gwPersonsSmkIntensity; // The smoking intesity group for the person (smokers only)
-      double *gdPersonsCPDbyAge;   // Cigarettes smoked per day by age
+      //double *gdPersonsCPDbyAge;   // Cigarettes smoked per day by age
       double gdPersonsAvgCPD;      // Average num of Cigarettes smoked per day (used for COD in former smokers)
 
       // Offset values for Probability Arrays
@@ -181,7 +185,9 @@ class Smoking_Simulator {
       short GetPersonsCessAge() {return gwPersonsCessAge;}
       short GetPersonsAgeAtDeath() {return gwPersonsAgeAtDeath;}
       SmokingIntensity GetPersonsSmkIntensity() {return gwPersonsSmkIntensity;}
-      double* GetPersonsCPDbyAge() {return gdPersonsCPDbyAge;}
+      double* GetPersonsCPDbyAge() {
+         return gdPersonsCPDbyAge;
+         }
       double GetPersonsAvgCPD() {return gdPersonsAvgCPD;}
       void setRNGStrategy(RNG_Strategy* rngStrategy);
 };
