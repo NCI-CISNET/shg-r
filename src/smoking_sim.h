@@ -6,21 +6,19 @@
 // Author: Martin Krapcho & Ben Racine
 // E-Mail: KrapchoM@imsweb.com & ben.racine@cornerstonenw.com
 // NCI Contacts: Rocky Feuer
-#include <Rcpp.h>
-// [[Rcpp::depends(Rcpp)]]
-// [[Rcpp::depends(rstream)]]
-
-#include <queue> // Include the stack header
-#include <algorithm> // For std::copy
-#include <stdexcept> // For throwing exceptions
 
 #ifndef _SMOKING_SIM_H
 #define _SMOKING_SIM_H
 
 #include "mersenne_class.h"
 #include "sim_exception.h"
+#include "rng_strategy.h"
 #include <string.h>
 #include <iostream>
+
+#ifdef IS_RCPP
+#include <Rcpp.h>
+#endif
 
 // Constants used in Excess Risk Former Smokers' formula
 #define B0 -0.1711
@@ -55,71 +53,10 @@ class Smoking_Simulator {
       enum Sex {SEX_Male = 0, SEX_Female, NUM_SEXES};
       enum Race {RACE_AllRaces = 0, NUM_RACES};
 
-      short gwPersonsInitAge;      // Age of Smoking Initiation
-      short gwPersonsCessAge;      // Age of Smoking Cessation
-      short gwPersonsAgeAtDeath;   // Age at death from COD other than lung cancer
-
-      // TODO: temporarily making this public so we can access them from RCPP class (should use getters eventually)
-      // Person Variables, Store the results for the last person simulated
-      short gwPersonsYOB;          // Year Of Birth
-      short gwPersonsRace;         // Race
-      short gwPersonsSex;          // Sex
-      //Moving public
-      //short gwPersonsInitAge;      // Age of Smoking Initiation
-      //short gwPersonsCessAge;      // Age of Smoking Cessation
-      SmokingIntensity     gwPersonsSmkIntensity; // The smoking intesity group for the person (smokers only)
-      double *gdPersonsCPDbyAge;   // Cigarettes smoked per day by age
-      double gdPersonsAvgCPD;      // Average num of Cigarettes smoked per day (used for COD in former smokers)
-
-      // PRNG instances
-      // TODO: should we rather use pointers here?
-      // TODO: should these be private with set methods?
-      Rcpp::RObject gpInitiationPRNG_R;
-      Rcpp::RObject gpCessationPRNG_R;
-      Rcpp::RObject gpLifeTablePRNG_R;
-      Rcpp::RObject gpIndivRndsPRNG_R;
-
-      Rcpp::Environment rstream_env;
-      Rcpp::Function rand_sample;
-
-      double GetNextInitRand();
-      double GetNextCessRand();
-      double GetNextLifeTabRand();
-      double GetNextRandForIndiv();
-
-      double GetNextCessRand_R();                          // temporary for testing only
-      Rcpp::NumericVector GetNextCessRand_R_vector(int n); // temporary for testing only
-      bool use_rstream = FALSE;                            // temporary toggle between MT and rstream
-
-      int gsRNGBatchSize = 1000000; // TODO: Eval optimal batch size
-      
-      // NEED TO INITIALIZE THESE IN THE CONSTRUCTOR perhaps: gsInitiationVector(gsRNGBatchSize)
-      // Rcpp::NumericVector gsInitiationVector;
-      Rcpp::NumericVector gsInitiationVector = Rcpp::NumericVector(gsRNGBatchSize);
-      Rcpp::NumericVector gsCessationVector = Rcpp::NumericVector(gsRNGBatchSize);
-      Rcpp::NumericVector gsLifeTableVector = Rcpp::NumericVector(gsRNGBatchSize);
-      Rcpp::NumericVector gsIndivRndsVector = Rcpp::NumericVector(gsRNGBatchSize);
-
-      double getNextRandFromRstream(int &counter, Rcpp::NumericVector &vector, Rcpp::RObject &rng);
-
-      // Just for testing the MT
-      double GetNextCessRandMT();
-
-      int gsInitiationCounter = gsRNGBatchSize;
-      int gsCessationCounter = gsRNGBatchSize;
-      int gsLifeTableCounter = gsRNGBatchSize;
-      int gsIndivRndsCounter = gsRNGBatchSize;
-
-      // Private Member Variables
+ 	// Private Member Variables
    private:
-      // Psuedo Random Number Generator Variables
-      MersenneTwister *gpInitiationPRNG; // PRNG for Initiation Probabilities
-      MersenneTwister *gpCessationPRNG;  // PRNG for Cessation Probabilities
-      MersenneTwister *gpLifeTablePRNG;  // PRNG for Other COD Probabilities
-      MersenneTwister *gpIndivRndsPRNG;  // PRNG for all "random" variables that only
-                                         // need one value per individual (ie smoking intensity quintile)
-                                         // Program will allow 20 of these values per individual
-
+      RNG_Strategy* gpRngStrategy;// Pointer to the RNG strategy (Mersenne Twister by default, RngStream, or a custom strategy)
+      
       // Probability Arrays
       double *gdInitiationProbs;  // Prob of initiation by race/sex/year of birth and age
       double *gdCessationProbs;   // Prob of cessation by race/sex/year of birth and age
@@ -128,7 +65,7 @@ class Smoking_Simulator {
 
       // Cigarettes per day by race, sex, YOB and age (and smoking intensity? %bjr)
       long double *gdCigarettesPerDay;
-
+      
 
       // Data limit variables
       short gwNumBirthCohorts;    // Number of birth cohorts Available
@@ -144,43 +81,43 @@ class Smoking_Simulator {
       short gwMaxLifeTableAge;
       short gwMinLifeTableYear;
       short gwMaxLifeTableYear;
-      short gwNumIntensityGrps;   // Number of CPD Intesity groups
-      long gwIntensityMinAge;    // Minimum age among the smoking intensity group probabilities
-      long gwIntensityMaxAge;    // Maximum age among the smoking intensity group probabilities
-      long gwCpdMinAge;          // Minimum age in the cigarettes per day data
-      long gwCpdMaxAge;          // Maximum age in the cigarettes per day data
-      short gwImmediateCessYear;  // Year when all smokers automatically quit smoking. 0 = option not used.
-      bool gbImmediateCessation;  // Is immediatte Cessation turned on
+      short gwNumIntensityGrps;    // Number of CPD Intesity groups
+      long gwIntensityMinAge;      // Minimum age among the smoking intensity group probabilities
+      long gwIntensityMaxAge;      // Maximum age among the smoking intensity group probabilities
+      long gwCpdMinAge;            // Minimum age in the cigarettes per day data
+      long gwCpdMaxAge;            // Maximum age in the cigarettes per day data
+      short gwImmediateCessYear;   // Year when all smokers automatically quit smoking. 0 = option not used.
+      bool gbImmediateCessation;   // Is immediatte Cessation turned on
 
-      // // Person Variables, Store the results for the last person simulated
-      // short gwPersonsYOB;          // Year Of Birth
-      // short gwPersonsRace;         // Race
-      // short gwPersonsSex;          // Sex
-      // // TODO: Moving public
-      // //short gwPersonsInitAge;      // Age of Smoking Initiation
-      // //short gwPersonsCessAge;      // Age of Smoking Cessation
-      // SmokingIntensity     gwPersonsSmkIntensity; // The smoking intesity group for the person (smokers only)
-      // double *gdPersonsCPDbyAge;   // Cigarettes smoked per day by age
-      // double gdPersonsAvgCPD;      // Average num of Cigarettes smoked per day (used for COD in former smokers)
+      // Person Variables, Store the results for the last person simulated
+      short gwPersonsYOB;          // Year Of Birth
+      short gwPersonsRace;         // Race
+      short gwPersonsSex;          // Sex
+      short gwPersonsInitAge;      // Age of Smoking Initiation
+      short gwPersonsCessAge;      // Age of Smoking Cessation
+      short gwPersonsAgeAtDeath;   // Age at death from COD other than lung cancer
+      SmokingIntensity     gwPersonsSmkIntensity; // The smoking intesity group for the person (smokers only)
+      double *gdPersonsCPDbyAge;   // Cigarettes smoked per day by age
+      double gdPersonsAvgCPD;      // Average num of Cigarettes smoked per day (used for COD in former smokers)
 
       // Offset values for Probability Arrays
-      long gwInitProbRaceOffset; // Initiation Array - Race Offset
-      long gwInitProbSexOffset;  // Initiation Array - Sex Offset
-      long gwInitProbYOBOffset;  // Initiation Array - YOB Offset
-      long gwCessProbRaceOffset; // Cessation Array  - Race Offset
-      long gwCessProbSexOffset;  // Cessation Array  - Sex Offset
-      long gwCessProbYOBOffset;  // Cessation Array  - YOB Offset
-      long  glLifeTabAgeOffset;   // Other COD Array  - Age Offset
-      long  glLifeTabRaceOffset;  // Other COD Array  - Race Offset
-      long  glLifeTabSexOffset;   // Other COD Array  - Sex Offset
-      long  glLifeTabYOBOffset;   // Other COD Array  - YOB Offset
-      long  gwIntensityAgeOffset; // Smoking Intesity Array - Age Offset
-      long  gwIntensitySexOffset;
-      long  gwIntensityRaceOffset;
-      long  glCpdAgeOffset;       // Cigarettes per Day Array  - Age Offset
-      long  glCpdRaceOffset;      // Cigarettes per Day Array  - Race Offset
-      long  glCpdSexOffset;       // Cigarettes per Day Array  - Sex Offset
-      long  glCpdYOBOffset;       // Cigarettes per Day Array  - YOB Offset
+      long gwInitProbRaceOffset;   // Initiation Array - Race Offset
+      long gwInitProbSexOffset;    // Initiation Array - Sex Offset
+      long gwInitProbYOBOffset;    // Initiation Array - YOB Offset
+      long gwCessProbRaceOffset;   // Cessation Array  - Race Offset
+      long gwCessProbSexOffset;    // Cessation Array  - Sex Offset
+      long gwCessProbYOBOffset;    // Cessation Array  - YOB Offset
+      long glLifeTabAgeOffset;     // Other COD Array  - Age Offset
+      long glLifeTabRaceOffset;    // Other COD Array  - Race Offset
+      long glLifeTabSexOffset;     // Other COD Array  - Sex Offset
+      long glLifeTabYOBOffset;     // Other COD Array  - YOB Offset
+      long gwIntensityAgeOffset;   // Smoking Intesity Array - Age Offset
+      long gwIntensitySexOffset;
+      long gwIntensityRaceOffset;
+      long glCpdAgeOffset;         // Cigarettes per Day Array  - Age Offset
+      long glCpdRaceOffset;        // Cigarettes per Day Array  - Race Offset
+      long glCpdSexOffset;         // Cigarettes per Day Array  - Sex Offset
+      long glCpdYOBOffset;         // Cigarettes per Day Array  - YOB Offset
 
       short gwNumSmokingGrps;
 
@@ -193,12 +130,10 @@ class Smoking_Simulator {
       void CalcCigarettesPerDay();
       void CalcCigarettesPerDaySwitch();
       short GetAgeOfDeathFromOtherCOD(short wStartAge, short wEndAge, SmokingStatus eStatus, bool &bWentPastData);
-      // Temporarily making public
-      // double GetNextInitRand();
-      // double GetNextCessRand();
-      // double GetNextLifeTabRand();
-      // double GetNextRandForIndiv();
-      void InitPRNGs(unsigned long ulInitSeed, unsigned long ulCessSeed, unsigned long ulLifeTabSeed, unsigned long ulIndRndsSeed);
+      double GetNextInitRand();
+      double GetNextCessRand();
+      double GetNextLifeTableRand();
+      double GetNextRandForIndiv();
       void LoadCPDIntensityProbs(const char* sDataFileName);
       void LoadCPDFile(const char* sCpdDataFile);
       void LoadOtherCODFile(const char* sLifeTableFileName);
@@ -206,11 +141,17 @@ class Smoking_Simulator {
       void OversamplePRNGs();
 
    public:
-      Smoking_Simulator();
+      // Constructor for RunWebVersion (which initiates RNGs after instantiation)
+      Smoking_Simulator(const char* sInitiationProbFile,  const char* sCessationProbFile,
+                        const char* sLifeTableFile,       const char* sCpdIntensityProbFile,
+                        const char* sCpdDataFile,         short wOutputType,
+                        short wCessationYear);
+
+      // Constructor
       Smoking_Simulator(const char* sInitiationProbFile, const char* sCessationProbFile,
                         const char* sLifeTableFile,      const char* sCpdIntensityProbFile,
                         const char* sCpdDataFile,        unsigned long ulInitPRNGSeed,
-                        unsigned long ulCessPRNGSeed,    unsigned long ulLifeTabSeed,
+                        unsigned long ulCessPRNGSeed,    unsigned long ulLifeTableSeed,
                         unsigned long ulIndivRndsSeed,   short wOutputType,
                         short wCessationYear);
 
@@ -223,7 +164,7 @@ class Smoking_Simulator {
       short GetYOBCohortGroup(short wYearBirth);
 
       void RunSimulation(const char* sInputFileName, const char* sOutputFileName = 0, bool bPrintToScreen = true);
-      void RunSimulationIndividual(short wRace, short wSex, short wYearBirth, FILE* pOutStream = 0);
+      void RunSimulationSingle(short wRace, short wSex, short wYearBirth, FILE* pOutStream = 0);
 
       void SetOutputType(short wOutputType);
       void WriteAsData(FILE *pOutStream);
@@ -231,7 +172,20 @@ class Smoking_Simulator {
       void WriteAsTimeline(FILE *pOutStream);
       void WriteAsXML(FILE *pOutStream);
       void WriteToStream(FILE *pOutStream);
-};
 
+      // Public getters
+      short GetPersonsYOB() {return gwPersonsYOB;}
+      short GetPersonsRace() {return gwPersonsRace;}
+      short GetPersonsSex() {return gwPersonsSex;}      
+      short GetPersonsInitAge() {return gwPersonsInitAge;}
+      short GetPersonsCessAge() {return gwPersonsCessAge;}
+      short GetPersonsAgeAtDeath() {return gwPersonsAgeAtDeath;}
+      SmokingIntensity GetPersonsSmkIntensity() {return gwPersonsSmkIntensity;}
+      double* GetPersonsCPDbyAge() {return gdPersonsCPDbyAge;}
+      double GetPersonsAvgCPD() {return gdPersonsAvgCPD;}
+      void setRNGStrategy(RNG_Strategy* rngStrategy);
+};
+void sim_snprintf(char* sMessage, size_t size, const char* format, ...);
+void sim_fprintf(FILE* stream, const char* format, ...);
 #endif
 
