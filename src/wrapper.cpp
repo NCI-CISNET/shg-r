@@ -905,7 +905,7 @@ int RunWebVersion(const char * sInputFileName)
                fprintf(pOutStream,"</RUN>\n</SIMULATION>\n");
             } else {
                try {
-                  pSimulator->RunSimulationIndividual(atoi(sVecValues[0]), atoi(sVecValues[1]),
+                  pSimulator->RunSimulationSingle(atoi(sVecValues[0]), atoi(sVecValues[1]),
                                             atoi(sVecValues[2]), pOutStream);
                } catch (SimException ex) {
            	      fprintf(pErrorStream,"\n<ERROR>\n%s\n</ERROR>\n",ex.GetError());
@@ -925,7 +925,7 @@ int RunWebVersion(const char * sInputFileName)
             fprintf(pOutStream,"<RUN>\n");
          for (j=0; j<lNumReps && bRunApp; j++) {
             try {
-               pSimulator->RunSimulationIndividual(atoi(sPARAM_Race),atoi(sPARAM_Sex),atoi(sPARAM_YOB),pOutStream);
+               pSimulator->RunSimulationSingle(atoi(sPARAM_Race),atoi(sPARAM_Sex),atoi(sPARAM_YOB),pOutStream);
             } catch(SimException ex) {
         	      fprintf(pErrorStream,"\n<ERROR>\n%s\n</ERROR>\n",ex.GetError());
                fprintf(pErrorStream,"<CALLPATH>\n%s\n</CALLPATH>",ex.GetCallPath());
@@ -940,7 +940,7 @@ int RunWebVersion(const char * sInputFileName)
             fprintf(pOutStream,"<SIMULATION>\n");
             WriteInputTag(pOutStream,sPARAM_Race,sPARAM_Sex,sPARAM_YOB,sPARAM_NumReps);
             fprintf(pOutStream,"<RUN>\n");
-            pSimulator->RunSimulationIndividual(atoi(sPARAM_Race),atoi(sPARAM_Sex),atoi(sPARAM_YOB),pOutStream);
+            pSimulator->RunSimulationSingle(atoi(sPARAM_Race),atoi(sPARAM_Sex),atoi(sPARAM_YOB),pOutStream);
             if (!gWithHoldTags)
                fprintf(pOutStream,"</RUN>\n</SIMULATION>\n");
          } catch (SimException ex) {
