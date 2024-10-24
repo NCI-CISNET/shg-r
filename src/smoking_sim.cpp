@@ -20,6 +20,7 @@
 #include <stdio.h>
 
 #include <mutex>
+#include <vector>
 
 #include "rng_strategy.h"
 using namespace std;
