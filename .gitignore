@@ -7,6 +7,6 @@ main.cpp
 .DS_Store
 .Rproj.user
 src/RcppSmokingHistoryGenerator.so
+src/wrapper_backup.xcpp
 .Rhistory
 /out
-src/wrapper_backup.xcpp
