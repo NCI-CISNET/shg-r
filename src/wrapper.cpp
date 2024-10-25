@@ -317,32 +317,7 @@ RCPP_MODULE(SmokingSimulator) {
    class_<SHGInterface>("SHGInterface")
        .constructor()
        .method("runSim", &SHGInterface::runSim, "Generates a data frame of simulated smoking histories for n individuals");
-       
-       //.method("initialize", &SHGInterface::initialize, "Test")
-       //.method("setRNGs", &SHGInterface::setRNGs, "Test")
-       //.method("GetNextCessRand_R", &SHGInterface::GetNextCessRand_R, "Test")
-       //.method("GetNextInitRand", &SHGInterface::GetNextInitRand, "Test")
-       //.method("runSimFromInputFile", &SHGInterface::runSimFromInputFile, "Generates a data frame of simulated smoking histories with parameters based on input file")
-       //.method("setRNGtype", &SHGInterface::setRNGtype, "Test");
-       //.method("GetNextCessRand_R_vector", &SHGInterface::GetNextCessRand_R_vector, "Test")
-       //.method("GetNextCessRandMT", &SHGInterface::GetNextCessRandMT, "Test");
    }
-//' RunWebVersion
-//'
-//' Executes a simluation based on parameters from a single input file
-//'
-//' @return bool
-//' @examples
-//' RunWebVersion()
-// ..[[Rcpp::export]]
-// bool RunWebVersion() {
-//    // Just stubbing this in here for reference in case we want to avoid the RCPP_MODULE macro
-//    // depends on having an input file which we probably don't want
-//    const char *sInputFileName = "./inst/inputs/test_input.txt";
-//    // RunFromParameters(sInputFileName, ...);
-//    RunWebVersion(sInputFileName);
-//    return true;
-// }
 
 // Returns a string containing the directory and filename concatenated together
 char* AssignFilename(const char* sDirectory, const char * sFilename) {
