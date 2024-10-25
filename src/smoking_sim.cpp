@@ -428,6 +428,8 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
 
             // Normalize Tij to obtain distribution from which one can sample
             for (j = 0; j < nColumns; j++) {
+               // TODO: the group, group * nColumns + j is a bit confusing and maybe incorrect
+               // warning: left operand of comma operator has no effect
                switchProbs[j] = Tij[group, group * nColumns + j] / r0[group];
             }
 
@@ -1329,7 +1331,7 @@ std::lock_guard<std::mutex> lock(dataMutex);
 
    try {
       if (gdInitiationProbs == NULL)
-         throw("Error", "Initiation Probabilies must be loaded before the Life Table Probabilities.\n");
+         throw SimException("Error", "Initiation Probabilies must be loaded before the Life Table Probabilities.\n");
 
       pLifeTableFile = fopen(sLifeTableFileName, "r");
       if (pLifeTableFile == NULL) {
@@ -1355,7 +1357,7 @@ std::lock_guard<std::mutex> lock(dataMutex);
       // Read in the Documentation lines, If the tag Version= is found, store it in the Version Num string for the file
       for (i = 2; i < wFirstDataLine; i++) {
          if ( fgets(sInputLine, 3000, pLifeTableFile) == NULL) {
-   	      sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Error in  file %s, End of File reached before location of first data line as specified in line 1\n", \ 
+   	      sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Error in  file %s, End of File reached before location of first data line as specified in line 1\n", \
                sLifeTableFileName);
    	      throw SimException("Error", sErrorMessage);
          }
