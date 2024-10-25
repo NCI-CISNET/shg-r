@@ -739,8 +739,7 @@ void RunInterface() {
    sim_simple_stdout("Please enter a seed for the PRNG that generates \nnon-lung cancer death probabilities.\n");
    sim_fprintf_stdout("Seed should be in range 0 - %ld.\n:",MAX(long));
    while (!bValidInput) {
-      fgets(sInputChar, 100, stdin);
-      if (IsPosLongInt(sInputChar))
+      if (fgets(sInputChar, 100, stdin) != NULL && IsPosLongInt(sInputChar))
          {
          ulOthCODSeed = (unsigned long) atol(sInputChar);
          bValidInput = true;
