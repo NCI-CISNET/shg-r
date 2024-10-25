@@ -54,8 +54,6 @@ class Smoking_Simulator {
       enum Sex {SEX_Male = 0, SEX_Female, NUM_SEXES};
       enum Race {RACE_AllRaces = 0, NUM_RACES};
 
-      double *gdPersonsCPDbyAge;   // Cigarettes smoked per day by age
-
 
  	// Private Member Variables
    private:
@@ -71,7 +69,6 @@ class Smoking_Simulator {
       // Cigarettes per day by race, sex, YOB and age (and smoking intensity? %bjr)
       long double *gdCigarettesPerDay;
       
-
       // Data limit variables
       short gwNumBirthCohorts;    // Number of birth cohorts Available
       short *gwYOBCohortStartYrs; // Starting year for each of the birth cohort groups
@@ -102,7 +99,7 @@ class Smoking_Simulator {
       short gwPersonsCessAge;      // Age of Smoking Cessation
       short gwPersonsAgeAtDeath;   // Age at death from COD other than lung cancer
       SmokingIntensity     gwPersonsSmkIntensity; // The smoking intesity group for the person (smokers only)
-      //double *gdPersonsCPDbyAge;   // Cigarettes smoked per day by age
+      double *gdPersonsCPDbyAge;   // Cigarettes smoked per day by age
       double gdPersonsAvgCPD;      // Average num of Cigarettes smoked per day (used for COD in former smokers)
 
       // Offset values for Probability Arrays
@@ -186,9 +183,7 @@ class Smoking_Simulator {
       short GetPersonsCessAge() {return gwPersonsCessAge;}
       short GetPersonsAgeAtDeath() {return gwPersonsAgeAtDeath;}
       SmokingIntensity GetPersonsSmkIntensity() {return gwPersonsSmkIntensity;}
-      double* GetPersonsCPDbyAge() {
-         return gdPersonsCPDbyAge;
-         }
+      double* GetPersonsCPDbyAge() {return gdPersonsCPDbyAge;}
       double GetPersonsAvgCPD() {return gdPersonsAvgCPD;}
       void setRNGStrategy(RNG_Strategy* rngStrategy);
 };

@@ -174,7 +174,7 @@ void SHGInterface::runSimSegment(int repeat, short wRace, short wSex, short wYea
                                  std::vector<int>& initiationAge, std::vector<int>& cessationAge,
                                  std::vector<int>& ageAtDeath, std::vector<std::string>& cpdString) {
 
-   {
+   
       //Rcpp::Rcout << "RunSim" << repeat;
       // short wRace = 0;
       // short wSex = 0;
@@ -209,6 +209,8 @@ void SHGInterface::runSimSegment(int repeat, short wRace, short wSex, short wYea
          //sex.push_back(wSex);
          //yearBirth.push_back(wYearBirth);
 
+         double* dPersonsCPDbyAge = qSimulator->GetPersonsCPDbyAge();
+
          sPersonsInitAge = qSimulator->GetPersonsInitAge();
          sPersonsCessAge = qSimulator->GetPersonsCessAge();
          sPersonsAgeAtDeath = qSimulator->GetPersonsAgeAtDeath();
@@ -216,32 +218,32 @@ void SHGInterface::runSimSegment(int repeat, short wRace, short wSex, short wYea
          cessationAge.push_back(sPersonsCessAge );
          ageAtDeath.push_back(sPersonsAgeAtDeath);
 
+
          // Print out the smoking intensity group for the person and the cigarettes smoked per day
          // Print the intensity group as +1 its value so range of values is from 1 to 5.
 //***TODO: check gdPersonsCPDbyAge = new double[wYearsAsSmoker]; (it should be called in smoking_sim to initialize, but perhaps it is not)
 //***see CalcCigarettesPerDaySwitch()
 
-         // cpd = "";
-         // if (sPersonsInitAge != -999)
-         // {
-         //    if (sPersonsCessAge == -999)
-         //       wYearsAsSmoker = wSIM_CUTOFF_YEAR - (wYearBirth + sPersonsInitAge) + 1;
-         //    else
-         //       wYearsAsSmoker = sPersonsCessAge - sPersonsInitAge + 1;
-         //    for (i = 0; i < wYearsAsSmoker; i++)
-         //    {
-         //       if (i + sPersonsInitAge < 100)
-         //       {
-         //          sPersonsCPDbyAge = pSimulator->gdPersonsCPDbyAge[i];
-         //          cpd += std::to_string(i + sPersonsInitAge) + " (" + std::to_string(static_cast<int>(sPersonsCPDbyAge)) + "), ";
-         //       }
-         //    }
-         // }
-         // cpdString.push_back(cpd);
-      }
-
-      fclose(pOutStream);
+         cpd = "";
+         if (sPersonsInitAge != -999)
+         {
+            if (sPersonsCessAge == -999)
+               wYearsAsSmoker = wSIM_CUTOFF_YEAR - (wYearBirth + sPersonsInitAge) + 1;
+            else
+               wYearsAsSmoker = sPersonsCessAge - sPersonsInitAge + 1;
+            for (i = 0; i < wYearsAsSmoker; i++)
+            {
+               if (i + sPersonsInitAge < 100)
+               {
+                  sPersonsCPDbyAge = dPersonsCPDbyAge[i];
+                  cpd += std::to_string(i + sPersonsInitAge) + " (" + std::to_string(static_cast<int>(sPersonsCPDbyAge)) + "), ";
+               }
+            }
+         }
+         cpdString.push_back(cpd);
+      
    }
+      fclose(pOutStream);
    }
 
 // Function to run simulations in parallel and combine results
@@ -286,13 +288,13 @@ Rcpp::DataFrame SHGInterface::runSim(int repeat, short wRace, short wSex, short 
 
     // Convert to Rcpp::DataFrame
     return Rcpp::DataFrame::create(
+        Rcpp::Named("wRace") = combinedWRace,
+        Rcpp::Named("wSex") = combinedWSex,
+        Rcpp::Named("wYearBirth") = combinedWYearBirth,
         Rcpp::Named("initiationAge") = combinedInitiationAge,
         Rcpp::Named("cessationAge") = combinedCessationAge,
         Rcpp::Named("ageAtDeath") = combinedAgeAtDeath,
-        //Rcpp::Named("cpdString") = combinedCpdString,  // Not yet implemented
-        Rcpp::Named("wRace") = combinedWRace,
-        Rcpp::Named("wSex") = combinedWSex,
-        Rcpp::Named("wYearBirth") = combinedWYearBirth
+        Rcpp::Named("CPD") = combinedCpdString
     );
 }
 
