@@ -8,7 +8,7 @@ public:
     Rcpp::DataFrame runSim(int repeat, short wRace, short wSex, short wYearBirth);
     void initialize();
     //void setRNGs(SEXP rng1, SEXP rng2, SEXP rng3, SEXP rng4);
-    void runSimFromInputFile(const char *sInputFileName);
+    void RunWebVersion(const char *sInputFileName);
     //void setRNGtype(std::string RNGtype);
     const char *sInputFile;
     const char *sOutputFile;
