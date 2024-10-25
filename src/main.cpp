@@ -665,7 +665,7 @@ void RunInterface() {
    sim_simple_stdout("3 - Immediate Cessation using NHIS estimates.\n");
    sim_simple_stdout("(Please enter 1, 2 or 3):\n");
    while (!bValidInput) {
-      fgets(sInputChar, 10, stdin);
+      (void) fgets(sInputChar, 10, stdin);
       if ( IsPosShortInt(sInputChar) && ((atoi(sInputChar) >= 1) && (atoi(sInputChar) <= 3))) {
          wSourceData = atoi(sInputChar);
          bValidInput = true;
@@ -674,7 +674,7 @@ void RunInterface() {
                     wMIN_IMMEDIATE_CESSATION_YEAR,wSIM_CUTOFF_YEAR);
             bValidInput = false;
             while (!bValidInput) {
-               fgets(sInputChar, 10, stdin);
+               (void) fgets(sInputChar, 10, stdin);
                if ( IsPosShortInt(sInputChar) &&
                     ((atoi(sInputChar) >= wMIN_IMMEDIATE_CESSATION_YEAR) &&
                      (atoi(sInputChar) <= wSIM_CUTOFF_YEAR)))
@@ -713,7 +713,7 @@ void RunInterface() {
    sim_fprintf_stdout("Seed should be in range 0 - %ld.\n:",MAX(long));
    while (!bValidInput)
       {
-      fgets(sInputChar, 100, stdin);
+      (void) fgets(sInputChar, 100, stdin);
       if ( IsPosLongInt(sInputChar)) {
          ulInitPRNGSeed = (unsigned long) atol(sInputChar);
          bValidInput = true;
@@ -727,7 +727,7 @@ void RunInterface() {
    sim_simple_stdout("Please enter a seed for the PRNG that generates Cessation Probabilities.\n");
    sim_fprintf_stdout("Seed should be in range 0 - %ld.\n:",MAX(long));
    while (!bValidInput) {
-      fgets(sInputChar, 100, stdin);
+      (void) fgets(sInputChar, 100, stdin);
       if (IsPosLongInt(sInputChar)) {
          ulCessPRNGSeed = (unsigned long) atol(sInputChar);
          bValidInput = true;
@@ -757,7 +757,7 @@ void RunInterface() {
    sim_simple_stdout("This PRNG is for defining characteristics such as \nwill the person be a light or heavy smoker.\n");
    sim_fprintf_stdout("Seed should be in range 0 - %ld.\n:",MAX(long));
    while (!bValidInput) {
-      fgets(sInputChar, 100, stdin);
+      (void) fgets(sInputChar, 100, stdin);
       if ( IsPosLongInt(sInputChar))
          {
          ulIndivRndSeed = (unsigned long) atol(sInputChar);
@@ -778,7 +778,8 @@ void RunInterface() {
    sim_simple_stdout("    and write results to the screen only.\n");
    sim_simple_stdout("(Please enter 1 to 4):\n");
 
-   while (!bValidInput) {fgets(sInputChar, 10, stdin);
+   while (!bValidInput) {
+      (void) fgets(sInputChar, 10, stdin);
       if ( IsPosShortInt(sInputChar) && ((atoi(sInputChar) >= 1) && (atoi(sInputChar) <= 4))) {
          wInputOutputType = atoi(sInputChar);
          bValidInput = true;
@@ -789,13 +790,13 @@ void RunInterface() {
 
    if (wInputOutputType == 1 || wInputOutputType == 2) {
       sim_fprintf_stdout("nSpecify input filename (100 char max):\n");
-      fgets(sInputChar, 100, stdin);
+      (void) fgets(sInputChar, 100, stdin);
       strcpy(sInputFileName,sInputChar);
    }
 
    if (wInputOutputType == 1 || wInputOutputType == 3) {
       sim_simple_stdout("Specify an output filename (100 char max):\n");
-      fgets(sInputChar, 100, stdin);
+      (void) fgets(sInputChar, 100, stdin);
 
       // Verify a .txt extension, if not, add one.
       if (strlen(sInputChar) > 4) {
@@ -832,7 +833,7 @@ void RunInterface() {
    sim_simple_stdout( "(Please enter 1 to 3):\n");
 
    while (!bValidInput) {
-      fgets(sInputChar, 100, stdin);
+      (void) fgets(sInputChar, 100, stdin);
       if ( IsPosShortInt(sInputChar) && ((atoi(sInputChar) >= 1) && (atoi(sInputChar) <= 3))) {
          wOutputFormat = atoi(sInputChar);
          bValidInput = true;
@@ -866,7 +867,7 @@ void RunInterface() {
             sim_fprintf_stdout("nEnter a sex value. \n(0 = Male, 1 = Female):\n");
             bValidInput = false;
             while (!bValidInput) {
-               fgets(sInputChar, 1, stdin);
+               (void) fgets(sInputChar, 1, stdin);
                if ( IsPosShortInt(sInputChar) && ((atoi(sInputChar) == 0) || (atoi(sInputChar) == 1))) {
                   wInputSex = (atoi(sInputChar));
                   bValidInput = true;
@@ -878,7 +879,7 @@ void RunInterface() {
             sim_fprintf_stdout("nEnter a year of birth between %d and %d:\n",pSimulator->GetMinYearOfBirth(),pSimulator->GetMaxYearOfBirth());
             bValidInput = false;
             while (!bValidInput) {
-               fgets(sInputChar, 4, stdin);
+               (void) fgets(sInputChar, 4, stdin);
                if ( IsPosShortInt(sInputChar) &&
                     ((atoi(sInputChar) >= pSimulator->GetMinYearOfBirth()) &&
                      (atoi(sInputChar) <= pSimulator->GetMaxYearOfBirth()))) {
@@ -893,7 +894,7 @@ void RunInterface() {
             sim_fprintf_stdout("nNumber of persons to simulate for supplied values:\n");
             bValidInput = false;
             while (!bValidInput) {
-               fgets(sInputChar, 100, stdin);
+               (void) fgets(sInputChar, 100, stdin);
                if ( IsPosLongInt(sInputChar) && (atol(sInputChar) >= 1)) {
                   lNumRepetitions = atol(sInputChar);
                   bValidInput = true;
@@ -914,7 +915,7 @@ void RunInterface() {
             sim_simple_stdout( "\nSimulations complete for supplied input.\n1 - Perform more simulations\n2 - Quit\n:");
             bValidInput = false;
             while (!bValidInput) {
-               fgets(sInputChar, 1, stdin);
+               (void) fgets(sInputChar, 1, stdin);
                if ( IsPosShortInt(sInputChar)) {
                   wTempValue = atoi(sInputChar);
                   if ((wTempValue != 1) && (wTempValue != 2)) {
