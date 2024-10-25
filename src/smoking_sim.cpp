@@ -963,7 +963,7 @@ void Smoking_Simulator::LoadCPDIntensityProbs(const char* sDataFileName) {
 
       if ((wNumRaces != gwNumRaceValues) || (wNumSexes != gwNumSexValues)) {
          sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Mismatch between number of races and number of sexes in initiation file and cohorts from CPD Intensity \
-            file.\nRace: Init = %d, CPD = %d\nSex: Init = %d, CPD = %d\n", gwNumRaceValues, wRaceValue, gwNumSexValues, wSexValue);
+            file.\nRace: Init = %d, CPD = %d\nSex: Init = %d, CPD = %d\n", gwNumRaceValues, wNumRaces, gwNumSexValues, wNumSexes);
 	      throw SimException("Error", sErrorMessage);
       }
 
