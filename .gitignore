@@ -3,7 +3,6 @@
 *.dll
 inst/.DS_Store
 inst/inputs/.DS_Store
-main.cpp
 .DS_Store
 .Rproj.user
 src/RcppSmokingHistoryGenerator.so
