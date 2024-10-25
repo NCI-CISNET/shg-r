@@ -341,9 +341,9 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
          throw SimException("Error", "One or more of the data components for cigarettes \nper day calculation has not been initialized.\n");
       */
 
-      if (gwPersonsInitAge == -999){
+      if (gwPersonsInitAge == -999)
          throw SimException("Error", "CalcCigarettesPerDay should not be called for \nindividuals that do not initiate smoking.\n");
-      }
+
       // Using the offset formula...
       lCpdStartIndex = (glCpdRaceOffset * (gwPersonsRace)) +
                        (glCpdSexOffset * (gwPersonsSex)) +
@@ -1130,11 +1130,6 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
          throw SimException("Error", sErrorMessage);
       }
 
-      // if (sInputLine == NULL) {
-	   //    sim_snprintf(sErrorMessage, sizeof(sErrorMessage), "Error reading first DATA line of file %s", sDataFileName);
-	   //    throw SimException("Error", sErrorMessage);
-	   // }
-
       pTokenPtr = strtok(sInputLine, ",");
       wRaceValue = atoi(pTokenPtr);
       pTokenPtr = strtok(NULL, ",");
@@ -1537,9 +1532,13 @@ void Smoking_Simulator::RunSimulation(const char* sInputFileName, const char* sO
          wYOB = atoi(pTokenPtr);
 
          RunSimulationSingle(wRace, wSex, wYOB, pOutputFile);
-         // TODO Add compiler flag to enable/disable print to screen or send to RCPP print function
-         // if (bPrintToScreen) 
-         //    WriteToStream(stdout);
+         if (bPrintToScreen) {
+            #ifdef IS_RCPP
+            // Probably no need to print to screen in R;
+            #else
+            WriteToStream(stdout);
+            #endif
+         }
       }
 
       fclose(pInputFile);
