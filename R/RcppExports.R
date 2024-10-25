@@ -18,12 +18,3 @@ NULL
 #' @field new Constructor
 NULL
 
-#' RunWebVersion
-#'
-#' Executes a simluation based on parameters from a single input file
-#'
-#' @return bool
-#' @examples
-#' RunWebVersion()
-NULL
-
