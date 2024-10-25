@@ -114,6 +114,20 @@ void sim_simple_stderr(const char* message) {
    #endif
 }
 
+// sim_fprintf_stderr is a function that has the same signature as fprintf and passes along the same arguments to vfprintf
+// RCPP does not allow sim_fprintf to be used, so this function is used to replace it
+// Include the arg -DIS_RCPP CXXFLAGS in the Makevars file (eg CXXFLAGS = -O3 -DIS_RCPP)
+void sim_fprintf_stdout(const char* format, ...) {
+   va_list args;
+   va_start(args, format);
+   #ifdef IS_RCPP
+      //Rcpp::Rcout << vfmt::vformat(format, args);
+   #else
+      fprintf(stdout, format, args);
+   #endif
+   va_end(args);
+}
+
 // save as above but for stdout and with no variable replacement args
 void sim_simple_stdout(const char* message) {
    #ifdef IS_RCPP
@@ -641,22 +655,22 @@ void RunInterface() {
                   		lNumRepetitions;
    FILE*          		pOutputFile = 0;
 
-   sim_fprintf(stdout,"Smoking History Simulator\n\n");
+   sim_simple_stdout("Smoking History Simulator\n\n");
 
    bValidInput = false;
    wCessationYear = 0; // 0 = do not use immediate cessation.
-   sim_fprintf(stdout,"\nSelect which estimates to use as the model inputs:\n");
-   sim_fprintf(stdout,"1 - NHIS estimates.\n");
-   sim_fprintf(stdout,"2 - Counterfactual estimates.\n");
-   sim_fprintf(stdout,"3 - Immediate Cessation using NHIS estimates.\n");
-   sim_fprintf(stdout,"(Please enter 1, 2 or 3):\n");
+   sim_fprintf_stdout("nSelect which estimates to use as the model inputs:\n");
+   sim_simple_stdout("1 - NHIS estimates.\n");
+   sim_simple_stdout("2 - Counterfactual estimates.\n");
+   sim_simple_stdout("3 - Immediate Cessation using NHIS estimates.\n");
+   sim_simple_stdout("(Please enter 1, 2 or 3):\n");
    while (!bValidInput) {
       fgets(sInputChar, 10, stdin);
       if ( IsPosShortInt(sInputChar) && ((atoi(sInputChar) >= 1) && (atoi(sInputChar) <= 3))) {
          wSourceData = atoi(sInputChar);
          bValidInput = true;
          if (wSourceData == 3) {
-            sim_fprintf(stdout,"\nEnter a year to use for immediate cessation.\nAll smokers will quit smoking on Jan 1st of this year.\n(Please enter a year in the range %d-%d):\n",
+            sim_fprintf_stdout("\nEnter a year to use for immediate cessation.\nAll smokers will quit smoking on Jan 1st of this year.\n(Please enter a year in the range %d-%d):\n",
                     wMIN_IMMEDIATE_CESSATION_YEAR,wSIM_CUTOFF_YEAR);
             bValidInput = false;
             while (!bValidInput) {
@@ -669,13 +683,13 @@ void RunInterface() {
                   bValidInput = true;
                   }
                else
-                  sim_fprintf(stdout,"\n\"%s\" - Invalid Input.\nPlease enter a value between %d and %d:\n",sInputChar,wMIN_IMMEDIATE_CESSATION_YEAR,wSIM_CUTOFF_YEAR);
+                  sim_fprintf_stdout("n\"%s\" - Invalid Input.\nPlease enter a value between %d and %d:\n",sInputChar,wMIN_IMMEDIATE_CESSATION_YEAR,wSIM_CUTOFF_YEAR);
                }
 
             }
          }
       else
-         sim_fprintf(stdout,"\n\"%s\" - Invalid Input.\nPlease enter either 1, 2 or 3:\n", sInputChar);
+         sim_fprintf_stdout("n\"%s\" - Invalid Input.\nPlease enter either 1, 2 or 3:\n", sInputChar);
       }
 
    /* Load the filenames for the application */
@@ -694,9 +708,9 @@ void RunInterface() {
    }
 
    bValidInput         = false;
-   sim_fprintf(stdout,"\nRandom Number Generator Seeds:\n");
-   sim_fprintf(stdout,"Please enter a seed for the PRNG that generates Initiation Probabilities.\n");
-   sim_fprintf(stdout,"Seed should be in range 0 - %ld.\n:",MAX(long));
+   sim_fprintf_stdout("nRandom Number Generator Seeds:\n");
+   sim_simple_stdout("Please enter a seed for the PRNG that generates Initiation Probabilities.\n");
+   sim_fprintf_stdout("Seed should be in range 0 - %ld.\n:",MAX(long));
    while (!bValidInput)
       {
       fgets(sInputChar, 100, stdin);
@@ -705,13 +719,13 @@ void RunInterface() {
          bValidInput = true;
          }
       else
-         sim_fprintf(stdout,"\n\"%s\" - Invalid Input.\nPlease enter a value in range 0 - %ld.\n:",
+         sim_fprintf_stdout("n\"%s\" - Invalid Input.\nPlease enter a value in range 0 - %ld.\n:",
                  sInputChar,MAX(long));
       }
 
    bValidInput = false;
-   sim_fprintf(stdout,"Please enter a seed for the PRNG that generates Cessation Probabilities.\n");
-   sim_fprintf(stdout,"Seed should be in range 0 - %ld.\n:",MAX(long));
+   sim_simple_stdout("Please enter a seed for the PRNG that generates Cessation Probabilities.\n");
+   sim_fprintf_stdout("Seed should be in range 0 - %ld.\n:",MAX(long));
    while (!bValidInput) {
       fgets(sInputChar, 100, stdin);
       if (IsPosLongInt(sInputChar)) {
@@ -719,13 +733,13 @@ void RunInterface() {
          bValidInput = true;
       }
       else
-         sim_fprintf(stdout,"\n\"%s\" - Invalid Input.\nPlease enter a value in range 0 - %ld.\n:",
+         sim_fprintf_stdout("n\"%s\" - Invalid Input.\nPlease enter a value in range 0 - %ld.\n:",
                  sInputChar,MAX(long));
       }
 
    bValidInput = false;
-   sim_fprintf(stdout,"Please enter a seed for the PRNG that generates \nnon-lung cancer death probabilities.\n");
-   sim_fprintf(stdout,"Seed should be in range 0 - %ld.\n:",MAX(long));
+   sim_simple_stdout("Please enter a seed for the PRNG that generates \nnon-lung cancer death probabilities.\n");
+   sim_fprintf_stdout("Seed should be in range 0 - %ld.\n:",MAX(long));
    while (!bValidInput) {
       fgets(sInputChar, 100, stdin);
       if (IsPosLongInt(sInputChar))
@@ -734,14 +748,14 @@ void RunInterface() {
          bValidInput = true;
          }
       else
-         sim_fprintf(stdout,"\n\"%s\" - Invalid Input.\nPlease enter a value in range 0 - %ld.\n:",
+         sim_fprintf_stdout("n\"%s\" - Invalid Input.\nPlease enter a value in range 0 - %ld.\n:",
                  sInputChar,MAX(long));
       }
 
    bValidInput = false;
-   sim_fprintf(stdout,"Please enter a seed for the PRNG that generates \nunique random numbers for the simulated individual.\n");
-   sim_fprintf(stdout,"This PRNG is for defining characteristics such as \nwill the person be a light or heavy smoker.\n");
-   sim_fprintf(stdout,"Seed should be in range 0 - %ld.\n:",MAX(long));
+   sim_simple_stdout("Please enter a seed for the PRNG that generates \nunique random numbers for the simulated individual.\n");
+   sim_simple_stdout("This PRNG is for defining characteristics such as \nwill the person be a light or heavy smoker.\n");
+   sim_fprintf_stdout("Seed should be in range 0 - %ld.\n:",MAX(long));
    while (!bValidInput) {
       fgets(sInputChar, 100, stdin);
       if ( IsPosLongInt(sInputChar))
@@ -750,37 +764,37 @@ void RunInterface() {
          bValidInput = true;
          }
       else
-         sim_fprintf(stdout,"\n\"%s\" - Invalid Input.\nPlease enter a value in range 0 - %ld.\n:",
+         sim_fprintf_stdout("n\"%s\" - Invalid Input.\nPlease enter a value in range 0 - %ld.\n:",
                  sInputChar,MAX(long));
       }
 
    bValidInput = false;
-   sim_fprintf(stdout,"\nData Input and Output Options:\n");
-   sim_fprintf(stdout,"1 - Read values from a file and write results to an output file.\n");
-   sim_fprintf(stdout,"2 - Read values from a file and write results to the screen only.\n");
-   sim_fprintf(stdout,"3 - Manually enter Sex, Race and Year of Birth Values \n");
-   sim_fprintf(stdout,"    and write results to an output file.\n");
-   sim_fprintf(stdout,"4 - Manually enter Sex, Race and Year of Birth Values\n");
-   sim_fprintf(stdout,"    and write results to the screen only.\n");
-   sim_fprintf(stdout,"(Please enter 1 to 4):\n");
+   sim_fprintf_stdout("nData Input and Output Options:\n");
+   sim_simple_stdout("1 - Read values from a file and write results to an output file.\n");
+   sim_simple_stdout("2 - Read values from a file and write results to the screen only.\n");
+   sim_simple_stdout("3 - Manually enter Sex, Race and Year of Birth Values \n");
+   sim_simple_stdout("    and write results to an output file.\n");
+   sim_simple_stdout("4 - Manually enter Sex, Race and Year of Birth Values\n");
+   sim_simple_stdout("    and write results to the screen only.\n");
+   sim_simple_stdout("(Please enter 1 to 4):\n");
 
    while (!bValidInput) {fgets(sInputChar, 10, stdin);
       if ( IsPosShortInt(sInputChar) && ((atoi(sInputChar) >= 1) && (atoi(sInputChar) <= 4))) {
          wInputOutputType = atoi(sInputChar);
          bValidInput = true;
       } else {
-         sim_fprintf(stdout,"\n\"%s\" - Invalid Input.\nPlease enter a value 1 through 4:\n", sInputChar);
+         sim_fprintf_stdout("n\"%s\" - Invalid Input.\nPlease enter a value 1 through 4:\n", sInputChar);
       }
    }
 
    if (wInputOutputType == 1 || wInputOutputType == 2) {
-      sim_fprintf(stdout,"\nSpecify input filename (100 char max):\n");
+      sim_fprintf_stdout("nSpecify input filename (100 char max):\n");
       fgets(sInputChar, 100, stdin);
       strcpy(sInputFileName,sInputChar);
    }
 
    if (wInputOutputType == 1 || wInputOutputType == 3) {
-      sim_fprintf(stdout,"Specify an output filename (100 char max):\n");
+      sim_simple_stdout("Specify an output filename (100 char max):\n");
       fgets(sInputChar, 100, stdin);
 
       // Verify a .txt extension, if not, add one.
@@ -797,9 +811,9 @@ void RunInterface() {
       if (((strlen(sInputChar) > 4) && (strcmp(sExtensionCheck, ".TXT")!=0))||(strlen(sInputChar) <= 4)) {
          strcpy(sOutputFileName, sInputChar);
          strcat(sOutputFileName, ".TXT");
-         sim_fprintf(stdout, "\nExtension '.TXT' was added to the end of the supplied filename.\n");
+         sim_simple_stdout( "\nExtension '.TXT' was added to the end of the supplied filename.\n");
          if (wInputOutputType == 1 ) {
-            sim_fprintf(stdout, "Press 'Enter' to proceed");
+            sim_simple_stdout( "Press 'Enter' to proceed");
             getc(stdin);
          }
       } else {
@@ -811,11 +825,11 @@ void RunInterface() {
    }
 
    bValidInput = false;
-   sim_fprintf(stdout, "\nOutput Format Options:\n");
-   sim_fprintf(stdout, "1 - Write the output as a comma-delimited data string.\n");
-   sim_fprintf(stdout, "2 - Write the output as plain text.\n");
-   sim_fprintf(stdout, "3 - Write the output in a timeline-style format.\n");
-   sim_fprintf(stdout, "(Please enter 1 to 3):\n");
+   sim_simple_stdout( "\nOutput Format Options:\n");
+   sim_simple_stdout( "1 - Write the output as a comma-delimited data string.\n");
+   sim_simple_stdout( "2 - Write the output as plain text.\n");
+   sim_simple_stdout( "3 - Write the output in a timeline-style format.\n");
+   sim_simple_stdout( "(Please enter 1 to 3):\n");
 
    while (!bValidInput) {
       fgets(sInputChar, 100, stdin);
@@ -823,7 +837,7 @@ void RunInterface() {
          wOutputFormat = atoi(sInputChar);
          bValidInput = true;
       } else {
-         sim_fprintf(stdout,"\n\"%s\" - Invalid Input.\nPlease enter a value 1 through 3:\n", sInputChar);
+         sim_fprintf_stdout("n\"%s\" - Invalid Input.\nPlease enter a value 1 through 3:\n", sInputChar);
       }
    }
 
@@ -838,10 +852,10 @@ void RunInterface() {
                                           wCessationYear);
 
       if (wInputOutputType == 1) {
-         sim_fprintf(stdout,"\n\n");
+         sim_fprintf_stdout("n\n");
          pSimulator->RunSimulation(sInputFileName, sOutputFileName, true);
       } else if (wInputOutputType == 2) {
-         sim_fprintf(stdout,"\n\n");
+         sim_fprintf_stdout("n\n");
          pSimulator->RunSimulation(sInputFileName);
       } else {  // manually enter sex, race, Year of Birth
 
@@ -849,7 +863,7 @@ void RunInterface() {
 
          while (bKeepRepeating) {
             wInputRace = 0; // Only All Races is available in this iteration of program
-            sim_fprintf(stdout,"\nEnter a sex value. \n(0 = Male, 1 = Female):\n");
+            sim_fprintf_stdout("nEnter a sex value. \n(0 = Male, 1 = Female):\n");
             bValidInput = false;
             while (!bValidInput) {
                fgets(sInputChar, 1, stdin);
@@ -857,11 +871,11 @@ void RunInterface() {
                   wInputSex = (atoi(sInputChar));
                   bValidInput = true;
                } else {
-                  sim_fprintf(stdout,"\n\"%s\" - Invalid Input.\nPlease enter 0 or 1:\n", sInputChar);
+                  sim_fprintf_stdout("n\"%s\" - Invalid Input.\nPlease enter 0 or 1:\n", sInputChar);
                }
             }
 
-            sim_fprintf(stdout,"\nEnter a year of birth between %d and %d:\n",pSimulator->GetMinYearOfBirth(),pSimulator->GetMaxYearOfBirth());
+            sim_fprintf_stdout("nEnter a year of birth between %d and %d:\n",pSimulator->GetMinYearOfBirth(),pSimulator->GetMaxYearOfBirth());
             bValidInput = false;
             while (!bValidInput) {
                fgets(sInputChar, 4, stdin);
@@ -871,12 +885,12 @@ void RunInterface() {
                   wInputYOB   = atoi(sInputChar);
                   bValidInput = true;
                } else {
-                  sim_fprintf(stdout,"\n\"%s\" - Invalid Input.\nPlease enter a value between %d and %d:\n",
+                  sim_fprintf_stdout("n\"%s\" - Invalid Input.\nPlease enter a value between %d and %d:\n",
                          sInputChar,pSimulator->GetMinYearOfBirth(),pSimulator->GetMaxYearOfBirth());
                }
             }
 
-            sim_fprintf(stdout,"\nNumber of persons to simulate for supplied values:\n");
+            sim_fprintf_stdout("nNumber of persons to simulate for supplied values:\n");
             bValidInput = false;
             while (!bValidInput) {
                fgets(sInputChar, 100, stdin);
@@ -884,24 +898,27 @@ void RunInterface() {
                   lNumRepetitions = atol(sInputChar);
                   bValidInput = true;
                } else {
-                  sim_fprintf(stdout,"\n\"%s\" is not a valid value.\nAllowable range is 1 to %ld \nPlease enter a new value:\n", sInputChar, MAX(long));
+                  sim_fprintf_stdout("n\"%s\" is not a valid value.\nAllowable range is 1 to %ld \nPlease enter a new value:\n", sInputChar, MAX(long));
                }
             }
 
-            sim_fprintf(stdout,"\n");
+            sim_fprintf_stdout("n");
             for (long j = 1; j <= lNumRepetitions; j++) {
                pSimulator->RunSimulationSingle(wInputRace, wInputSex, wInputYOB, pOutputFile);
+               #ifdef IS_RCPP
+               #else
                pSimulator->WriteToStream(stdout);
+               #endif
             }
 
-            sim_fprintf(stdout, "\nSimulations complete for supplied input.\n1 - Perform more simulations\n2 - Quit\n:");
+            sim_simple_stdout( "\nSimulations complete for supplied input.\n1 - Perform more simulations\n2 - Quit\n:");
             bValidInput = false;
             while (!bValidInput) {
                fgets(sInputChar, 1, stdin);
                if ( IsPosShortInt(sInputChar)) {
                   wTempValue = atoi(sInputChar);
                   if ((wTempValue != 1) && (wTempValue != 2)) {
-                     sim_fprintf(stdout,"\n\"%s\" - Invalid Input.\nPlease enter 1 or 2:\n", sInputChar);
+                     sim_fprintf_stdout("n\"%s\" - Invalid Input.\nPlease enter 1 or 2:\n", sInputChar);
                   } else {
                      if (wTempValue == 2) {
                         bKeepRepeating = false;
@@ -909,21 +926,21 @@ void RunInterface() {
                      bValidInput = true;
                   }
                } else {
-                  sim_fprintf(stdout,"\n\"%s\" - Invalid Input.\nPlease enter 1 or 2:\n", sInputChar);
+                  sim_fprintf_stdout("n\"%s\" - Invalid Input.\nPlease enter 1 or 2:\n", sInputChar);
                }
             }
 
          } // while(bKeepRepeating)
       }
-      sim_fprintf(stdout,"\nSimulations complete\nPress \"Enter\" to close this window\n");
+      sim_simple_stdout("nSimulations complete\nPress \"Enter\" to close this window\n");
       getc(stdin);
       }
    catch (SimException ex) {
-      sim_fprintf(stdout,"\nInternal error occurred\n");
-      sim_fprintf(stdout,"Error : %s\n",ex.GetError());
+      sim_simple_stdout("nInternal error occurred\n");
+      sim_fprintf_stdout("Error : %s\n",ex.GetError());
       getc(stdin);
    } catch (...) {
-      sim_fprintf(stdout,"\nUnknown Error Occurred\n");
+      sim_simple_stdout("nUnknown Error Occurred\n");
       getc(stdin);
    }
 
@@ -993,7 +1010,7 @@ int RunWebVersion(const char * sInputFileName)
    pInputFile = fopen(sInputFileName,"r");
    
    if (pInputFile == NULL) {
-      sim_fprintf(stdout, "The specified input file does not exist or could not be opened.\n");
+      sim_simple_stdout( "The specified input file does not exist or could not be opened.\n");
       bRunApp = false;
    }
    
@@ -1289,22 +1306,22 @@ int RunWebVersion(const char * sInputFileName)
 
       // Check for the error file string, open it if it exists, otherwise, open the default error file
       if (sErrorFile == NULL) {
-         sim_fprintf(stdout,"Name for Error log file was not found in input file: %s", sInputFileName);
+         sim_fprintf_stdout("Name for Error log file was not found in input file: %s", sInputFileName);
          bRunApp = false;
       } else {
          pErrorStream = fopen(sErrorFile,"w");
       }
 
       if (sRNGStrategy == NULL) {   
-         //sim_fprintf(stdout,"Using default random number strategy of Mersenne Twister because none was specified in input file: %s\n", sInputFileName);
+         //sim_simple_stdout("Using default random number strategy of Mersenne Twister because none was specified in input file: %s\n", sInputFileName);
          const char* sRNGStrategy = "MersenneTwister";
       }
       
       else if (strcmp(sRNGStrategy, "MersenneTwister") == 0) {
-         //sim_fprintf(stdout,"Using Mersenne Twister random number generator strategy.\n");
+         //sim_simple_stdout("Using Mersenne Twister random number generator strategy.\n");
       }
       else if (strcmp(sRNGStrategy, "RngStream") == 0) {
-         //sim_fprintf(stdout,"Using RngStream random number generator strategy.\n");
+         //sim_simple_stdout("Using RngStream random number generator strategy.\n");
       }
       else {
          sim_fprintf_stderr("The specified RNG strategy is invalid: %s\n", sRNGStrategy);
@@ -1674,7 +1691,7 @@ void Usage(void) {
    sim_simple_stdout("        Runs a user interface version of program.\n\n");
    sim_simple_stdout("Or\n\n");
    sim_simple_stdout(" Smoking_Initiation DATA_DIR INIT_SEED CESS_SEED OTH_COD_SEED INPUT_FILE OUTPUT_FILE OUTPUT_TYPE CESS_YEAR\n");
-   sim_simple_stdout("\nOr\n\n");
+   sim_fprintf_stdout("nOr\n\n");
    sim_simple_stdout(" Smoking_Initiation INIT_SEED CESS_SEED OTH_COD_SEED INPUT_FILE OUTPUT_FILE OUTPUT_TYPE CESS_YEAR\n");
    sim_simple_stdout(" Where:\n");
    sim_simple_stdout("    DATA_DIR     - Directory that contains the input files used by the application \n");
@@ -1896,7 +1913,7 @@ bool CreateDataFile(const char *sNumToSimulate, const char* sOutFileName, char* 
                   for (l = 0; l < lNumToSimulate; l++) {
                      pSimulator->RunSimulationSingle( i, j, k, pOutputFile);
                   }
-                  printf("%d %d %d\n",i,j,k);
+                  sim_fprintf_stdout("%d %d %d\n",i,j,k);
                }
             }
          }
