@@ -1,12 +1,11 @@
 // CISNET (www.cisnet.cancer.gov)
 // Lung Cancer Base Case Group
-// Smoking History Simulation Application
+// Rcpp wrapper for Smoking History Simulation Application
 // Application to Simulate Initiation and Cessation Ages of individuals based on sex, race and year of birth.
-// File: main.cpp
-// Author: Martin Krapcho & Ben Racine
-// E-Mail: KrapchoM@imsweb.com & ben.racine@cornerstonenw.com
+// File: wrapper.cpp
+// Author: John Clarke
+// E-Mail: john.clarke@cornerstonenw.com
 // NCI Contact: Rocky Feuer
-// Please view the HelpFile.txt file included with this source code for details pertaining to this version
 
 // TODO: Update attribution and dates above
 
