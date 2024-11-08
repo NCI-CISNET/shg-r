@@ -176,12 +176,13 @@ using namespace Rcpp;
 // race, sex, and cohort are fixed for this kind of simulation
 void SHGInterface::runSimSegment(int repeat, short wRace, short wSex, short wYearBirth,
                                  std::vector<int>& initiationAge, std::vector<int>& cessationAge,
-                                 std::vector<int>& ageAtDeath, std::vector<std::string>& cpdString) {
+                                 std::vector<int>& ageAtDeath, std::vector<std::string>& cpdString,
+                                 int offset) {
 //TODO we don't need an output file except to compare results with legacy code. Perhaps we can produce output only on demand?
 
       FILE *pOutStream = 0,
            *pErrorStream = 0;
-      const char *sOutputFile = "./out/test_output_from_module.txt";
+      const char *sOutputFile = "./out/test_output_from_module2.txt";
 
       pOutStream = fopen(sOutputFile, "w");
       if (pOutStream == NULL)
@@ -203,14 +204,9 @@ void SHGInterface::runSimSegment(int repeat, short wRace, short wSex, short wYea
          qSimulator->RunSimulationSingle(wRace, wSex, wYearBirth, pOutStream);
 
          double* dPersonsCPDbyAge = qSimulator->GetPersonsCPDbyAge();
-
          sPersonsInitAge = qSimulator->GetPersonsInitAge();
          sPersonsCessAge = qSimulator->GetPersonsCessAge();
          sPersonsAgeAtDeath = qSimulator->GetPersonsAgeAtDeath();
-         initiationAge.push_back(sPersonsInitAge);
-         cessationAge.push_back(sPersonsCessAge );
-         ageAtDeath.push_back(sPersonsAgeAtDeath);
-
 
          // Print out the smoking intensity group for the person and the cigarettes smoked per day
          // Print the intensity group as +1 its value so range of values is from 1 to 5.
@@ -231,7 +227,11 @@ void SHGInterface::runSimSegment(int repeat, short wRace, short wSex, short wYea
                }
             }
          }
-         cpdString.push_back(cpd);
+
+         initiationAge[offset + j] = qSimulator->GetPersonsInitAge();
+         cessationAge[offset + j] = qSimulator->GetPersonsCessAge();
+         ageAtDeath[offset + j] = qSimulator->GetPersonsAgeAtDeath();
+         cpdString[offset + j] = Rcpp::String(cpd);
       
    }
       fclose(pOutStream);
@@ -284,18 +284,31 @@ void SHGInterface::runSimSegment(int repeat, short wRace, short wSex, short wYea
 Rcpp::DataFrame SHGInterface::runSim(int repeat, short wRace, short wSex, short wYearBirth) {
     int n = 10; // Number of parallel simulations
     int repeat_per_sim = repeat / n;
+    int remainder = repeat % n; // Calculate the remainder
+
+    // Pre-allocate vectors
+    std::vector<int> initiationAge(repeat), cessationAge(repeat), ageAtDeath(repeat);
+    std::vector<std::string> cpdString(repeat);
+    std::vector<short> wRaces(repeat, wRace), wSexes(repeat, wSex);
+    std::vector<int> wYearBirths(repeat, wYearBirth);
 
     // Vectors to store futures
     std::vector<std::future<void>> futures;
-    std::vector<std::vector<int>> initiationAges(n), cessationAges(n), ageAtDeaths(n);
-    std::vector<std::vector<std::string>> cpdStrings(n);
 
     // Launch n simulations in parallel
     for (int i = 0; i < n; ++i) {
+        int offset = i * repeat_per_sim;
+        int current_repeat_per_sim = repeat_per_sim;
+
+        // Add the remainder to the last segment
+        if (i == n - 1) {
+            current_repeat_per_sim += remainder;
+        }
+
         futures.push_back(std::async(std::launch::async, &SHGInterface::runSimSegment, this,
-                                     repeat_per_sim, wRace, wSex, wYearBirth,
-                                     std::ref(initiationAges[i]), std::ref(cessationAges[i]),
-                                     std::ref(ageAtDeaths[i]), std::ref(cpdStrings[i])));
+                                     current_repeat_per_sim, wRace, wSex, wYearBirth,
+                                     std::ref(initiationAge), std::ref(cessationAge),
+                                     std::ref(ageAtDeath), std::ref(cpdString), offset));
     }
 
     // Wait for all simulations to complete
@@ -303,31 +316,15 @@ Rcpp::DataFrame SHGInterface::runSim(int repeat, short wRace, short wSex, short 
         fut.get();
     }
 
-    // Combine results
-    std::vector<int> combinedInitiationAge, combinedCessationAge, combinedAgeAtDeath;
-    std::vector<std::string> combinedCpdString;
-    std::vector<short> combinedWRace, combinedWSex;
-    std::vector<int> combinedWYearBirth;
-
-    for (int i = 0; i < n; ++i) {
-        combinedInitiationAge.insert(combinedInitiationAge.end(), initiationAges[i].begin(), initiationAges[i].end());
-        combinedCessationAge.insert(combinedCessationAge.end(), cessationAges[i].begin(), cessationAges[i].end());
-        combinedAgeAtDeath.insert(combinedAgeAtDeath.end(), ageAtDeaths[i].begin(), ageAtDeaths[i].end());
-        combinedCpdString.insert(combinedCpdString.end(), cpdStrings[i].begin(), cpdStrings[i].end());
-        combinedWRace.insert(combinedWRace.end(), initiationAges[i].size(), wRace);
-        combinedWSex.insert(combinedWSex.end(), initiationAges[i].size(), wSex);
-        combinedWYearBirth.insert(combinedWYearBirth.end(), initiationAges[i].size(), wYearBirth);
-    }
-
     // Convert to Rcpp::DataFrame
     return Rcpp::DataFrame::create(
-        Rcpp::Named("wRace") = combinedWRace,
-        Rcpp::Named("wSex") = combinedWSex,
-        Rcpp::Named("wYearBirth") = combinedWYearBirth,
-        Rcpp::Named("initiationAge") = combinedInitiationAge,
-        Rcpp::Named("cessationAge") = combinedCessationAge,
-        Rcpp::Named("ageAtDeath") = combinedAgeAtDeath,
-        Rcpp::Named("CPD") = combinedCpdString
+        Rcpp::Named("wRace") = wRaces,
+        Rcpp::Named("wSex") = wSexes,
+        Rcpp::Named("wYearBirth") = wYearBirths,
+        Rcpp::Named("initiationAge") = initiationAge,
+        Rcpp::Named("cessationAge") = cessationAge,
+        Rcpp::Named("ageAtDeath") = ageAtDeath,
+        Rcpp::Named("CPD") = cpdString
     );
 }
 
@@ -351,6 +348,5 @@ RCPP_MODULE(SmokingSimulator) {
        .constructor()
        .method("runSim", &SHGInterface::runSim, "Generates a data frame of simulated smoking histories for n individuals")
        .method("LegacyRunWebVersion", &SHGInterface::LegacyRunWebVersion, "Runs a simulation from a configuration file to produce results for a website (legacy)");
-
    }
 
