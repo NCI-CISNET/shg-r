@@ -684,11 +684,13 @@ void Smoking_Simulator::setRNGStrategy(RNG_Strategy* rngStrategy) {
    gpRngStrategy = rngStrategy;
 }
 
+// dataMutex prevents multiple threads from accessing the data at the same time during the loading of input files
+std::mutex Smoking_Simulator::dataMutex;
+
 // Read in the cigarettes per day data file, this function assumes the data
 // is sorted by race, sex , YOB cohort, age and intensity group
 // The data will be stored in an array that is offset by race, sex, year of birth
 // age and smoking intensity level
-
 
 void Smoking_Simulator::LoadCPDFile(const char* sCpdFile) {
 std::lock_guard<std::mutex> lock(dataMutex);
@@ -1061,8 +1063,6 @@ void Smoking_Simulator::LoadCPDIntensityProbs(const char* sDataFileName) {
 }
 
 // Load the probability initiation/cessation data files.
-std::mutex Smoking_Simulator::dataMutex;
-
 void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType eFileType) {
    std::lock_guard<std::mutex> lock(dataMutex); // Lock the mutex to ensure thread safety
 
