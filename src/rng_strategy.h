@@ -34,6 +34,13 @@ public:
     virtual double getIndividualRand() = 0;
     virtual void resetStrategy() = 0;  // resets all RNGs to their initial state
     virtual void writeRNGState() = 0;  // writes the current state of the RNGs to the console
+    virtual void incrementSubstreams() = 0;
+    void incrementSubstreams(int n) {
+        // Helper method to increment the 4 substream sets n times
+        for (int i = 0; i < n; i++) {
+          incrementSubstreams();
+        }
+    }
     void resetCounters() {
         lInitiationRandCount = 0;
         lCessationRandCount = 0;
@@ -103,6 +110,14 @@ public:
         // reset all RNGs to their initial state
         initialize(ulInitiationSeed, ulCessationSeed, ulLifeTableSeed, ulIndividualSeed);
     }
+    void incrementSubstreams() override {
+        // Set all RNGs to the next unused substream (without colliding with existing substreams)
+        // Because we have 4 RNGs, we need to increment 4 times to avoid collisions: (1,2,3,4 -> 5,6,7,8)
+        // TODO implement something similar for MersenneTwister even though it doesn't have the substream feature
+    }
+    void writeRNGState() override {
+        // TODO return MT state
+    }
 
 private:
     MersenneTwister *gpInitiationRNG;
@@ -140,6 +155,9 @@ public:
         // use default seed defined in RngStream.cpp (12345, 12345, 12345, 12345, 12345, 12345)
         // once the initial seed is set for the Initiation stream, we use substreams for the other RNGs
         gpInitiationRNG = new RngStream();
+        const unsigned long seed[6] = {12345, 12345, 12345, 12345, 12345, 12345};
+        gpInitiationRNG->SetPackageSeed(seed);
+
         gpCessationRNG = new RngStream(*gpInitiationRNG);
         gpCessationRNG->ResetNextSubstream();
         gpLifeTableRNG  = new RngStream(*gpCessationRNG);
@@ -147,6 +165,7 @@ public:
         gpIndividualRNG = new RngStream(*gpLifeTableRNG);
         gpIndividualRNG->ResetNextSubstream();
     }
+
     void initialize(unsigned long seed[6]) {
         // Offering the possibility to set a seed but typically not needed
         // Once the initial seed is set for the Initiation stream, we use substreams for the other RNGs
@@ -182,9 +201,10 @@ public:
         gpLifeTableRNG->ResetStartSubstream();
         gpIndividualRNG->ResetStartSubstream();
     }
-    void incrementSubstreams() {
+    void incrementSubstreams() override {
         // Set all RNGs to the next unused substream (without colliding with existing substreams)
         // Because we have 4 RNGs, we need to increment 4 times to avoid collisions: (1,2,3,4 -> 5,6,7,8)
+
         for (int i = 0; i < 4; i++) {
             gpInitiationRNG->ResetNextSubstream();
             gpCessationRNG->ResetNextSubstream();
