@@ -1313,7 +1313,7 @@ int RunWebVersion(const char * sInputFileName)
 
       if (sRNGStrategy == NULL) {   
          //sim_simple_stdout("Using default random number strategy of Mersenne Twister because none was specified in input file: %s\n", sInputFileName);
-         const char* sRNGStrategy = "MersenneTwister";
+         sRNGStrategy = "MersenneTwister";
       }
       
       else if (strcmp(sRNGStrategy, "MersenneTwister") == 0) {
@@ -1635,14 +1635,16 @@ int RunWebVersion(const char * sInputFileName)
          remove(sErrorFile);
       }
    }
-
-   if (bRunApp)
+   // JC: added the ! below because it seems wrong to return 1 when bRunApp==True (indicating a normal execution)
+   // However, it was that way for a long time, so I'm not sure if it was intentional
+   // TODO: Review this and make sure it's correct
+   if (!bRunApp) 
       iReturnValue = 1;
    else
       iReturnValue = 0;
 
    delete [] sErrorFile;
-   delete [] sRNGStrategy;
+   //delete sRNGStrategy;
    delete [] sInputBuffer;
    delete [] sFILE_InitProb;
    delete [] sFILE_CessProb;
