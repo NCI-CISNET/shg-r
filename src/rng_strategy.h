@@ -15,6 +15,10 @@
 #ifndef RNG_STRATEGY_H
 #define RNG_STRATEGY_H
 
+#ifdef IS_RCPP
+#include <Rcpp.h>
+#endif
+
 // RNG Strategy Interface
 class RNG_Strategy {
 public:
@@ -29,7 +33,7 @@ public:
     virtual double getLifeTableRand() = 0;
     virtual double getIndividualRand() = 0;
     virtual void resetStrategy() = 0;  // resets all RNGs to their initial state
-
+    virtual void writeRNGState() = 0;  // writes the current state of the RNGs to the console
     void resetCounters() {
         lInitiationRandCount = 0;
         lCessationRandCount = 0;
@@ -188,16 +192,25 @@ public:
             gpIndividualRNG->ResetNextSubstream();
         }
     }
-    void writeCompleteState() {
+    void writeRNGState() override {
         // Ig[6] Initial state of stream (master seed)
         // Bg[6] State of current substream
         // Cg[6] Current state (in subset of current substream)
         // See https://www-labs.iro.umontreal.ca/~lecuyer/myftp/papers/streams00.pdf
 
-        gpInitiationRNG->WriteStateFull();
-        gpCessationRNG->WriteStateFull();
-        gpLifeTableRNG->WriteStateFull();
-        gpIndividualRNG->WriteStateFull();
+        #ifdef IS_RCPP
+            Rcpp::Rcout << "Initiation RNG State:" << std::endl;
+            gpInitiationRNG->WriteStateFull();
+            Rcpp::Rcout << "Cessation RNG State:" << std::endl;
+            gpCessationRNG->WriteStateFull();
+            Rcpp::Rcout << "Life Table RNG State:" << std::endl;
+            gpLifeTableRNG->WriteStateFull();
+            Rcpp::Rcout << "Individual RNG State:" << std::endl;
+            gpIndividualRNG->WriteStateFull();
+            Rcpp::Rcout << "----- Done -----" << std::endl;
+        #else
+            std::cout << "writeRNGState() not yet implemented for CLI" << std::endl;
+        #endif
     }
 
     // TODO Add garbage collection
