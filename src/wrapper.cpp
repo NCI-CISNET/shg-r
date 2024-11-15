@@ -146,6 +146,7 @@ void SHGInterface::runSimSegment(int repeat, short wRace, short wSex, short wYea
 
       FILE *pOutStream = 0,
            *pErrorStream = 0;
+      // TODO: creates an empty file, but we don't need it
       const char *sOutputFile = "./out/test_output_from_module2.txt";
 
       pOutStream = fopen(sOutputFile, "w");
@@ -153,7 +154,7 @@ void SHGInterface::runSimSegment(int repeat, short wRace, short wSex, short wYea
       {
          fprintf(pErrorStream, "\n<ERROR>\nSupplied Output file: %s, could not be opened for writing.\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n", sOutputFile);
       }
-      // Trying this to prevent an output file from being created
+      // TODO: Trying this to prevent an output file from being created
       pOutStream = NULL;
 
       string cpd;
