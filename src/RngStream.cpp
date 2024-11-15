@@ -22,17 +22,19 @@
  *
 \***********************************************************************/
 
-
 #include <cstdlib>
 #include <iostream>
 #include "RngStream.h"
+#ifdef IS_RCPP
+#include <Rcpp.h>
+#endif
 using namespace std;
 
 namespace
 {
 const double m1   =       4294967087.0;
 const double m2   =       4294944443.0;
-const double norm =       1.0 / (m1 + 1.0);
+const double norm_ =       1.0 / (m1 + 1.0);  // note: changed norm to norm_ because conflict with norm() in Rcpp
 const double a12  =       1403580.0;
 const double a13n =       810728.0;
 const double a21  =       527612.0;
@@ -287,7 +289,7 @@ double RngStream::U01 ()
     Cg[3] = Cg[4]; Cg[4] = Cg[5]; Cg[5] = p2;
 
     /* Combination */
-    u = ((p1 > p2) ? (p1 - p2) * norm : (p1 - p2 + m1) * norm);
+    u = ((p1 > p2) ? (p1 - p2) * norm_ : (p1 - p2 + m1) * norm_);
 
     return (anti == false) ? u : (1 - u);
 }
@@ -471,6 +473,31 @@ void RngStream::WriteStateFull () const
 {
     #ifdef IS_RCPP
     // Maybe add Rcpp::Rcout here at some point
+        int i;
+
+        Rcpp::Rcout << "The RngStream";
+        if (name.size() > 0)
+            Rcpp::Rcout << " " << name;
+        Rcpp::Rcout << ":\n   anti = " << (anti ? "true" : "false") << "\n";
+        Rcpp::Rcout << "   incPrec = " << (incPrec ? "true" : "false") << "\n";
+
+        Rcpp::Rcout << "   Ig = { ";
+        for (i = 0; i < 5; i++) {
+            Rcpp::Rcout << static_cast<unsigned long> (Ig [i]) << ", ";
+        }
+        Rcpp::Rcout << static_cast<unsigned long> (Ig [5]) << " }\n";
+
+        Rcpp::Rcout << "   Bg = { ";
+        for (i = 0; i < 5; i++) {
+            Rcpp::Rcout << static_cast<unsigned long> (Bg [i]) << ", ";
+        }
+        Rcpp::Rcout << static_cast<unsigned long> (Bg [5]) << " }\n";
+
+        Rcpp::Rcout << "   Cg = { ";
+        for (i = 0; i < 5; i++) {
+            Rcpp::Rcout << static_cast<unsigned long> (Cg [i]) << ", ";
+        }
+        Rcpp::Rcout << static_cast<unsigned long> (Cg [5]) << " }\n\n";
     #else
     int i;
 
