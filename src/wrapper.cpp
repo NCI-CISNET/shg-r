@@ -218,50 +218,71 @@ void SHGInterface::runSimSegment(int repeat, short wRace, short wSex, short wYea
 
 // Function to run simulations in parallel and combine results
 Rcpp::DataFrame SHGInterface::runSim(int repeat, short wRace, short wSex, short wYearBirth) {
-    int n = 10; // Number of parallel simulations
-    int repeat_per_sim = repeat / n;
-    int remainder = repeat % n; // Calculate the remainder
+   int n = number_of_segments; // Number of parallel simulations
+   int repeat_per_sim = repeat / n;
+   int remainder = repeat % n; // Calculate the remainder
 
-    // Pre-allocate vectors
-    std::vector<int> initiationAge(repeat), cessationAge(repeat), ageAtDeath(repeat);
-    std::vector<std::string> cpdString(repeat);
-    std::vector<short> wRaces(repeat, wRace), wSexes(repeat, wSex);
-    std::vector<int> wYearBirths(repeat, wYearBirth);
+   // Pre-allocate vectors
+   std::vector<int> initiationAge(repeat), cessationAge(repeat), ageAtDeath(repeat);
+   std::vector<std::string> cpdString(repeat);
+   std::vector<short> wRaces(repeat, wRace), wSexes(repeat, wSex);
+   std::vector<int> wYearBirths(repeat, wYearBirth);
 
-    // Vectors to store futures
-    std::vector<std::future<void>> futures;
+   // Vectors to store futures; declare even if we might not use it below
+   std::vector<std::future<void>> futures;
+   
+   // Launch n simulations in parallel
+   for (int i = 0; i < n; ++i) {
+      int offset = i * repeat_per_sim;
+      int current_repeat_per_sim = repeat_per_sim;
 
-    // Launch n simulations in parallel
-    for (int i = 0; i < n; ++i) {
-        int offset = i * repeat_per_sim;
-        int current_repeat_per_sim = repeat_per_sim;
+      // Add the remainder to the last segment
+      if (i == n - 1) {
+         current_repeat_per_sim += remainder;
+      }
 
-        // Add the remainder to the last segment
-        if (i == n - 1) {
-            current_repeat_per_sim += remainder;
-        }
-
-        futures.push_back(std::async(std::launch::async, &SHGInterface::runSimSegment, this,
+      if (run_multi_threaded) {
+         // Run asynchronously across multiple threads
+         futures.push_back(std::async(std::launch::async, &SHGInterface::runSimSegment, this,
                                      current_repeat_per_sim, wRace, wSex, wYearBirth,
                                      std::ref(initiationAge), std::ref(cessationAge),
                                      std::ref(ageAtDeath), std::ref(cpdString), offset));
+      }
+      else {
+         // Run sequentially using same segments
+         SHGInterface::runSimSegment(current_repeat_per_sim, wRace, wSex, wYearBirth,
+                     std::ref(initiationAge), std::ref(cessationAge),
+                     std::ref(ageAtDeath), std::ref(cpdString), offset);
+      }
     }
 
     // Wait for all simulations to complete
-    for (auto& fut : futures) {
+    if (run_multi_threaded) {
+      for (auto& fut : futures) {
         fut.get();
+      }
     }
 
     // Convert to Rcpp::DataFrame
-    return Rcpp::DataFrame::create(
-        Rcpp::Named("wRace") = wRaces,
-        Rcpp::Named("wSex") = wSexes,
-        Rcpp::Named("wYearBirth") = wYearBirths,
-        Rcpp::Named("initiationAge") = initiationAge,
-        Rcpp::Named("cessationAge") = cessationAge,
-        Rcpp::Named("ageAtDeath") = ageAtDeath,
-        Rcpp::Named("CPD") = cpdString
-    );
+   Rcpp::IntegerVector wRaceVec(wRaces.begin(), wRaces.end());
+   Rcpp::IntegerVector wSexVec(wSexes.begin(), wSexes.end());
+   Rcpp::IntegerVector wYearBirthVec(wYearBirths.begin(), wYearBirths.end());
+   Rcpp::IntegerVector initiationAgeVec(initiationAge.begin(), initiationAge.end());
+   Rcpp::IntegerVector cessationAgeVec(cessationAge.begin(), cessationAge.end());
+   Rcpp::IntegerVector ageAtDeathVec(ageAtDeath.begin(), ageAtDeath.end());
+   Rcpp::CharacterVector cpdStringVec(cpdString.begin(), cpdString.end());
+
+   Rcpp::DataFrame df = Rcpp::DataFrame::create(
+      Rcpp::Named("wRace") = wRaceVec,
+      Rcpp::Named("wSex") = wSexVec,
+      Rcpp::Named("wYearBirth") = wYearBirthVec,
+      Rcpp::Named("initiationAge") = initiationAgeVec,
+      Rcpp::Named("cessationAge") = cessationAgeVec,
+      Rcpp::Named("ageAtDeath") = ageAtDeathVec,
+      Rcpp::Named("CPD") = cpdStringVec
+   );
+
+    return df;
 }
 
    void SHGInterface::LegacyRunWebVersion(const char *sInputFileName)
