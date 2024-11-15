@@ -185,7 +185,16 @@ class Smoking_Simulator {
       SmokingIntensity GetPersonsSmkIntensity() {return gwPersonsSmkIntensity;}
       double* GetPersonsCPDbyAge() {return gdPersonsCPDbyAge;}
       double GetPersonsAvgCPD() {return gdPersonsAvgCPD;}
+      void resetRNGStrategy(){
+         gpRngStrategy->resetStrategy();
+      };
       void setRNGStrategy(RNG_Strategy* rngStrategy);
+      void incrementSubstreams(int n) {
+         gpRngStrategy->incrementSubstreams(n);
+      };
+      void writeRNGState() {
+         gpRngStrategy->writeRNGState();
+         };
 };
 void sim_snprintf(char* sMessage, size_t size, const char* format, ...);
 void sim_fprintf(FILE* stream, const char* format, ...);
