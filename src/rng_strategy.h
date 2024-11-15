@@ -233,10 +233,7 @@ public:
         #endif
     }
 
-    // TODO Add garbage collection
-
 private:
-    //RngStream rngStream; // Instance of your RngStream class
     RngStream *gpInitiationRNG;
     RngStream *gpCessationRNG;
     RngStream *gpLifeTableRNG;
