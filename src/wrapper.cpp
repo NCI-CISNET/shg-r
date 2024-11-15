@@ -215,7 +215,8 @@ void SHGInterface::runSimSegment(int repeat, short wRace, short wSex, short wYea
    }
 
 
-// Function to run simulations in parallel and combine results
+// Run simulations in parallel OR sequentially and returned combine results
+// The results should be identical regardless of the method used but assuming number_of_segments is the same
 Rcpp::DataFrame SHGInterface::runSim(int repeat, short wRace, short wSex, short wYearBirth) {
    int n = number_of_segments; // Number of parallel simulations
    int repeat_per_sim = repeat / n;
