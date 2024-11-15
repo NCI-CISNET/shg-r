@@ -164,6 +164,19 @@ void SHGInterface::runSimSegment(int repeat, short wRace, short wSex, short wYea
 
       Smoking_Simulator* qSimulator = createSimulator();
 
+      if (rng_strategy == "MersenneTwister")
+         qSimulator->setRNGStrategy(new MersenneTwisterRNG(1898587603, 1468371936, 1551308340, 1590227640));
+      else if (rng_strategy == "RngStream")
+         qSimulator->setRNGStrategy(new RngStreamRNG());
+      else
+         Rcpp::stop("Invalid RNG strategy or strategy not yet implemented");
+
+      // TODO: review the following; not sure this is the best pattern
+      // We could include another parameter in the function signature to pass the segment number;
+      // But this works also. The idea is ensure that the RNG state is advanced in the same way for each segment so that the results are identical and IID
+      int segment_number = offset / repeat; // expected 0, 1, 2... for each segment
+      qSimulator->incrementSubstreams(segment_number);
+
       for (int j = 0; j < repeat; j++)
       {
          qSimulator->RunSimulationSingle(wRace, wSex, wYearBirth, pOutStream);
