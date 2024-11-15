@@ -54,49 +54,13 @@
 
 using namespace std;
 
-//std::string VERSIONJSON;
-//std::string VERSION_NUM;
-//std::string gInputFileName;
-
-////bool gWithHoldTags = false;
-
-////const short wMIN_IMMEDIATE_CESSATION_YEAR = 1910;  // Minimum Year Value that can be used as the Immediatte Cessation Year
-////short wSIM_CUTOFF_YEAR = 2200;                     // Cut-off year for the application
-
-////const char sSEX_LABELS[2][7]  = {"Male", "Female"};
-////const char sRACE_LABELS[2][10] = {"All Races", "White"};
-
-// Declaring Function prototypes
-//char* AssignFilename(const char* sDirectory, const char * sFilename);
-////short CountVectorValues(char* sDataString);
-//bool CreateDataFile(const char *sNumToSimulate, const char* sOutFileName, char*);
-//void Help(const char* sAppName, FILE* pHelpStream);
-////bool IsPosLongInt(const char *sValue);
-//bool IsPosShortInt(const char *sValue);
- 
-////bool IsValidNumReps(const char* sNumReps);
-
 // TODO: do we need this anymore, given that the strategy should probably do the checking?
 bool IsValidSeed(const char* sSeedValue);
 
 void LoadValue(char* sDest, char* sSource, int iValueNum);
-//void ModifyCutoffYear(char*);
-//bool RunFromParameters(const char*, char*, char*, char*, char*, char*, char*, char*, char*, char*);
-//void RunInfiniteLoop();
-//void RunInterface();
 int RunWebVersion(const char *sInputFileName);
 char* Str_toupper(char *s);
-//char* Str_tolower(char *s);
-//void Usage();
 short min(short, short);
-// bool ValidateParameters(char*, char*, char*, char*, char*, char*, char*, char*, char*);
-// bool ValidateParameters(char*, char*, char*, char*, char*, char*, char*, char*, char*, char*);
-
-////void WriteInputTag(FILE* , char*, char*, const char*, const char*);
-// void WriteRunInfoTag(FILE* , std::string, const char*, const char*, const char*,
-//                      const char*, const char*, const char*, const char*, const char*,
-//                      const char*, const char*, const char*, const char*);
-//void PropagateVersionInformation();
 
 short wRace = 0;
    short wSex = 0;
@@ -236,48 +200,6 @@ void SHGInterface::runSimSegment(int repeat, short wRace, short wSex, short wYea
    }
       fclose(pOutStream);
    }
-
-//Initialize with 
-// RNGtype 
-// SEED_INIT=12345
-// SEED_CESS=12345
-// SEED_OCD=12345
-// SEED_MISC=12345
-// RACE=0
-// SEX=0
-// YOB=1950
-// CESSATION_YEAR=0
-// REPEAT=1000
-// INIT_PROB=./inst/inputs/2017-05-03/lbc_shg_initiation.txt
-// CESS_PROB=./inst/inputs/2017-05-03/lbc_shg_cessation.txt
-// OCD_PROB=./inst/inputs/2017-05-03/lbc_smokehist_oc_mortality.txt
-// CPD_DATA=./inst/inputs/2017-05-03/lbc_shg_cpd.txt
-// OUTPUTFILE=./out/test_output.out
-// ERRORFILE=./out/test_errors.txt
-
-//SHGInterface::runSim
-// specify N
-// Rcpp::DataFrame SHGInterface::runSim(int repeat)
-// {
-//    short wRace = 0;
-//    short wSex = 0;
-//    short wYearBirth = 1950;
-//    return runSim(repeat, wRace, wSex, wYearBirth);
-// }
-
-// runSim( with pop matrix already set up (random race, sex etc.))
-// runSingleSim so from R for individual enquiries
-// ResetRNGs
-// ChooseRNGs
-// set the input files
-// max/min cessation year
-// output to file as well (for legacy)
-// set the seeds for either RNG
-
-// add tests (use sample output from legacy code)
-// t-test
-// runSimFromInputFile() need to expose this
-
 
 
 // Function to run simulations in parallel and combine results
