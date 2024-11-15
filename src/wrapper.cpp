@@ -142,8 +142,7 @@ void SHGInterface::runSimSegment(int repeat, short wRace, short wSex, short wYea
                                  std::vector<int>& initiationAge, std::vector<int>& cessationAge,
                                  std::vector<int>& ageAtDeath, std::vector<std::string>& cpdString,
                                  int offset) {
-//TODO we don't need an output file except to compare results with legacy code. Perhaps we can produce output only on demand?
-
+      //TODO we don't need an output file except to compare results with legacy code. Perhaps we can produce output only on demand?
       FILE *pOutStream = 0,
            *pErrorStream = 0;
       // TODO: creates an empty file, but we don't need it
@@ -164,6 +163,7 @@ void SHGInterface::runSimSegment(int repeat, short wRace, short wSex, short wYea
 
       Smoking_Simulator* qSimulator = createSimulator();
 
+      // TODO: allow user to specify the seed from R
       if (rng_strategy == "MersenneTwister")
          qSimulator->setRNGStrategy(new MersenneTwisterRNG(1898587603, 1468371936, 1551308340, 1590227640));
       else if (rng_strategy == "RngStream")
