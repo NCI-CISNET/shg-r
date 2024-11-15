@@ -347,6 +347,4 @@ RCPP_MODULE(SmokingSimulator) {
    class_<SHGInterface>("SHGInterface")
        .constructor()
        .method("runSim", &SHGInterface::runSim, "Generates a data frame of simulated smoking histories for n individuals")
-       .method("LegacyRunWebVersion", &SHGInterface::LegacyRunWebVersion, "Runs a simulation from a configuration file to produce results for a website (legacy)");
    }
-
