@@ -15,6 +15,20 @@ public:
     Smoking_Simulator *pSimulator = 0;
     Smoking_Simulator* createSimulator();
 
+    int number_of_segments = 10; // TODO: maybe default value should be set in constructor instead?
+    bool run_multi_threaded = true; // TODO: maybe default value should be set in constructor instead?
+    std::string rng_strategy = "RngStream"; // TODO: maybe default value should be set in constructor instead?
+
+    // Getters and Setters
+    int get_number_of_segments() {return number_of_segments;};
+    void set_number_of_segments(int n) {number_of_segments = n;};
+
+    bool get_run_multi_threaded() {return run_multi_threaded;};
+    void set_run_multi_threaded(bool b) {run_multi_threaded = b;};
+
+    std::string get_rng_strategy() {return rng_strategy;};
+    void set_rng_strategy(std::string strategy) {rng_strategy = strategy;};
+
     // Function to run a single simulation segment
     void runSimSegment(int repeat, short wRace, short wSex, short wYearBirth,
                        std::vector<int>& initiationAge, std::vector<int>& cessationAge,
