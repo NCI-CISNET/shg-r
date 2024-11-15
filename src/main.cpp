@@ -1313,7 +1313,7 @@ int RunWebVersion(const char * sInputFileName)
 
       if (sRNGStrategy == NULL) {   
          //sim_simple_stdout("Using default random number strategy of Mersenne Twister because none was specified in input file: %s\n", sInputFileName);
-         sRNGStrategy = "MersenneTwister";
+          sRNGStrategy = const_cast<char*>("MersenneTwister");
       }
       
       else if (strcmp(sRNGStrategy, "MersenneTwister") == 0) {
