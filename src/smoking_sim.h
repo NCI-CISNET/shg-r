@@ -194,10 +194,15 @@ class Smoking_Simulator {
       };
       void writeRNGState() {
          gpRngStrategy->writeRNGState();
-         };
+      };
+
 };
-//TODO: not sure if this is the best place for these helper functions used in both main and smoking_sim
-void sim_snprintf(char* sMessage, size_t size, const char* format, ...);
-void sim_fprintf(FILE* stream, const char* format, ...);
+
+//void FormatString(char* bufString, size_t size, const char* format, ...);
+void WriteToFile(FILE* stream, const char*format, ...);
+void PrintMessage(const char* message);
+void PrintMessageFormatted(const char* format, ...);
+void PrintError(const char* format, ...);
+
 #endif
 
