@@ -8,8 +8,10 @@
 // NCI Contact: Rocky Feuer
 // Please view the HelpFile.txt file included with this source code for details pertaining to this version
 
+#if !defined(__GNUC__) && !defined(__clang__)
 #pragma hdrstop
 #pragma argsused
+#endif
 
 #include <cstdlib>
 #include <cstring>
