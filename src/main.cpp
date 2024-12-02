@@ -98,7 +98,7 @@ void PropagateVersionInformation();
 #ifdef IS_RCPP
 #else
 int main(int argc, char* argv[]) {
-	char sErrorMessage[500];
+	char sErrorMessage[1000];
 	int iReturnValue;
    FILE* pHelpFile = 0;
 
