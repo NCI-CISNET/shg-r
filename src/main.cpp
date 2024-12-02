@@ -52,7 +52,7 @@
 #define VECTOR_DELIMITER ","
 #define MAX_NUM_REPS 1000000
 #define VERSION_FILE "version.json"
-
+#define ERROR_MESSAGE_SIZE 1000
 using namespace std;
 
 std::string VERSIONJSON;
@@ -510,10 +510,14 @@ bool RunFromParameters(char* sDataFileDir, char* sInitiationSeed,
       pSimulator->RunSimulation(sInputFile, sOutputFile, false);
 
    } catch (SimException ex) {
-      snprintf(sErrorMessage, 1000, "%s", ex.GetError());
+      // TODO: review -- this seems like a weird way to ensure no buffer overflow
+      //const char* errorMessage = ex.GetError();
+      //strncpy(sErrorMessage, errorMessage, ERROR_MESSAGE_SIZE - 1);
+      //sErrorMessage[ERROR_MESSAGE_SIZE - 1] = '\0';
+      snprintf(sErrorMessage, ERROR_MESSAGE_SIZE, "%s", ex.GetError());
       bReturnValue = false;
    } catch(...) {
-      snprintf(sErrorMessage, sizeof(sErrorMessage), "Unknown Error Occurred\n");
+      snprintf(sErrorMessage, ERROR_MESSAGE_SIZE, "Unknown Error Occurred\n");
 		bReturnValue = false;
    }
 
@@ -1678,7 +1682,7 @@ bool ValidateParameters(char* sDataFileDir,
 	pTestInputStream = fopen(sTestDirStr, "r");
 
 	if (pTestInputStream == NULL) {
-		snprintf(sErrorMessage, sizeof(sErrorMessage), "Input File %s could not be opened for reading.\n", sTestDirStr);
+		snprintf(sErrorMessage, ERROR_MESSAGE_SIZE, "Input File %s could not be opened for reading.\n", sTestDirStr);
 		bReturnValue = false;
   	}
 	if (pTestInputStream != NULL) {
@@ -1703,32 +1707,32 @@ bool ValidateParameters(char* sInitiationSeed, char* sCessationSeed, char* sOthe
 	bool bReturnValue = true;
 
 	if (!IsPosLongInt(sInitiationSeed)) {
-		snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid Seed %s for Initiation Probability PRNG.\nValid Range id 0 to %ld.\n", 
+		snprintf(sErrorMessage, ERROR_MESSAGE_SIZE, "Invalid Seed %s for Initiation Probability PRNG.\nValid Range id 0 to %ld.\n", 
          sInitiationSeed, MAX(long));
 		bReturnValue = false;
   	} else if (!IsPosLongInt(sCessationSeed)) {
-		snprintf(sErrorMessage, sizeof(sErrorMessage),"Invalid Seed %s for Cessation Probability PRNG.\nValid Range id 0 to %ld.\n", 
+		snprintf(sErrorMessage, ERROR_MESSAGE_SIZE,"Invalid Seed %s for Cessation Probability PRNG.\nValid Range id 0 to %ld.\n", 
          sCessationSeed, MAX(long));
 		bReturnValue = false;
   	} else if (!IsPosLongInt(sOtherCODSeed)) {
-		snprintf(sErrorMessage, sizeof(sErrorMessage),"Invalid Seed %s for Other Cause of Death Probability PRNG.\nValid Range id 0 to %ld.\n", 
+		snprintf(sErrorMessage, ERROR_MESSAGE_SIZE,"Invalid Seed %s for Other Cause of Death Probability PRNG.\nValid Range id 0 to %ld.\n", 
          sOtherCODSeed, MAX(long));
 		bReturnValue = false;
   	} else if (!IsPosLongInt(sIndivRndSeed)) {
-		snprintf(sErrorMessage, sizeof(sErrorMessage),"Invalid Seed %s for Indivdual's Random Numbers PRNG.\nValid Range id 0 to %ld.\n", 
+		snprintf(sErrorMessage, ERROR_MESSAGE_SIZE,"Invalid Seed %s for Indivdual's Random Numbers PRNG.\nValid Range id 0 to %ld.\n", 
          sIndivRndSeed, MAX(long));
 		bReturnValue = false;
   	} else if (!IsPosShortInt(sImmediateCess) ||
               ((atoi(sImmediateCess) != 0) &&
                (atoi(sImmediateCess) < wMIN_IMMEDIATE_CESSATION_YEAR || 
                 atoi(sImmediateCess) > wSIM_CUTOFF_YEAR))) {
-      snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid value %s for Immediate Cessation Year. \nValid values are 0, %d-%d.\n", 
+      snprintf(sErrorMessage, ERROR_MESSAGE_SIZE, "Invalid value %s for Immediate Cessation Year. \nValid values are 0, %d-%d.\n", 
               sImmediateCess, wMIN_IMMEDIATE_CESSATION_YEAR, wSIM_CUTOFF_YEAR);
       bReturnValue = false;
    } else if (!IsPosShortInt(sOutputType) ||
            (atoi(sOutputType) < (short)Smoking_Simulator::OUT_DataOnly) ||
            (atoi(sOutputType) >= (short)Smoking_Simulator::OUT_Uninitialized)) {
-      snprintf(sErrorMessage, sizeof(sErrorMessage),"Invalid Output Type: %d\nValid values are %d to ?.\n",
+      snprintf(sErrorMessage, ERROR_MESSAGE_SIZE,"Invalid Output Type: %d\nValid values are %d to ?.\n",
               (short)Smoking_Simulator::OUT_DataOnly, ((short)Smoking_Simulator::OUT_Uninitialized-1));
 		bReturnValue = false;
   	}
@@ -1738,7 +1742,7 @@ bool ValidateParameters(char* sInitiationSeed, char* sCessationSeed, char* sOthe
 		pTestInputStream  = fopen(sInputFile, "r");
 		pTestOutputStream = fopen(sOutputFile, "w");
 		if (pTestInputStream == NULL) {
-			snprintf(sErrorMessage, sizeof(sErrorMessage), "Input File %s could not be opened for reading.\n", sInputFile);
+			snprintf(sErrorMessage, ERROR_MESSAGE_SIZE, "Input File %s could not be opened for reading.\n", sInputFile);
 			bReturnValue = false;
 	  	}
       if (pTestInputStream  != NULL) {
@@ -1875,16 +1879,16 @@ bool CreateDataFile(const char *sNumToSimulate, const char* sOutFileName, char* 
          fclose(pOutputFile);
 
       } catch (SimException ex) {
-         snprintf(sErrorMessage, sizeof(sErrorMessage), "%s", ex.GetError());
+         snprintf(sErrorMessage, ERROR_MESSAGE_SIZE, "%s", ex.GetError());
          delete pSimulator; pSimulator = 0;
 		   bReturnValue = false;
    	} catch (...) {
-         snprintf(sErrorMessage, sizeof(sErrorMessage), "Unknown Error Occurred\n");
+         snprintf(sErrorMessage, ERROR_MESSAGE_SIZE, "Unknown Error Occurred\n");
          delete pSimulator; pSimulator = 0;
 		   bReturnValue = false;
    	}
    } else {
-      snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid value: %s, supplied for number of simulations to run.\n", sNumToSimulate);
+      snprintf(sErrorMessage, ERROR_MESSAGE_SIZE, "Invalid value: %s, supplied for number of simulations to run.\n", sNumToSimulate);
       bReturnValue = false;
    }
 
