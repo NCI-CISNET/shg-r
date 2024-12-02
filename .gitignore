@@ -9,3 +9,5 @@ src/RcppSmokingHistoryGenerator.so
 src/wrapper_backup.xcpp
 .Rhistory
 /out
+.RDataTmp
+SHG_multi.out
