@@ -510,8 +510,8 @@ bool RunFromParameters(char* sDataFileDir, char* sInitiationSeed,
       pSimulator->RunSimulation(sInputFile, sOutputFile, false);
 
    } catch (SimException ex) {
-      snprintf(sErrorMessage, sizeof(sErrorMessage), "%s", ex.GetError());
-		bReturnValue = false;
+      snprintf(sErrorMessage, 1000, "%s", ex.GetError());
+      bReturnValue = false;
    } catch(...) {
       snprintf(sErrorMessage, sizeof(sErrorMessage), "Unknown Error Occurred\n");
 		bReturnValue = false;
@@ -1745,8 +1745,8 @@ bool ValidateParameters(char* sInitiationSeed, char* sCessationSeed, char* sOthe
          fclose(pTestInputStream);
       }
 		if (bReturnValue && pTestOutputStream == NULL) {
-			snprintf(sErrorMessage, sizeof(sErrorMessage), "Output File %s could not be opened for writing.\n", sOutputFile);
-			bReturnValue = false;
+         snprintf(sErrorMessage, 1000, "Output File %s could not be opened for writing.\n", sOutputFile);
+         bReturnValue = false;
 	  	}
 		if (pTestOutputStream != NULL) {
          fclose(pTestOutputStream);
