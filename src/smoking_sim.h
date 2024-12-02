@@ -98,7 +98,7 @@ class Smoking_Simulator {
       short gwPersonsInitAge;      // Age of Smoking Initiation
       short gwPersonsCessAge;      // Age of Smoking Cessation
       short gwPersonsAgeAtDeath;   // Age at death from COD other than lung cancer
-      SmokingIntensity     gwPersonsSmkIntensity; // The smoking intesity group for the person (smokers only)
+      SmokingIntensity gwPersonsSmkIntensity; // The smoking intesity group for the person (smokers only)
       double *gdPersonsCPDbyAge;   // Cigarettes smoked per day by age
       double gdPersonsAvgCPD;      // Average num of Cigarettes smoked per day (used for COD in former smokers)
 
