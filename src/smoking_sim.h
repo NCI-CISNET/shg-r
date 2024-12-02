@@ -198,7 +198,6 @@ class Smoking_Simulator {
 
 };
 
-//void FormatString(char* bufString, size_t size, const char* format, ...);
 void WriteToFile(FILE* stream, const char*format, ...);
 void PrintMessage(const char* message);
 void PrintMessageFormatted(const char* format, ...);

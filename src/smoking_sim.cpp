@@ -1968,23 +1968,6 @@ void WriteToFile(FILE* stream, const char* format, ...) {
    #endif
    va_end(args);
 }
-// // RCPP does not allow snprintf to be used, so this function is used to replace it.
-// // I suppose we could have just S&R because we don't actually need to output to R console.
-// // TODO: just replace snprintf with vsnprintf because this is not for outputing to console
-
-// void FormatString(char* bufString, size_t size, const char* format, ...) {
-//    va_list args;
-//    va_start(args, format);
-//    //TODO review -- I think in RCPP vsnprintf is OK and here we are storing a string in bufString rather than outputing it to console/file.
-//    // #ifdef IS_RCPP
-//    //    Rprintf(format, args);
-//    //    //Rcpp::stop(sMessage);
-//    // #else
-//       vsnprintf(bufString, size, format, args);
-//    // #endif
-
-//    va_end(args);
-// }
 
 // Write an error to either R's console or to stderr
 void PrintError(const char* format, ...) {
