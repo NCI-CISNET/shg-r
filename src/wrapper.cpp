@@ -58,7 +58,6 @@ using namespace std;
 bool IsValidSeed(const char* sSeedValue);
 
 void LoadValue(char* sDest, char* sSource, int iValueNum);
-int RunWebVersion(const char *sInputFileName);
 char* Str_toupper(char *s);
 short min(short, short);
 

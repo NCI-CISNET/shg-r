@@ -197,6 +197,7 @@ class Smoking_Simulator {
       };
 
 };
+int RunWebVersion(const char *sInputFileName);
 
 void WriteToFile(FILE* stream, const char*format, ...);
 void PrintMessage(const char* message);
