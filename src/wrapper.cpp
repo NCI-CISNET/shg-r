@@ -9,49 +9,28 @@
 
 // TODO: Update attribution and dates above
 
-#include <cstdlib>
-#include <cstring>
-#include <iostream>
-#include <fstream>
-#include <string>
+#include <cstdlib>    // General utilities
+#include <cstring>    // C-style string functions
+#include <iostream>   // Input/output stream objects
+#include <fstream>    // File stream objects
+#include <string>     // std::string class
+#include <limits>     // Numeric limits
+#include <cctype>     // Character classification and conversion
+#include <cstdio>     // C standard input/output library
+#include <ctime>      // Time and date functions
+#include <sstream>    // String stream classes
+#include <vector>     // std::vector container
+#include <iterator>   // Iterator definitions
+#include <algorithm>  // Algorithms like sort, find, etc.
+#include <future>     // Asynchronous operations
+#include <thread>     // Thread support
 #include <stdlib.h>
-#include <limits>
 #include <string.h>
-#include <ctype.h>
 #include <stdio.h>
-#include <time.h>
-
-#include <string>
-#include <sstream>
-#include <vector>
-#include <iterator>
-#include <iostream>
-#include <algorithm>
-#include <future>
-#include <thread>
 
 #include "wrapper.h"
 #include "smoking_sim.h"
 #include "sim_exception.h"
-
-#define MAX(x) (std::numeric_limits<x>::max())
-
-#define DEFAULT_DATA_DIR "data/nhis_inputs_jan_2009/"
-#define COUNTERFACTUAL_DATA_DIR "data/counterfactual_inputs_jan_2009/"
-
-// Input file names
-#define INITIATION_DATA_FILE "lbc_smokehist_initiation.txt"
-#define CESSATION_DATA_FILE "lbc_smokehist_cessation.txt"
-#define OTHER_COD_DATA_FILE "lbc_smokehist_oc_mortality.txt"
-#define CPD_INTENSITY_PROBS "lbc_smokehist_cpdintensityprobs.txt"
-#define CPD_DATA_FILE "lbc_smokehist_cpd.txt"
-
-#define VECTOR_DELIMITER ","
-#define MAX_NUM_REPS 1000000
-#define VERSION_FILE "version.json"
-
-#define E_S ""
-
 using namespace std;
 
 // TODO: do we need this anymore, given that the strategy should probably do the checking?
