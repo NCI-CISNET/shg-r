@@ -31,26 +31,9 @@
 #include "wrapper.h"
 #include "smoking_sim.h"
 #include "sim_exception.h"
-using namespace std;
-
-// TODO: do we need this anymore, given that the strategy should probably do the checking?
-bool IsValidSeed(const char* sSeedValue);
-
-void LoadValue(char* sDest, char* sSource, int iValueNum);
-char* Str_toupper(char *s);
-short min(short, short);
-
-short wRace = 0;
-   short wSex = 0;
-   short wYearBirth = 1950;
-
-
-#define STRICT_R_HEADERS
 #include <Rcpp.h>
-// [[Rcpp::depends(Rcpp)]]
 
-using namespace Rcpp;
-#define BUFSZ 512
+using namespace std;
 
 // We need to create a wrapper class rather than reference Smoking_Simulator directly
 // because (among other constraints) RCPP does not support classes with constructors
