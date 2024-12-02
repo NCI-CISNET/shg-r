@@ -79,6 +79,7 @@ using namespace std;
 
    void SHGInterface::initialize()
    {
+      // TODO: allow user to specify input files, seeds, etc.
       const char *sInitiationProbFile = "./inst/inputs/2017-05-03/lbc_shg_initiation.txt";
       const char *sCessationProbFile = "./inst/inputs/2017-05-03/lbc_shg_cessation.txt";
       const char *sLifeTableFile = "./inst/inputs/2017-05-03/lbc_smokehist_oc_mortality.txt";
@@ -270,4 +271,5 @@ RCPP_MODULE(SmokingSimulator) {
        .property("run_multi_threaded", &SHGInterface::get_run_multi_threaded, &SHGInterface::set_run_multi_threaded, "True if the simulation should be run asynchonously; False otherwise")
        .property("rng_strategy", &SHGInterface::get_rng_strategy, &SHGInterface::set_rng_strategy, "'RngStream' for MRG32k3a (default) or 'MersenneTwister' for Mersenne Twister");
       // TODO: allow user to specify the seed from R; also antithetical variates; also increment substreams
+      // TODO: allow user to specify file or folder paths to input files
    }
