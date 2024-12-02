@@ -510,8 +510,8 @@ bool RunFromParameters(char* sDataFileDir, char* sInitiationSeed,
       pSimulator->RunSimulation(sInputFile, sOutputFile, false);
 
    } catch (SimException ex) {
-      // TODO: review -- this seems like a weird way to ensure no buffer overflow .999s is 1000-1 but tied to ERROR_MESSAGE_SIZE DRY
-      snprintf(sErrorMessage, ERROR_MESSAGE_SIZE, "%.999s", ex.GetError());
+      // * is replaced with 1000-1=999 characters to allow for the null terminator
+      snprintf(sErrorMessage, ERROR_MESSAGE_SIZE, "%.*s", ERROR_MESSAGE_SIZE-1, ex.GetError());
       bReturnValue = false;
    } catch(...) {
       snprintf(sErrorMessage, ERROR_MESSAGE_SIZE, "Unknown Error Occurred\n");
@@ -1876,7 +1876,8 @@ bool CreateDataFile(const char *sNumToSimulate, const char* sOutFileName, char* 
          fclose(pOutputFile);
 
       } catch (SimException ex) {
-         snprintf(sErrorMessage, ERROR_MESSAGE_SIZE, "%.999s", ex.GetError());
+         // * is replaced with 1000-1=999 characters to allow for the null terminator
+         snprintf(sErrorMessage, ERROR_MESSAGE_SIZE, "%.*s", ERROR_MESSAGE_SIZE-1, ex.GetError());
          delete pSimulator; pSimulator = 0;
 		   bReturnValue = false;
    	} catch (...) {
