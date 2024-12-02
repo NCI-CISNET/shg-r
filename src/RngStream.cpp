@@ -34,7 +34,7 @@ namespace
 {
 const double m1   =       4294967087.0;
 const double m2   =       4294944443.0;
-const double norm_ =       1.0 / (m1 + 1.0);  // note: changed norm to norm_ because conflict with norm() in Rcpp
+const double norm_ =      1.0 / (m1 + 1.0);  // note: changed norm to norm_ because conflict with norm() in Rcpp
 const double a12  =       1403580.0;
 const double a13n =       810728.0;
 const double a21  =       527612.0;
