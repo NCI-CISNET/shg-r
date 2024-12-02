@@ -70,7 +70,7 @@ const char sRACE_LABELS[2][10] = {"All Races", "White"};
 char* AssignFilename(const char* sDirectory, const char * sFilename);
 short CountVectorValues(char* sDataString);
 bool CreateDataFile(const char *sNumToSimulate, const char* sOutFileName, char*);
-void Help(const char* sAppName, FILE* pHelpStream);
+// void Help(const char* sAppName, FILE* pHelpStream);
 bool IsPosLongInt(const char *sValue);
 bool IsPosShortInt(const char *sValue);
 bool IsValidNumReps(const char* sNumReps);
