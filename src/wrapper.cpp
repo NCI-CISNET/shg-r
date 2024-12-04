@@ -97,28 +97,62 @@ void SHGInterface::initialize()
                                        ulIndivRndsSeed, wOutputType,
                                        wCessationYear);
 }
-   }
+bool SHGInterface::isValidDataFrame(Rcpp::DataFrame& dfPopulation) {
+int repeat = dfPopulation.nrows();
 
-   Smoking_Simulator* SHGInterface::createSimulator()
-   {
-     const char *sInitiationProbFile = "./inst/inputs/2017-05-03/lbc_shg_initiation.txt";
-     const char *sCessationProbFile = "./inst/inputs/2017-05-03/lbc_shg_cessation.txt";
-     const char *sLifeTableFile = "./inst/inputs/2017-05-03/lbc_smokehist_oc_mortality.txt";
-     const char *sCpdIntensityProbFile = ""; // no longer used?
-     const char *sCpdDataFile = "./inst/inputs/2017-05-03/lbc_shg_cpd.txt";
-     unsigned long ulInitPRNGSeed = 12345;
-     unsigned long ulCessPRNGSeed = 12345;
-     unsigned long ulLifeTabSeed = 12345;
-     unsigned long ulIndivRndsSeed = 12345;
-     short wOutputType = 2; // data only?
-     short wCessationYear = 0;
-     return new Smoking_Simulator(sInitiationProbFile, sCessationProbFile,
-                           sLifeTableFile, sCpdIntensityProbFile,
-                           sCpdDataFile, ulInitPRNGSeed,
-                           ulCessPRNGSeed, ulLifeTabSeed,
-                           ulIndivRndsSeed, wOutputType,
-                           wCessationYear);
+// Check if the required columns (race, sex, birth_cohort) exist in the data frame
+Rcpp::CharacterVector columnNames = dfPopulation.names();
+bool hasRace = false;
+bool hasSex = false;
+bool hasBirthCohort = false;
+
+for (const auto& columnName : columnNames) {
+   if (columnName == "race") {
+      hasRace = true;
    }
+   else if (columnName == "sex") {
+      hasSex = true;
+   }
+   else if (columnName == "birth_cohort") {
+      hasBirthCohort = true;
+   }
+}
+// Create a comma-delimited list of column names
+std::string columnNamesList;
+for (const auto& columnName : columnNames) {
+   columnNamesList += std::string(columnName) + ", ";
+}
+columnNamesList = columnNamesList.substr(0, columnNamesList.length() - 2); // Remove the trailing comma and space
+
+if (!hasRace || !hasSex || !hasBirthCohort) {
+   Rcpp::stop("Found the following columns: " + columnNamesList + ". Missing one or more required columns: race, sex, or birth_cohort");
+}
+
+// Ensure that the values for race, sex, and birth_cohort are valid
+Rcpp::IntegerVector raceVec = dfPopulation["race"];
+Rcpp::IntegerVector sexVec = dfPopulation["sex"];
+Rcpp::IntegerVector birthCohortVec = dfPopulation["birth_cohort"];
+
+for (int i = 0; i < repeat; i++) {
+   if (raceVec[i] != 0 && raceVec[i] != 1) {
+         Rcpp::stop("Invalid value of '" + std::to_string(raceVec[i]) + "' for race at index " + std::to_string(i));
+   }
+}
+
+for (int i = 0; i < repeat; i++) {
+   if (sexVec[i] != 0 && sexVec[i] != 1) {
+      Rcpp::stop("Invalid value of '" + std::to_string(sexVec[i]) + "' for sex at index " + std::to_string(i));
+   }
+}
+
+for (int i = 0; i < repeat; i++) {
+   if (birthCohortVec[i] < 1900 || birthCohortVec[i] > 2100) {
+      Rcpp::stop("Invalid value of '" + std::to_string(birthCohortVec[i]) + "' for birth_cohort at index " + std::to_string(i));
+   }
+}
+// TODO: review the following; not sure this is the best practice to just return true unless we have an error
+return true;
+}
 
    void SHGInterface::initialize()
    {
