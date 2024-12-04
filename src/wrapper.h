@@ -6,7 +6,7 @@ class SHGInterface {
 public:
     SHGInterface();
     // Function to run simulations in parallel and combine results
-    Rcpp::DataFrame runSim(int repeat, short wRace, short wSex, short wYearBirth);
+    bool isValidDataFrame(Rcpp::DataFrame& dfPopulation);
     Rcpp::DataFrame runSimFromFixedValues(int repeat, short wRace, short wSex, short wYearBirth);
     Rcpp::DataFrame runSimFromDataFrame(Rcpp::DataFrame dfPopulation);
 
