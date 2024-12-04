@@ -30,8 +30,13 @@ public:
     void set_rng_strategy(std::string strategy) {rng_strategy = strategy;};
 
     // Function to run a single simulation segment
-    void runSimSegment(int repeat, short wRace, short wSex, short wYearBirth,
-                       std::vector<int>& initiationAge, std::vector<int>& cessationAge,
-                       std::vector<int>& ageAtDeath, std::vector<std::string>& cpdString,
+    void runSimSegment(int repeat, 
+                       std::vector<short>& wRaces,
+                       std::vector<short>& wSexes,
+                       std::vector<short>& wYearBirths,
+                       std::vector<short>& initiationAge,
+                       std::vector<short>& cessationAge,
+                       std::vector<short>& ageAtDeath,
+                       std::vector<std::string>& cpdString,
                        int offset);
 };

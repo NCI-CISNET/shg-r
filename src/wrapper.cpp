@@ -141,7 +141,8 @@ void SHGInterface::runSimSegment(int repeat, short wRace, short wSex, short wYea
 
       for (int j = 0; j < repeat; j++)
       {
-         qSimulator->RunSimulationSingle(wRace, wSex, wYearBirth, pOutStream);
+         int k = offset + j;
+         qSimulator->RunSimulationSingle(wRaces[k], wSexes[k], wDateBirths[k], pOutStream);
 
          double* dPersonsCPDbyAge = qSimulator->GetPersonsCPDbyAge();
          sPersonsInitAge = qSimulator->GetPersonsInitAge();
@@ -155,7 +156,7 @@ void SHGInterface::runSimSegment(int repeat, short wRace, short wSex, short wYea
          if (sPersonsInitAge != -999)
          {
             if (sPersonsCessAge == -999)
-               wYearsAsSmoker = wSIM_CUTOFF_YEAR - (wYearBirth + sPersonsInitAge) + 1;
+               wYearsAsSmoker = wSIM_CUTOFF_YEAR - (wDateBirths[k] + sPersonsInitAge) + 1;
             else
                wYearsAsSmoker = sPersonsCessAge - sPersonsInitAge + 1;
             for (i = 0; i < wYearsAsSmoker; i++)
@@ -168,10 +169,10 @@ void SHGInterface::runSimSegment(int repeat, short wRace, short wSex, short wYea
             }
          }
 
-         initiationAge[offset + j] = qSimulator->GetPersonsInitAge();
-         cessationAge[offset + j] = qSimulator->GetPersonsCessAge();
-         ageAtDeath[offset + j] = qSimulator->GetPersonsAgeAtDeath();
-         cpdString[offset + j] = Rcpp::String(cpd);
+         initiationAge[k] = qSimulator->GetPersonsInitAge();
+         cessationAge[k] = qSimulator->GetPersonsCessAge();
+         ageAtDeath[k] = qSimulator->GetPersonsAgeAtDeath();
+         cpdString[k] = Rcpp::String(cpd);
       }
       fclose(pOutStream);
    }
@@ -185,7 +186,13 @@ Rcpp::DataFrame SHGInterface::runSim(int repeat, short wRace, short wSex, short 
    int remainder = repeat % n; // Calculate the remainder
 
    // Pre-allocate vectors
-   std::vector<int> initiationAge(repeat), cessationAge(repeat), ageAtDeath(repeat);
+   std::vector<short> 
+      initiationAge(repeat),
+      cessationAge(repeat),
+      ageAtDeath(repeat),
+      wRaces(repeat, wRace),
+      wSexes(repeat, wSex),
+      wYearBirths(repeat, wYearBirth);
    std::vector<std::string> cpdString(repeat);
    std::vector<short> wRaces(repeat, wRace), wSexes(repeat, wSex);
    std::vector<int> wYearBirths(repeat, wYearBirth);
@@ -206,15 +213,27 @@ Rcpp::DataFrame SHGInterface::runSim(int repeat, short wRace, short wSex, short 
       if (run_multi_threaded) {
          // Run asynchronously across multiple threads
          futures.push_back(std::async(std::launch::async, &SHGInterface::runSimSegment, this,
-                                     current_repeat_per_sim, wRace, wSex, wYearBirth,
-                                     std::ref(initiationAge), std::ref(cessationAge),
-                                     std::ref(ageAtDeath), std::ref(cpdString), offset));
+                                     current_repeat_per_sim,
+                                     std::ref(wRaces),
+                                     std::ref(wSexes),
+                                     std::ref(wYearBirths),
+                                     std::ref(initiationAge),
+                                     std::ref(cessationAge),
+                                     std::ref(ageAtDeath),
+                                     std::ref(cpdString),
+                                     offset));
       }
       else {
          // Run sequentially using same segments
-         SHGInterface::runSimSegment(current_repeat_per_sim, wRace, wSex, wYearBirth,
-                     std::ref(initiationAge), std::ref(cessationAge),
-                     std::ref(ageAtDeath), std::ref(cpdString), offset);
+         SHGInterface::runSimSegment(current_repeat_per_sim,
+                     std::ref(wRaces),
+                     std::ref(wSexes),
+                     std::ref(wYearBirths),
+                     std::ref(initiationAge),
+                     std::ref(cessationAge),
+                     std::ref(ageAtDeath),
+                     std::ref(cpdString),
+                     offset);
       }
     }
 
