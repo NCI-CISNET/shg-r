@@ -47,13 +47,56 @@ using namespace std;
 //' @export
 //' @description TEST Type the name of the class to see its methods
 //' @field new Constructor
-// class SHGInterface
-// {
-// public:
-   // Eventually we should probably allow for a constructor that takes seeds
-   SHGInterface::SHGInterface()
-   {
-      initialize();
+
+// Eventually we should probably allow for a constructor that takes seeds
+SHGInterface::SHGInterface()
+{
+   initialize();
+}
+
+Smoking_Simulator* SHGInterface::createSimulator()
+{
+   const char *sInitiationProbFile = "./inst/inputs/2017-05-03/lbc_shg_initiation.txt";
+   const char *sCessationProbFile = "./inst/inputs/2017-05-03/lbc_shg_cessation.txt";
+   const char *sLifeTableFile = "./inst/inputs/2017-05-03/lbc_smokehist_oc_mortality.txt";
+   const char *sCpdIntensityProbFile = ""; // no longer used?
+   const char *sCpdDataFile = "./inst/inputs/2017-05-03/lbc_shg_cpd.txt";
+   unsigned long ulInitPRNGSeed = 12345;
+   unsigned long ulCessPRNGSeed = 12345;
+   unsigned long ulLifeTabSeed = 12345;
+   unsigned long ulIndivRndsSeed = 12345;
+   short wOutputType = 2; // data only?
+   short wCessationYear = 0;
+   return new Smoking_Simulator(sInitiationProbFile, sCessationProbFile,
+                        sLifeTableFile, sCpdIntensityProbFile,
+                        sCpdDataFile, ulInitPRNGSeed,
+                        ulCessPRNGSeed, ulLifeTabSeed,
+                        ulIndivRndsSeed, wOutputType,
+                        wCessationYear);
+}
+
+void SHGInterface::initialize()
+{
+   // TODO: allow user to specify input files, seeds, etc.
+   const char *sInitiationProbFile = "./inst/inputs/2017-05-03/lbc_shg_initiation.txt";
+   const char *sCessationProbFile = "./inst/inputs/2017-05-03/lbc_shg_cessation.txt";
+   const char *sLifeTableFile = "./inst/inputs/2017-05-03/lbc_smokehist_oc_mortality.txt";
+   const char *sCpdIntensityProbFile = ""; // no longer used?
+   const char *sCpdDataFile = "./inst/inputs/2017-05-03/lbc_shg_cpd.txt";
+   unsigned long ulInitPRNGSeed = 12345;
+   unsigned long ulCessPRNGSeed = 12345;
+   unsigned long ulLifeTabSeed = 12345;
+   unsigned long ulIndivRndsSeed = 12345;
+   short wOutputType = 2; // data only?
+   short wCessationYear = 0;
+
+   pSimulator = new Smoking_Simulator(sInitiationProbFile, sCessationProbFile,
+                                       sLifeTableFile, sCpdIntensityProbFile,
+                                       sCpdDataFile, ulInitPRNGSeed,
+                                       ulCessPRNGSeed, ulLifeTabSeed,
+                                       ulIndivRndsSeed, wOutputType,
+                                       wCessationYear);
+}
    }
 
    Smoking_Simulator* SHGInterface::createSimulator()
