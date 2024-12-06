@@ -197,7 +197,9 @@ class Smoking_Simulator {
       };
 
 };
+// Implemented in main.cpp
 int RunWebVersion(const char *sInputFileName);
+char* AssignFilename(const char* sDirectory, const char * sFilename);
 
 void WriteToFile(FILE* stream, const char*format, ...);
 void PrintMessage(const char* message);

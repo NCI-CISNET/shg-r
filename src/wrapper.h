@@ -22,16 +22,18 @@ public:
     Rcpp::DataFrame runSimFromFixedValues(int repeat, short wRace, short wSex, short wYearBirth);
     Rcpp::DataFrame runSimFromDataFrame(Rcpp::DataFrame dfPopulation);
 
-    void initialize();
-    void LegacyRunWebVersion(const char *sInputFileName);
-    const char *sInputFile;
-    const char *sOutputFile;
-    Smoking_Simulator *pSimulator = 0;
-    Smoking_Simulator* createSimulator();
+    string input_data_folder = R_DEFAULT_DATA_DIR;
+    string initiation_filename = R_INITIATION_DATA_FILE;
+    string cessation_filename = R_CESSATION_DATA_FILE;
+    string lifetable_filename = R_OTHER_COD_DATA_FILE;
+    string cpd_filename = R_CPD_DATA_FILE;    
+    int immediate_cessation_year = 0;
+
+    Smoking_Simulator* loadSimulator();
 
     int number_of_segments = 10; // TODO: maybe default value should be set in constructor instead?
     bool run_multi_threaded = true; // TODO: maybe default value should be set in constructor instead?
-    std::string rng_strategy = "RngStream"; // TODO: maybe default value should be set in constructor instead?
+    string rng_strategy = "RngStream"; // TODO: maybe default value should be set in constructor instead?
 
     // Getters and Setters
     int get_number_of_segments() {return number_of_segments;};
@@ -61,7 +63,6 @@ public:
     int get_immediate_cessation_year() {return immediate_cessation_year;};
     void set_immediate_cessation_year(int n) {immediate_cessation_year = n;};
 
-    // Function to run a single simulation segment
     void runSimSegment(int repeat, 
                        vector<short>& wRaces,
                        vector<short>& wSexes,
@@ -71,4 +72,7 @@ public:
                        vector<short>& ageAtDeath,
                        vector<string>& cpdString,
                        int offset);
+
+    void LegacyRunWebVersion(const char *sInputFileName);
+
 };

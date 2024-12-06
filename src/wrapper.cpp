@@ -34,7 +34,7 @@
 #include <Rcpp.h>
 
 using namespace std;
-
+      
 // We need to create a wrapper class rather than reference Smoking_Simulator directly
 // because (among other constraints) RCPP does not support classes with constructors
 // that take more than 6 arguments
@@ -49,140 +49,212 @@ using namespace std;
 //' @field new Constructor
 
 // Eventually we should probably allow for a constructor that takes seeds
-SHGInterface::SHGInterface()
-{
-   initialize();
+SHGInterface::SHGInterface() {
+   // For now there is no initialize needed;
+   // The Smoking_Simulators are created on the fly
 }
 
-Smoking_Simulator* SHGInterface::createSimulator()
+Smoking_Simulator* SHGInterface::loadSimulator()
 {
-   const char *sInitiationProbFile = "./inst/inputs/2017-05-03/lbc_shg_initiation.txt";
-   const char *sCessationProbFile = "./inst/inputs/2017-05-03/lbc_shg_cessation.txt";
-   const char *sLifeTableFile = "./inst/inputs/2017-05-03/lbc_smokehist_oc_mortality.txt";
-   const char *sCpdIntensityProbFile = ""; // no longer used?
-   const char *sCpdDataFile = "./inst/inputs/2017-05-03/lbc_shg_cpd.txt";
-   unsigned long ulInitPRNGSeed = 12345;
-   unsigned long ulCessPRNGSeed = 12345;
-   unsigned long ulLifeTabSeed = 12345;
-   unsigned long ulIndivRndsSeed = 12345;
-   short wOutputType = 2; // data only?
-   short wCessationYear = 0;
-   return new Smoking_Simulator(sInitiationProbFile, sCessationProbFile,
-                        sLifeTableFile, sCpdIntensityProbFile,
-                        sCpdDataFile, ulInitPRNGSeed,
-                        ulCessPRNGSeed, ulLifeTabSeed,
-                        ulIndivRndsSeed, wOutputType,
-                        wCessationYear);
-}
+   char *sInitiationFile = AssignFilename(input_data_folder.c_str(), initiation_filename.c_str());
+   char *sCessationFile = AssignFilename(input_data_folder.c_str(), cessation_filename.c_str());
+   char *sLifeTableFile = AssignFilename(input_data_folder.c_str(), lifetable_filename.c_str()); // oc_mortality or ac_mortality
+   char *sCPDDataFile = AssignFilename(input_data_folder.c_str(), cpd_filename.c_str());
+   int wCessationYear = immediate_cessation_year; // 0 is default and specifies no immediate cessation
 
-void SHGInterface::initialize()
-{
-   // TODO: allow user to specify input files, seeds, etc.
-   const char *sInitiationProbFile = "./inst/inputs/2017-05-03/lbc_shg_initiation.txt";
-   const char *sCessationProbFile = "./inst/inputs/2017-05-03/lbc_shg_cessation.txt";
-   const char *sLifeTableFile = "./inst/inputs/2017-05-03/lbc_smokehist_oc_mortality.txt";
-   const char *sCpdIntensityProbFile = ""; // no longer used?
-   const char *sCpdDataFile = "./inst/inputs/2017-05-03/lbc_shg_cpd.txt";
-   unsigned long ulInitPRNGSeed = 12345;
-   unsigned long ulCessPRNGSeed = 12345;
-   unsigned long ulLifeTabSeed = 12345;
-   unsigned long ulIndivRndsSeed = 12345;
-   short wOutputType = 2; // data only?
-   short wCessationYear = 0;
+   char *sCPDIntensityFile = ""; // no longer used, but variable needed for function signature
+   short wOutputType = 1; // Not relevant for R but must include because we want to reuse the SHG CLI code. see SetOutputType() in smoking_sim.cpp and enum OutputType in smoking_sim.h
 
-   pSimulator = new Smoking_Simulator(sInitiationProbFile, sCessationProbFile,
-                                       sLifeTableFile, sCpdIntensityProbFile,
-                                       sCpdDataFile, ulInitPRNGSeed,
-                                       ulCessPRNGSeed, ulLifeTabSeed,
-                                       ulIndivRndsSeed, wOutputType,
+   return new Smoking_Simulator(sInitiationFile, sCessationFile,
+                                       sLifeTableFile, sCPDIntensityFile,
+                                       sCPDDataFile, wOutputType,
                                        wCessationYear);
+};
+
+Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) {
+
+   if (!SHGInterface::isValidDataFrame(dfPopulation)) {
+      Rcpp::stop("Invalid data frame");
+   }
+   // TODO validate input values including ones set in the constructor, properties, etc.
+   int repeat = dfPopulation.nrows();
+   int n = number_of_segments; // Number of parallel simulations
+   int repeat_per_sim = repeat / n;
+   int remainder = repeat % n; // Calculate the remainder
+
+   // Pre-allocate race, sex, birth_cohort vectors
+   vector<short> wRaces = Rcpp::as<vector<short>>(dfPopulation["race"]);
+   vector<short> wSexes = Rcpp::as<vector<short>>(dfPopulation["sex"]);
+   vector<short> wYearBirths = Rcpp::as<vector<short>>(dfPopulation["birth_cohort"]);
+
+   vector<short> 
+      initiationAge(repeat),
+      cessationAge(repeat),
+      ageAtDeath(repeat);
+   vector<string> cpdString(repeat);
+
+   // Vectors to store futures; declare even if we might not use it below
+   vector<future<void>> futures;
+   
+   // Launch n simulations in parallel (or sequentially if run_multi_threaded is false)
+   for (int i = 0; i < n; ++i) {
+      int offset = i * repeat_per_sim;
+      int current_repeat_per_sim = repeat_per_sim;
+
+      // Add the remainder to the last segment
+      if (i == n - 1) {
+         current_repeat_per_sim += remainder;
+      }
+
+      if (run_multi_threaded) {
+         // Run asynchronously across multiple threads
+         futures.push_back(async(launch::async, &SHGInterface::runSimSegment, this,
+                                     current_repeat_per_sim,
+                                     ref(wRaces),
+                                     ref(wSexes),
+                                     ref(wYearBirths),
+                                     ref(initiationAge),
+                                     ref(cessationAge),
+                                     ref(ageAtDeath),
+                                     ref(cpdString),
+                                     offset));
+      }
+      else {
+         // Run sequentially using same segments
+         SHGInterface::runSimSegment(current_repeat_per_sim,
+                     ref(wRaces),
+                     ref(wSexes),
+                     ref(wYearBirths),
+                     ref(initiationAge),
+                     ref(cessationAge),
+                     ref(ageAtDeath),
+                     ref(cpdString),
+                     offset);
+      }
+    }
+    // Wait for all simulations to complete
+    if (run_multi_threaded) {
+      for (auto& fut : futures) {
+        fut.get();
+      }
+    }
+
+   // Convert to Rcpp::DataFrame
+   Rcpp::IntegerVector wRaceVec(wRaces.begin(), wRaces.end());
+   Rcpp::IntegerVector wSexVec(wSexes.begin(), wSexes.end());
+   Rcpp::IntegerVector wYearBirthVec(wYearBirths.begin(), wYearBirths.end());
+   Rcpp::IntegerVector initiationAgeVec(initiationAge.begin(), initiationAge.end());
+   Rcpp::IntegerVector cessationAgeVec(cessationAge.begin(), cessationAge.end());
+   Rcpp::IntegerVector ageAtDeathVec(ageAtDeath.begin(), ageAtDeath.end());
+   Rcpp::CharacterVector cpdStringVec(cpdString.begin(), cpdString.end());
+
+   Rcpp::DataFrame df = Rcpp::DataFrame::create(
+      Rcpp::Named("race") = wRaceVec,
+      Rcpp::Named("sex") = wSexVec,
+      Rcpp::Named("birth_cohort") = wYearBirthVec,
+      Rcpp::Named("smoking_initiation_age") = initiationAgeVec,
+      Rcpp::Named("smoking_cessation_age") = cessationAgeVec,
+      Rcpp::Named("age_at_death") = ageAtDeathVec,
+      Rcpp::Named("cigarettes_per_day") = cpdStringVec
+   );
+
+    return df;
 }
+
+Rcpp::DataFrame SHGInterface::runSimFromFixedValues(int repeat, short wRace, short wSex, short wYearBirth) {
+
+   // Create a DataFrame and populate it with the fixed values
+   Rcpp::DataFrame df = Rcpp::DataFrame::create(
+      Rcpp::Named("race") = Rcpp::IntegerVector(repeat, wRace),
+      Rcpp::Named("sex") = Rcpp::IntegerVector(repeat, wSex),
+      Rcpp::Named("birth_cohort") = Rcpp::IntegerVector(repeat, wYearBirth),
+      Rcpp::Named("smoking_initiation_age") = Rcpp::IntegerVector(repeat),
+      Rcpp::Named("smoking_cessation_age") = Rcpp::IntegerVector(repeat),
+      Rcpp::Named("age_at_death") = Rcpp::IntegerVector(repeat),
+      Rcpp::Named("cigarettes_per_day") = Rcpp::CharacterVector(repeat)
+   );
+
+   Rcpp::DataFrame result = runSimFromDataFrame(df);
+   return result;
+}
+
 bool SHGInterface::isValidDataFrame(Rcpp::DataFrame& dfPopulation) {
-int repeat = dfPopulation.nrows();
+   int repeat = dfPopulation.nrows();
 
-// Check if the required columns (race, sex, birth_cohort) exist in the data frame
-Rcpp::CharacterVector columnNames = dfPopulation.names();
-bool hasRace = false;
-bool hasSex = false;
-bool hasBirthCohort = false;
+   // Check if the required columns (race, sex, birth_cohort) exist in the data frame
+   Rcpp::CharacterVector columnNames = dfPopulation.names();
+   bool hasRace = false;
+   bool hasSex = false;
+   bool hasBirthCohort = false;
 
-for (const auto& columnName : columnNames) {
-   if (columnName == "race") {
-      hasRace = true;
+   for (const auto& columnName : columnNames) {
+      if (columnName == "race") {
+         hasRace = true;
+      }
+      else if (columnName == "sex") {
+         hasSex = true;
+      }
+      else if (columnName == "birth_cohort") {
+         hasBirthCohort = true;
+      }
    }
-   else if (columnName == "sex") {
-      hasSex = true;
+   // Create a comma-delimited list of column names
+   string columnNamesList;
+   for (const auto& columnName : columnNames) {
+      columnNamesList += string(columnName) + ", ";
    }
-   else if (columnName == "birth_cohort") {
-      hasBirthCohort = true;
+   columnNamesList = columnNamesList.substr(0, columnNamesList.length() - 2); // Remove the trailing comma and space
+
+   if (!hasRace || !hasSex || !hasBirthCohort) {
+      Rcpp::stop("Found the following columns: " + columnNamesList + ". Missing one or more required columns: race, sex, or birth_cohort");
    }
-}
-// Create a comma-delimited list of column names
-std::string columnNamesList;
-for (const auto& columnName : columnNames) {
-   columnNamesList += std::string(columnName) + ", ";
-}
-columnNamesList = columnNamesList.substr(0, columnNamesList.length() - 2); // Remove the trailing comma and space
 
-if (!hasRace || !hasSex || !hasBirthCohort) {
-   Rcpp::stop("Found the following columns: " + columnNamesList + ". Missing one or more required columns: race, sex, or birth_cohort");
-}
+   // Ensure that the values for race, sex, and birth_cohort are valid
+   Rcpp::IntegerVector raceVec = dfPopulation["race"];
+   Rcpp::IntegerVector sexVec = dfPopulation["sex"];
+   Rcpp::IntegerVector birthCohortVec = dfPopulation["birth_cohort"];
 
-// Ensure that the values for race, sex, and birth_cohort are valid
-Rcpp::IntegerVector raceVec = dfPopulation["race"];
-Rcpp::IntegerVector sexVec = dfPopulation["sex"];
-Rcpp::IntegerVector birthCohortVec = dfPopulation["birth_cohort"];
-
-for (int i = 0; i < repeat; i++) {
-   if (raceVec[i] != 0 && raceVec[i] != 1) {
-         Rcpp::stop("Invalid value of '" + std::to_string(raceVec[i]) + "' for race at index " + std::to_string(i));
+   for (int i = 0; i < repeat; i++) {
+      if (raceVec[i] != 0 && raceVec[i] != 1) {
+            Rcpp::stop("Invalid value of '" + to_string(raceVec[i]) + "' for race at index " + to_string(i));
+      }
    }
-}
 
-for (int i = 0; i < repeat; i++) {
-   if (sexVec[i] != 0 && sexVec[i] != 1) {
-      Rcpp::stop("Invalid value of '" + std::to_string(sexVec[i]) + "' for sex at index " + std::to_string(i));
+   for (int i = 0; i < repeat; i++) {
+      if (sexVec[i] != 0 && sexVec[i] != 1) {
+         Rcpp::stop("Invalid value of '" + to_string(sexVec[i]) + "' for sex at index " + to_string(i));
+      }
    }
-}
 
-for (int i = 0; i < repeat; i++) {
-   if (birthCohortVec[i] < 1900 || birthCohortVec[i] > 2100) {
-      Rcpp::stop("Invalid value of '" + std::to_string(birthCohortVec[i]) + "' for birth_cohort at index " + std::to_string(i));
+   for (int i = 0; i < repeat; i++) {
+      if (birthCohortVec[i] < 1900 || birthCohortVec[i] > 2100) {
+         Rcpp::stop("Invalid value of '" + to_string(birthCohortVec[i]) + "' for birth_cohort at index " + to_string(i));
+      }
    }
-}
-// TODO: review the following; not sure this is the best practice to just return true unless we have an error
-return true;
+   // TODO: review the following; not sure this is the best practice to just return true unless we have an error
+   return true;
 }
 
 void SHGInterface::runSimSegment(int repeat,
-                              std::vector<short>& wRaces,
-                              std::vector<short>& wSexes,
-                              std::vector<short>& wDateBirths,
-                              std::vector<short>& initiationAge,
-                              std::vector<short>& cessationAge,
-                              std::vector<short>& ageAtDeath,
-                              std::vector<std::string>& cpdString,
+                              vector<short>& wRaces,
+                              vector<short>& wSexes,
+                              vector<short>& wDateBirths,
+                              vector<short>& initiationAge,
+                              vector<short>& cessationAge,
+                              vector<short>& ageAtDeath,
+                              vector<string>& cpdString,
                               int offset) {
-   //TODO we don't need an output file except to compare results with legacy code. Perhaps we can produce output only on demand?
-   FILE *pOutStream = 0,
-         *pErrorStream = 0;
-   // TODO: creates an empty file, but we don't need it
-   const char *sOutputFile = "./out/test_output_from_module2.txt";
 
-   pOutStream = fopen(sOutputFile, "w");
-   if (pOutStream == NULL)
-   {
-      fprintf(pErrorStream, "\n<ERROR>\nSupplied Output file: %s, could not be opened for writing.\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n", sOutputFile);
-   }
-   // TODO: Trying this to prevent an output file from being created
-   pOutStream = NULL;
+   // TODO we don't need an output file except to compare results with legacy code.
+   FILE *pOutStream = NULL;
 
    string cpd;
-   short wYearsAsSmoker, i;
+   short wYearsAsSmoker;
    short sPersonsCPDbyAge;
    short sPersonsInitAge, sPersonsCessAge, sPersonsAgeAtDeath;
 
-   Smoking_Simulator* qSimulator = createSimulator();
+   Smoking_Simulator* qSimulator = loadSimulator();
+   //Smoking_Simulator* qSimulator = new Smoking_Simulator(*pSimulator);
 
    // TODO: allow user to specify the seed from R
    if (rng_strategy == "MersenneTwister")
@@ -218,12 +290,12 @@ void SHGInterface::runSimSegment(int repeat,
             wYearsAsSmoker = wSIM_CUTOFF_YEAR - (wDateBirths[k] + sPersonsInitAge) + 1;
          else
             wYearsAsSmoker = sPersonsCessAge - sPersonsInitAge + 1;
-         for (i = 0; i < wYearsAsSmoker; i++)
+         for (int i = 0; i < wYearsAsSmoker; i++)
          {
             if (i + sPersonsInitAge < 100)
             {
                sPersonsCPDbyAge = dPersonsCPDbyAge[i];
-               cpd += std::to_string(i + sPersonsInitAge) + " (" + std::to_string(static_cast<int>(sPersonsCPDbyAge)) + "), ";
+               cpd += to_string(i + sPersonsInitAge) + " (" + to_string(static_cast<int>(sPersonsCPDbyAge)) + "), ";
             }
          }
       }
@@ -234,122 +306,6 @@ void SHGInterface::runSimSegment(int repeat,
       cpdString[k] = Rcpp::String(cpd);
    }
    fclose(pOutStream);
-}
-
-Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) {
-
-   if (!SHGInterface::isValidDataFrame(dfPopulation)) {
-      Rcpp::stop("Invalid data frame");
-   }
-   // TODO validate input values including ones set in the constructor, properties, etc.
-   int repeat = dfPopulation.nrows();
-   int n = number_of_segments; // Number of parallel simulations
-   int repeat_per_sim = repeat / n;
-   int remainder = repeat % n; // Calculate the remainder
-
-   // Pre-allocate race, sex, birth_cohort vectors
-   std::vector<short> wRaces = Rcpp::as<std::vector<short>>(dfPopulation["race"]);
-   std::vector<short> wSexes = Rcpp::as<std::vector<short>>(dfPopulation["sex"]);
-   std::vector<short> wYearBirths = Rcpp::as<std::vector<short>>(dfPopulation["birth_cohort"]);
-
-   std::vector<short> 
-      initiationAge(repeat),
-      cessationAge(repeat),
-      ageAtDeath(repeat);
-   std::vector<std::string> cpdString(repeat);
-
-   // Vectors to store futures; declare even if we might not use it below
-   std::vector<std::future<void>> futures;
-   
-   // Launch n simulations in parallel
-   for (int i = 0; i < n; ++i) {
-      int offset = i * repeat_per_sim;
-      int current_repeat_per_sim = repeat_per_sim;
-
-      // Add the remainder to the last segment
-      if (i == n - 1) {
-         current_repeat_per_sim += remainder;
-      }
-
-      if (run_multi_threaded) {
-         // Run asynchronously across multiple threads
-         futures.push_back(std::async(std::launch::async, &SHGInterface::runSimSegment, this,
-                                     current_repeat_per_sim,
-                                     std::ref(wRaces),
-                                     std::ref(wSexes),
-                                     std::ref(wYearBirths),
-                                     std::ref(initiationAge),
-                                     std::ref(cessationAge),
-                                     std::ref(ageAtDeath),
-                                     std::ref(cpdString),
-                                     offset));
-      }
-      else {
-         // Run sequentially using same segments
-         SHGInterface::runSimSegment(current_repeat_per_sim,
-                     std::ref(wRaces),
-                     std::ref(wSexes),
-                     std::ref(wYearBirths),
-                     std::ref(initiationAge),
-                     std::ref(cessationAge),
-                     std::ref(ageAtDeath),
-                     std::ref(cpdString),
-                     offset);
-      }
-    }
-
-    // Wait for all simulations to complete
-    if (run_multi_threaded) {
-      for (auto& fut : futures) {
-        fut.get();
-      }
-    }
-
-    // Convert to Rcpp::DataFrame
-   Rcpp::IntegerVector wRaceVec(wRaces.begin(), wRaces.end());
-   Rcpp::IntegerVector wSexVec(wSexes.begin(), wSexes.end());
-   Rcpp::IntegerVector wYearBirthVec(wYearBirths.begin(), wYearBirths.end());
-   Rcpp::IntegerVector initiationAgeVec(initiationAge.begin(), initiationAge.end());
-   Rcpp::IntegerVector cessationAgeVec(cessationAge.begin(), cessationAge.end());
-   Rcpp::IntegerVector ageAtDeathVec(ageAtDeath.begin(), ageAtDeath.end());
-   Rcpp::CharacterVector cpdStringVec(cpdString.begin(), cpdString.end());
-
-   Rcpp::DataFrame df = Rcpp::DataFrame::create(
-      Rcpp::Named("race") = wRaceVec,
-      Rcpp::Named("sex") = wSexVec,
-      Rcpp::Named("birth_cohort") = wYearBirthVec,
-      Rcpp::Named("smoking_initiation_age") = initiationAgeVec,
-      Rcpp::Named("smoking_cessation_age") = cessationAgeVec,
-      Rcpp::Named("age_at_death") = ageAtDeathVec,
-      Rcpp::Named("cigarettes_per_day") = cpdStringVec
-   );
-
-    return df;
-}
-
-// Run simulations in parallel OR sequentially and returned combine results
-// The results should be identical regardless of the method used but assuming number_of_segments is the same
-Rcpp::DataFrame SHGInterface::runSimFromFixedValues(int repeat, short wRace, short wSex, short wYearBirth) {
-   // TODO validate input values including ones set in the constructor, properties, etc.
-
-   // int n = number_of_segments; // Number of parallel simulations
-   // int repeat_per_sim = repeat / n;
-   // int remainder = repeat % n; // Calculate the remainder
-
-   // Create a DataFrame
-   Rcpp::DataFrame df = Rcpp::DataFrame::create(
-      Rcpp::Named("race") = Rcpp::IntegerVector(repeat, wRace),
-      Rcpp::Named("sex") = Rcpp::IntegerVector(repeat, wSex),
-      Rcpp::Named("birth_cohort") = Rcpp::IntegerVector(repeat, wYearBirth),
-      Rcpp::Named("smoking_initiation_age") = Rcpp::IntegerVector(repeat),
-      Rcpp::Named("smoking_cessation_age") = Rcpp::IntegerVector(repeat),
-      Rcpp::Named("age_at_death") = Rcpp::IntegerVector(repeat),
-      Rcpp::Named("cigarettes_per_day") = Rcpp::CharacterVector(repeat)
-   );
-
-   // Call runSimFromDataFrame and return the result
-   Rcpp::DataFrame result = runSimFromDataFrame(df);
-   return result;
 }
 
 void SHGInterface::LegacyRunWebVersion(const char *sInputFileName)
@@ -383,5 +339,4 @@ RCPP_MODULE(SmokingSimulator) {
        .property("lifetable_filename", &SHGInterface::get_lifetable_filename, &SHGInterface::set_lifetable_filename, "Set or get the lifetable filename")
        .property("cpd_filename", &SHGInterface::get_cpd_filename, &SHGInterface::set_cpd_filename, "Set or get the cpd filename");
       // TODO: allow user to specify the seed from R; also antithetical variates; also increment substreams
-      // TODO: allow user to specify file or folder paths to input files
    }
