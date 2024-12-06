@@ -62,7 +62,7 @@ Smoking_Simulator* SHGInterface::loadSimulator()
    char *sCPDDataFile = AssignFilename(input_data_folder.c_str(), cpd_filename.c_str());
    int wCessationYear = immediate_cessation_year; // 0 is default and specifies no immediate cessation
 
-   char *sCPDIntensityFile = ""; // no longer used, but variable needed for function signature
+   const char *sCPDIntensityFile = ""; // no longer used, but variable needed for function signature
    short wOutputType = 1; // Not relevant for R but must include because we want to reuse the SHG CLI code. see SetOutputType() in smoking_sim.cpp and enum OutputType in smoking_sim.h
 
    return new Smoking_Simulator(sInitiationFile, sCessationFile,
