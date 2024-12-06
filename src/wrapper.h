@@ -1,6 +1,18 @@
 #define STRICT_R_HEADERS
 #include <Rcpp.h>
 #include "smoking_sim.h"
+using namespace std;
+
+// Note that the CLI SHG version might specify default paths differently
+#define R_DEFAULT_DATA_DIR "./inst/inputs/default/"
+#define R_INITIATION_DATA_FILE "lbc_smokehist_initiation.txt"
+#define R_CESSATION_DATA_FILE "lbc_smokehist_cessation.txt"
+#define R_OTHER_COD_DATA_FILE "lbc_smokehist_oc_mortality.txt"
+#define R_CPD_INTENSITY_PROBS "lbc_smokehist_cpdintensityprobs.txt"  
+#define R_CPD_DATA_FILE "lbc_smokehist_cpd.txt" 
+
+// TODO DRY violation -- but relevant to the CLI version
+// #define MAX_NUM_REPS 1000000
 
 class SHGInterface {
 public:
@@ -51,12 +63,12 @@ public:
 
     // Function to run a single simulation segment
     void runSimSegment(int repeat, 
-                       std::vector<short>& wRaces,
-                       std::vector<short>& wSexes,
-                       std::vector<short>& wYearBirths,
-                       std::vector<short>& initiationAge,
-                       std::vector<short>& cessationAge,
-                       std::vector<short>& ageAtDeath,
-                       std::vector<std::string>& cpdString,
+                       vector<short>& wRaces,
+                       vector<short>& wSexes,
+                       vector<short>& wYearBirths,
+                       vector<short>& initiationAge,
+                       vector<short>& cessationAge,
+                       vector<short>& ageAtDeath,
+                       vector<string>& cpdString,
                        int offset);
 };
