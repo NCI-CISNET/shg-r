@@ -5,7 +5,7 @@
 // File: wrapper.cpp
 // Author: John Clarke
 // E-Mail: john.clarke@cornerstonenw.com
-// NCI Contact: Rocky Feuer
+// NCI Contact: Natasha Stout
 
 // TODO: Update attribution and dates above
 
