@@ -28,8 +28,26 @@ public:
     bool get_run_multi_threaded() {return run_multi_threaded;};
     void set_run_multi_threaded(bool b) {run_multi_threaded = b;};
 
-    std::string get_rng_strategy() {return rng_strategy;};
-    void set_rng_strategy(std::string strategy) {rng_strategy = strategy;};
+    string get_rng_strategy() {return rng_strategy;};
+    void set_rng_strategy(string strategy) {rng_strategy = strategy;};
+
+    string get_input_data_folder() {return input_data_folder;};
+    void set_input_data_folder(string folder) {input_data_folder = folder;};
+
+    string get_initiation_filename() {return initiation_filename;};
+    void set_initiation_filename(string filename) { initiation_filename = filename;};
+
+    string get_cessation_filename() {return cessation_filename;};
+    void set_cessation_filename(string filename) {cessation_filename = filename;};
+
+    string get_lifetable_filename() {return lifetable_filename;};
+    void set_lifetable_filename(string filename) {lifetable_filename = filename;};
+
+    string get_cpd_filename() { return cpd_filename;};
+    void set_cpd_filename(string filename) {cpd_filename = filename;};
+
+    int get_immediate_cessation_year() {return immediate_cessation_year;};
+    void set_immediate_cessation_year(int n) {immediate_cessation_year = n;};
 
     // Function to run a single simulation segment
     void runSimSegment(int repeat, 

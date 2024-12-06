@@ -375,8 +375,13 @@ RCPP_MODULE(SmokingSimulator) {
        .method("LegacyRunWebVersion", &SHGInterface::LegacyRunWebVersion, "Runs a simulation from a configuration file to produce results for a website (legacy)")
        .property("number_of_segments", &SHGInterface::get_number_of_segments, &SHGInterface::set_number_of_segments,"Number of segments to use for single or multi-threaded simulation")
        .property("run_multi_threaded", &SHGInterface::get_run_multi_threaded, &SHGInterface::set_run_multi_threaded, "True if the simulation should be run asynchonously; False otherwise")
-       .property("rng_strategy", &SHGInterface::get_rng_strategy, &SHGInterface::set_rng_strategy, "'RngStream' for MRG32k3a (default) or 'MersenneTwister' for Mersenne Twister");
-
+       .property("rng_strategy", &SHGInterface::get_rng_strategy, &SHGInterface::set_rng_strategy, "'RngStream' for MRG32k3a (default) or 'MersenneTwister' for Mersenne Twister")
+       .property("input_data_folder", &SHGInterface::get_input_data_folder, &SHGInterface::set_input_data_folder, "Set or get the base folder for input data files. The individual file names are hardcoded for simplicity.")
+       .property("immediate_cessation_year", &SHGInterface::get_immediate_cessation_year, &SHGInterface::set_immediate_cessation_year, "Set or get Immediate Cessation Year; If 0, no immediate cessation")
+       .property("initiation_filename", &SHGInterface::get_initiation_filename, &SHGInterface::set_initiation_filename, "Set or get the initiation filename")
+       .property("cessation_filename", &SHGInterface::get_cessation_filename, &SHGInterface::set_cessation_filename, "Set or get the cessation filename")
+       .property("lifetable_filename", &SHGInterface::get_lifetable_filename, &SHGInterface::set_lifetable_filename, "Set or get the lifetable filename")
+       .property("cpd_filename", &SHGInterface::get_cpd_filename, &SHGInterface::set_cpd_filename, "Set or get the cpd filename");
       // TODO: allow user to specify the seed from R; also antithetical variates; also increment substreams
       // TODO: allow user to specify file or folder paths to input files
    }
