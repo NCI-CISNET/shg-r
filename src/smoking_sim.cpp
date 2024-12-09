@@ -1962,6 +1962,7 @@ void WriteToFile(FILE* stream, const char* format, ...) {
    va_list args;
    va_start(args, format);
    #ifdef IS_RCPP
+      vfprintf(stream, format, args);
       // TODO: do we need/want text file logging in Rcpp? Maybe for comparison with CLI or debugging purposes? Or just use Rcpp::Rcout?
       // Rcpp::Rcout << vfmt::vformat(format, args);
    #else
