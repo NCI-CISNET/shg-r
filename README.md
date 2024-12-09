@@ -8,31 +8,29 @@ This package is a wrapper for the CISNET Smoking History Generator C++ source co
 
 ## Installation for end-users from Github
 ```r
-library(Rcpp) # required?
-if (!require("Rcpp")) install.packages("Rcpp") # required?
-if (!require("devtools")) install.packages("devtools")
-Sys.setenv(PKG_BUILD_EXTRA_FLAGS = "false")
+install.packages("devtools")
+Sys.setenv(PKG_BUILD_EXTRA_FLAGS = "false") # optional, but should increase performance
 devtools::install_github("CSNW/rcpp-shg@[branch-of-your-choice]")
 ```
 
 ## Installation for end-users from CRAN
 Under development: Eventually this package will be hosted on CRAN
 ```r
-if (!require("RcppSmokingHistoryGenerator")) install.packages("RcppSmokingHistoryGenerator")
+install.packages("RcppSmokingHistoryGenerator")
 ```
 
 ## Installation for developers
 Retrieve the `rcpp-shg` repository from Github and open an R session.
 ```r
 setwd("path-to-rcpp-shg")
-if (!require("devtools")) install.packages("devtools")
-Sys.setenv(PKG_BUILD_EXTRA_FLAGS = "false")
+install.packages("devtools")
+Sys.setenv(PKG_BUILD_EXTRA_FLAGS = "false") # optional, but should increase performance
 devtools::load_all()
 ```
 
 Then initially and each time you make changes to the src directory
 ```r
-# If you want to prevent the pedantic and -O0 optimization (slower)
+# If you want to prevent the pedantic and -O0 optimization flags (slower)
 Sys.setenv(PKG_BUILD_EXTRA_FLAGS = "false")
 
 # If you want to force a recompile
