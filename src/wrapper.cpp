@@ -253,6 +253,8 @@ void SHGInterface::runSimSegment(int repeat,
    short sPersonsCPDbyAge;
    short sPersonsInitAge, sPersonsCessAge, sPersonsAgeAtDeath;
 
+   // For now we instantiate a different simulator for each segment rather than loading the input data and cloning
+   // Otherwise, we get errors probably to do with memory sharing; could investigate further
    Smoking_Simulator* qSimulator = loadSimulator();
    //Smoking_Simulator* qSimulator = new Smoking_Simulator(*pSimulator);
 
@@ -280,8 +282,8 @@ void SHGInterface::runSimSegment(int repeat,
       sPersonsCessAge = qSimulator->GetPersonsCessAge();
       sPersonsAgeAtDeath = qSimulator->GetPersonsAgeAtDeath();
 
-      // Print out the smoking intensity group for the person and the cigarettes smoked per day
-      // Print the intensity group as +1 its value so range of values is from 1 to 5.
+      // Get the smoking intensity group for the person and the cigarettes smoked per day
+      // The intensity group as +1 its value so range of values is from 1 to 5.
       // DRY violation -- this is also done in main.cpp but we don't copy those methods here.
       cpd = "";
       if (sPersonsInitAge != -999)
