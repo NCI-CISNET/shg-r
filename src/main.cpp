@@ -1409,7 +1409,7 @@ int RunWebVersion(const char * sInputFileName)
       wValuesPerParam[3] = CountVectorValues(sPARAM_NumReps);
       wMaxNumPerParam = 1;
       for (i=0; i < 4; i++) {
-         // Review warning about parenthesis here (probably need brackets around the second part of the condition)
+         // TODO: Review warning about parenthesis here (probably need brackets around the second part of the condition)
       	if ((wValuesPerParam[i] > wMaxNumPerParam) && 
              (wMaxNumPerParam > 1) || 
              (wMaxNumPerParam > 1 && 
