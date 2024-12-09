@@ -312,9 +312,9 @@ void SHGInterface::runSimSegment(int repeat,
          }
       }
 
-      initiationAge[k] = qSimulator->GetPersonsInitAge();
-      cessationAge[k] = qSimulator->GetPersonsCessAge();
-      ageAtDeath[k] = qSimulator->GetPersonsAgeAtDeath();
+      initiationAge[k] = sPersonsInitAge;
+      cessationAge[k] = sPersonsCessAge;
+      ageAtDeath[k] = sPersonsAgeAtDeath;
       cpdString[k] = Rcpp::String(cpd);
    }
    fclose(pOutStream);
