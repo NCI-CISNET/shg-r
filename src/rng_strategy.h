@@ -17,6 +17,8 @@
 
 #ifdef IS_RCPP
 #include <Rcpp.h>
+#else
+#include <iostream>
 #endif
 
 // RNG Strategy Interface
