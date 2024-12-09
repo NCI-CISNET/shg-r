@@ -1428,18 +1428,26 @@ int RunWebVersion(const char * sInputFileName)
    } // end if (bRunApp && bHaveVectorValues)
 
    if (bRunApp) {
-      lSeed_Init = atol(sSEED_Init);
-      if (lSeed_Init == -1)
+      
+      if (sSEED_Init == NULL || atol(sSEED_Init) == -1)
          lSeed_Init = time(0);
-      lSeed_Cess = atol(sSEED_Cess);
-      if (lSeed_Cess == -1)
+      else
+         lSeed_Init = atol(sSEED_Init);
+
+      if (sSEED_Cess == NULL || atol(sSEED_Cess) == -1)
          lSeed_Cess = time(0);
-      lSeed_OCD = atol(sSEED_OCD);
-      if (lSeed_OCD == -1)
+      else
+         lSeed_Cess = atol(sSEED_Cess);
+
+      if (sSEED_OCD == NULL || atol(sSEED_OCD) == -1)
          lSeed_OCD = time(0);
-      lSeed_Misc = atol(sSEED_Misc);
-      if (lSeed_Misc == -1)
+      else
+         lSeed_OCD = atol(sSEED_OCD);
+
+      if (sSEED_Misc == NULL || atol(sSEED_Misc) == -1)
          lSeed_Misc = time(0);
+      else
+         lSeed_Misc = atol(sSEED_Misc);
 
       if (sImmediateCess == NULL) {
          wCessationYear = 0;
