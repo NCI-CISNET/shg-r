@@ -32,9 +32,9 @@ public:
     bool fileExists(const char* filename);
     Smoking_Simulator* loadSimulator();
 
-    int number_of_segments = 10; // TODO: maybe default value should be set in constructor instead?
-    bool run_multi_threaded = true; // TODO: maybe default value should be set in constructor instead?
-    string rng_strategy = "RngStream"; // TODO: maybe default value should be set in constructor instead?
+    int number_of_segments = 10;
+    bool run_multi_threaded = true;
+    string rng_strategy = "RngStream";
 
     // Getters and Setters
     int get_number_of_segments() {return number_of_segments;};
