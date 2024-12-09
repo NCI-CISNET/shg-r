@@ -29,6 +29,7 @@ public:
     string cpd_filename = R_CPD_DATA_FILE;    
     int immediate_cessation_year = 0;
 
+    bool fileExists(const char* filename);
     Smoking_Simulator* loadSimulator();
 
     int number_of_segments = 10; // TODO: maybe default value should be set in constructor instead?

@@ -62,6 +62,19 @@ Smoking_Simulator* SHGInterface::loadSimulator()
    char *sCPDDataFile = AssignFilename(input_data_folder.c_str(), cpd_filename.c_str());
    int wCessationYear = immediate_cessation_year; // 0 is default and specifies no immediate cessation
 
+   if (!fileExists(sInitiationFile)) {
+      Rcpp::stop("Input file does not exist: " + string(sInitiationFile));
+   }
+   if (!fileExists(sCessationFile)) {
+      Rcpp::stop("Input file does not exist: " + string(sCessationFile));
+   }
+   if (!fileExists(sLifeTableFile)) {
+      Rcpp::stop("Input file does not exist: " + string(sLifeTableFile));
+   }
+   if (!fileExists(sCPDDataFile)) {
+      Rcpp::stop("Input file does not exist: " + string(sCPDDataFile));
+   }
+
    const char *sCPDIntensityFile = ""; // no longer used, but variable needed for function signature
    short wOutputType = 1; // Not relevant for R but must include because we want to reuse the SHG CLI code. see SetOutputType() in smoking_sim.cpp and enum OutputType in smoking_sim.h
 
@@ -82,12 +95,10 @@ Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) 
    int repeat_per_sim = repeat / n;
    int remainder = repeat % n; // Calculate the remainder
 
-   // Pre-allocate race, sex, birth_cohort vectors
-   vector<short> wRaces = Rcpp::as<vector<short>>(dfPopulation["race"]);
-   vector<short> wSexes = Rcpp::as<vector<short>>(dfPopulation["sex"]);
-   vector<short> wYearBirths = Rcpp::as<vector<short>>(dfPopulation["birth_cohort"]);
-
    vector<short> 
+      wRaces = Rcpp::as<vector<short>>(dfPopulation["race"]),
+      wSexes = Rcpp::as<vector<short>>(dfPopulation["sex"]),
+      wYearBirths = Rcpp::as<vector<short>>(dfPopulation["birth_cohort"]),
       initiationAge(repeat),
       cessationAge(repeat),
       ageAtDeath(repeat);
@@ -256,7 +267,6 @@ void SHGInterface::runSimSegment(int repeat,
    // For now we instantiate a different simulator for each segment rather than loading the input data and cloning
    // Otherwise, we get errors probably to do with memory sharing; could investigate further
    Smoking_Simulator* qSimulator = loadSimulator();
-   //Smoking_Simulator* qSimulator = new Smoking_Simulator(*pSimulator);
 
    // TODO: allow user to specify the seed from R
    if (rng_strategy == "MersenneTwister")
@@ -310,6 +320,11 @@ void SHGInterface::runSimSegment(int repeat,
    fclose(pOutStream);
 }
 
+bool SHGInterface::fileExists(const char* filename) {
+   ifstream file(filename);
+   return file.good();
+}
+
 void SHGInterface::LegacyRunWebVersion(const char *sInputFileName)
 {
    RunWebVersion(sInputFileName);
@@ -342,3 +357,4 @@ RCPP_MODULE(SmokingSimulator) {
        .property("cpd_filename", &SHGInterface::get_cpd_filename, &SHGInterface::set_cpd_filename, "Set or get the cpd filename");
       // TODO: allow user to specify the seed from R; also antithetical variates; also increment substreams
    }
+
