@@ -1,11 +1,11 @@
-# RcppSmokingHistoryGenerator: An R interface to the CISNET Smoking History Generator
+# RcppSmokingHistoryGenerator: An R interface to the CISNET Smoking History Generator <img src="./man/cisnet-logo.svg" width="100px;" align="right">
   <!-- badges: start -->
   [![R-CMD-check](https://github.com/CSNW/rcpp-shg/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/CSNW/rcpp-shg/actions/workflows/R-CMD-check.yaml)
   [![License: GPL-3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://choosealicense.com/licenses/gpl-3.0/)
   <!-- badges: end -->
 
 ## About
-This package is a wrapper for the CISNET Smoking History Generator C++ source code. It can produce the identical outputs as the command line version (CLI) of the Smoking History Generator in R. It offers an easy way for modelers to access the Smoking History Generator directly in R.
+This package is a wrapper for the [CISNET](https://cisnet.cancer.gov/) [Smoking History Generator](https://github.com/CSNW/smoking-history-generator) C++ source code. It can produce the identical outputs as the command line version (CLI) of the Smoking History Generator in R. It offers an easy way for modelers to access the Smoking History Generator directly in R.
 
 ## Installation for end-users from Github
 ```r
@@ -45,7 +45,7 @@ devtools::load_all()
 library(RcppSmokingHistoryGenerator)
 ```
 
-# Basic usage
+## Basic usage
 Relying on the default values for input filepaths, RNG strategy, multi-threading, immediate cessation, segments you can launch a smoking history simulation as follows: 
 ```r
 library(RcppSmokingHistoryGenerator)
