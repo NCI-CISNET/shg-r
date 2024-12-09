@@ -35,6 +35,8 @@ Smoking_Simulator::Smoking_Simulator(const char* sInitiationProbFile, const char
    char sErrorMessage[300];
    try {
       Init();
+      // TODO: performance improvement possible: only load data once rather than for each segment
+      // Loading costs about 0.03 seconds (so 0.3 seconds for 10 segments). Estimated 10% time improvement for 1M runs if we can load once.
       LoadProbabilityData(sInitiationProbFile, Smoking_Simulator::DATA_Initiation);
       LoadProbabilityData(sCessationProbFile, Smoking_Simulator::DATA_Cessation);
       LoadCPDFile(sCpdDataFile);
@@ -1069,7 +1071,6 @@ void Smoking_Simulator::LoadCPDIntensityProbs(const char* sDataFileName) {
 // Load the probability initiation/cessation data files.
 void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType eFileType) {
    std::lock_guard<std::mutex> lock(dataMutex); // Lock the mutex to ensure thread safety
-
 
    char     sInputLine[3001],
             sErrorMessage[500],
