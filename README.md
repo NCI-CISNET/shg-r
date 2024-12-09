@@ -1,11 +1,11 @@
-# RcppSmokingHistoryGenerator: An R interface to CISNET Smoking History Generator
+# RcppSmokingHistoryGenerator: An R interface to the CISNET Smoking History Generator
   <!-- badges: start -->
   [![R-CMD-check](https://github.com/CSNW/rcpp-shg/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/CSNW/rcpp-shg/actions/workflows/R-CMD-check.yaml)
   [![License: GPL-3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://choosealicense.com/licenses/gpl-3.0/)
   <!-- badges: end -->
 
 ## About
-This package is a wrapper for the CISNET Smoking History Generator C++ source code. It can produce the exact outputs as the command line version (CLI) of the Smoking History Generator if needed.
+This package is a wrapper for the CISNET Smoking History Generator C++ source code. It can produce the identical outputs as the command line version (CLI) of the Smoking History Generator in R. It offers an easy way for modelers to access the Smoking History Generator directly in R.
 
 ## Installation for end-users from Github
 ```r
@@ -46,7 +46,6 @@ library(RcppSmokingHistoryGenerator)
 ```
 
 # Basic usage
-
 Relying on the default values for input filepaths, RNG strategy, multi-threading, immediate cessation, segments you can launch a smoking history simulation as follows: 
 ```r
 library(RcppSmokingHistoryGenerator)
@@ -95,3 +94,26 @@ shg <- new(SHGInterface)
 shg$LegacyRunWebVersion("./inst/inputs/test_input_example_MersenneTwister.txt")
 shg$LegacyRunWebVersion("./inst/inputs/test_input_example_RngStream.txt")
 ```
+
+## Authors
+The original Smoking History Generator (written in C++) was developed in 200X and maintained by several authors over the past 2 decades.
+- Original author(s): Alexander Gaenko, Lauren Clarke(?)
+- Additional author(s): Ben Racine, Martin Krapcho, John Clarke
+- R package author: John Clarke
+
+## Papers
+Multiple manuscripts based on the Smoking History Generator have been published over the years.
+
+- [Tobacco Control and the Reduction in Smoking-Related Premature Deaths in the United States, 1964-2012](https://resources.cisnet.cancer.gov/projects/#shg/tcpd)
+- [Patterns of Birth Cohort-Specific Smoking Histories, 1965-2009](https://resources.cisnet.cancer.gov/projects/#shg/tce)
+- [Public Health Implications of Raising the Minimum Age of Legal Access to Tobacco Products](https://resources.cisnet.cancer.gov/projects/#shg/iomr)
+- [Smoking and Lung Cancer Mortality in the United States From 2015 to 2065: A Comparative Modeling Approach](https://resources.cisnet.cancer.gov/projects/#shg/sbc2)
+
+## Funding
+Funding for the CISNET Smoking History Generator and its Rcpp wrapper came from the following National Cancer Institute (NCI) grants.
+- Grant 1
+- Grant 2
+- Grant 3
+
+## License
+This package is released under the [GPL-3]((https://choosealicense.com/licenses/gpl-3.0/)), as is the [Smoking History Generator](https://github.com/CSNW/smoking-history-generator) C++ source code.
