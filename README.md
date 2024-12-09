@@ -1,6 +1,7 @@
 # RcppSmokingHistoryGenerator: An R interface to CISNET Smoking History Generator
   <!-- badges: start -->
   [![R-CMD-check](https://github.com/CSNW/rcpp-shg/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/CSNW/rcpp-shg/actions/workflows/R-CMD-check.yaml)
+  [![License: GPL-3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://choosealicense.com/licenses/gpl-3.0/)
   <!-- badges: end -->
 
 ## About
