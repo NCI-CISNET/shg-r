@@ -11,3 +11,7 @@ src/wrapper_backup.xcpp
 /out
 .RDataTmp
 SHG_multi.out
+/..Rcheck
+/RcppSmokingHistoryGenerator.Rcheck
+RcppSmokingHistoryGenerator_0.0.1.tar.gz
+
