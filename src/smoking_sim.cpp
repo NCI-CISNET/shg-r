@@ -1531,11 +1531,11 @@ void Smoking_Simulator::RunSimulation(const char* sInputFileName, const char* sO
       }
 
       while (fgets(sCurrInputLine, 100, pInputFile)) {
-         pTokenPtr= strtok(sCurrInputLine, ";");
+         pTokenPtr = strtok(sCurrInputLine, ";");
          wRace = atoi(pTokenPtr);
-         pTokenPtr= strtok(NULL, ";");
+         pTokenPtr = strtok(NULL, ";");
          wSex = atoi(pTokenPtr);
-         pTokenPtr= strtok(NULL, ";");
+         pTokenPtr = strtok(NULL, ";");
          wYOB = atoi(pTokenPtr);
 
          RunSimulationSingle(wRace, wSex, wYOB, pOutputFile);
@@ -1553,7 +1553,7 @@ void Smoking_Simulator::RunSimulation(const char* sInputFileName, const char* sO
          fclose(pOutputFile);
 
    } catch (SimException ex) {
-      ex.AddCallPath("RunSimulation(char*,char*,bool)");
+      ex.AddCallPath("RunSimulation(char*, char*, bool)");
       if (pInputFile != NULL)
          fclose(pInputFile);
       if (pOutputFile!=0)
