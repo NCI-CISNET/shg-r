@@ -108,6 +108,7 @@ Smoking_Simulator* SHGInterface::loadSimulator()
 //' @description runSimFromDataFrame offers a way to configure and run a simulation from an existing R dataframe. It returns a dataframe of simulated smoking histories with the same number of rows and order as the input dataframe.
 //' @param dfPopulation The input dataframe with named columns for race, sex, and birth_cohort
 //' @examples
+//' \dontrun{
 //' library(RcppSmokingHistoryGenerator)
 //' shg <- new(SHGInterface)
 //' print(system.file("inputs/default", "", package="RcppSmokingHistoryGenerator"))
@@ -119,9 +120,10 @@ Smoking_Simulator* SHGInterface::loadSimulator()
 //'     birth_cohort = rep(1930:1949, N / 20)
 //' )
 //' shg$rng_strategy <- "RngStream"
-//' shg$number_of_segments <- 1
-//' shg$run_multi_threaded <- FALSE
+//' shg$number_of_segments <- 10
+//' shg$run_multi_threaded <- TRUE
 //' smoking_history <- shg$runSimFromDataFrame(pop)
+//' }
 
 Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) {
 

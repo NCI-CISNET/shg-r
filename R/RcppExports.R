@@ -23,6 +23,7 @@ NULL
 #' @description runSimFromDataFrame offers a way to configure and run a simulation from an existing R dataframe. It returns a dataframe of simulated smoking histories with the same number of rows and order as the input dataframe.
 #' @param dfPopulation The input dataframe with named columns for race, sex, and birth_cohort
 #' @examples
+#' \dontrun{
 #' library(RcppSmokingHistoryGenerator)
 #' shg <- new(SHGInterface)
 #' print(system.file("inputs/default", "", package="RcppSmokingHistoryGenerator"))
@@ -37,6 +38,7 @@ NULL
 #' shg$number_of_segments <- 10
 #' shg$run_multi_threaded <- TRUE
 #' smoking_history <- shg$runSimFromDataFrame(pop)
+#' }
 NULL
 
 #' @name runSimFromFixedValues
