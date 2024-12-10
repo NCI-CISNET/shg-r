@@ -32,8 +32,8 @@ public:
     bool fileExists(const char* filename);
     Smoking_Simulator* loadSimulator();
 
-    int number_of_segments = 10;
-    bool run_multi_threaded = true;
+    int number_of_segments = 1;
+    bool run_multi_threaded = false;
     string rng_strategy = "RngStream";
 
     // Getters and Setters
