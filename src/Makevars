@@ -24,7 +24,7 @@ CXX17FLAGS = -O2 -g
 # Include paths and compiler flags (this affects how R compliles the DLL)
 #PKG_CXXFLAGS = -O3 -DIS_RCPP -I. -I/Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library/Rcpp/include -I$(R_HOME)/library/Rcpp/include
 #-O3 is apparently not a portable flag and not allowed
-PKG_CXXFLAGS = -DIS_RCPP -g -I. -I/Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library/Rcpp/include -I$(R_HOME)/library/Rcpp/include
+PKG_CXXFLAGS = -DIS_RCPP -I. -I/Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library/Rcpp/include -I$(R_HOME)/library/Rcpp/include
 ##-Wformat-truncation 
 #-Wformat-truncation 
 #-pg is for profiling
