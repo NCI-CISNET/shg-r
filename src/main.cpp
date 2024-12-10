@@ -506,7 +506,6 @@ bool RunFromParameters(char* sDataFileDir, char* sInitiationSeed,
                                          ulInitiationSeed, ulCessationSeed, ulOtherCODSeed, ulIndivRndSeed,  
                                          wOutputType, wCessationYear);
 
-
       pSimulator->RunSimulation(sInputFile, sOutputFile, false);
 
    } catch (SimException ex) {
