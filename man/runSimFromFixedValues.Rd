@@ -16,10 +16,11 @@
 runSimFromFixedValues offers a way to configure and run a simulation from fixed values for race, sex, and birth year cohort rather than passing a data frame. It returns a dataframe of simulated smoking histories for n individuals.
 }
 \examples{
+\dontrun{
 library(RcppSmokingHistoryGenerator)
-
 shg <- new(SHGInterface)
 shg$input_data_folder <- system.file("inputs/default", "", package="RcppSmokingHistoryGenerator")
 N <- 10^6
 smoking_history <- shg$runSimFromFixedValues(N, 0, 0, 1950)
+}
 }

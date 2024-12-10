@@ -50,7 +50,6 @@ NULL
 #' @examples
 #' \dontrun{
 #' library(RcppSmokingHistoryGenerator)
-#'
 #' shg <- new(SHGInterface)
 #' shg$input_data_folder <- system.file("inputs/default", "", package="RcppSmokingHistoryGenerator")
 #' N <- 10^6

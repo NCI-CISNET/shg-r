@@ -221,13 +221,11 @@ Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) 
 //' @examples
 //' \dontrun{
 //' library(RcppSmokingHistoryGenerator)
-//'
 //' shg <- new(SHGInterface)
 //' shg$input_data_folder <- system.file("inputs/default", "", package="RcppSmokingHistoryGenerator")
 //' N <- 10^6
 //' smoking_history <- shg$runSimFromFixedValues(N, 0, 0, 1950)
 //' }
-
 Rcpp::DataFrame SHGInterface::runSimFromFixedValues(int repeat, short wRace, short wSex, short wYearBirth) {
 
    // Create a DataFrame and populate it with the fixed values

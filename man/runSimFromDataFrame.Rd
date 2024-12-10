@@ -13,7 +13,6 @@ runSimFromDataFrame offers a way to configure and run a simulation from an exist
 \dontrun{
 library(RcppSmokingHistoryGenerator)
 shg <- new(SHGInterface)
-print(system.file("inputs/default", "", package="RcppSmokingHistoryGenerator"))
 shg$input_data_folder <- system.file("inputs/default", "", package="RcppSmokingHistoryGenerator")
 N <- 10^6
 pop <- list(
@@ -22,7 +21,7 @@ pop <- list(
     birth_cohort = rep(1930:1949, N / 20)
 )
 shg$rng_strategy <- "RngStream"
-shg$number_of_segments <- 10
+shg$number_of_segments <- 10 # if you have 10 cores
 shg$run_multi_threaded <- TRUE
 smoking_history <- shg$runSimFromDataFrame(pop)
 }

@@ -10,6 +10,7 @@
 This method offers a way to configure and run a simulation from an input configuration file. Rather than return a R DataFrame, it produces results in an output file. It works in the same as calling the CLI version of the Smoking History Generator with a single input file parameter.
 }
 \examples{
+\dontrun{
 # Warning: This way of running a simulation ignores the Rcpp interface properties and relies soley 
 # on parameters set in the input configuration file. See main.cpp's RunWebVersion for more detail.
 library(RcppSmokingHistoryGenerator)
@@ -17,4 +18,5 @@ shg <- new(SHGInterface)
 shg$input_data_folder <- system.file("inputs/default", "", package="RcppSmokingHistoryGenerator")
 example_input_filepath <- system.file("inputs/examples/", "test_input_example_MersenneTwister.txt", package="RcppSmokingHistoryGenerator")
 shg$LegacyRunWebVersion(example_input_filepath)
+}
 }
