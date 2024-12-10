@@ -1,13 +1,26 @@
+// The Rcpp Smoking History Generator is a convenience wrapper in R for the Smoking History Generator (SHG) application.
+// Copyright (C) 2024, John Clarke
+
 // CISNET (www.cisnet.cancer.gov)
-// Lung Cancer Base Case Group
-// Rcpp wrapper for Smoking History Simulation Application
+// Rcpp wrapper for Smoking History Generator Application
 // Application to Simulate Initiation and Cessation Ages of individuals based on sex, race and year of birth.
 // File: wrapper.cpp
 // Author: John Clarke
 // E-Mail: john.clarke@cornerstonenw.com
 // NCI Contact: Natasha Stout
 
-// TODO: Update attribution and dates above
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see https://www.gnu.org/licenses/.
 
 #include <cstdlib>    // General utilities
 #include <cstring>    // C-style string functions
@@ -42,13 +55,20 @@ using namespace std;
 // SHGInterface
 //' SHGInterface Class
 //' @name SHGInterface
-//' @title Test title SHGInterface
+//' @title SHGInterface
 //' @aliases SHGInterface
 //' @export
-//' @description TEST Type the name of the class to see its methods
-//' @field new Constructor
+//' @description The SHG Interface class provides an Rcpp interface to the Smoking History Generator (SHG)
+//' @field number_of_segments Number of segments to use for single or multi-threaded simulation (default is 1)
+//' @field run_multi_threaded True if the simulation should be run asynchonously; False otherwise (default is False)
+//' @field rng_strategy 'RngStream' for MRG32k3a (default) or 'MersenneTwister' for Mersenne Twister RNG. 'RngStream' is recommended for reproducibility especially with multi-threaded simulations.
+//' @field input_data_folder Set or get the base folder for input data files
+//' @field initiation_filename Set or get the initiation filename
+//' @field cessation_filename Set or get the cessation filename
+//' @field lifetable_filename Set or get the lifetable filename
+//' @field cpd_filename Set or get the cpd filename
+//' @field immediate_cessation_year Set or get Immediate Cessation Year; If 0, no immediate cessation
 
-// Eventually we should probably allow for a constructor that takes seeds
 SHGInterface::SHGInterface() {
    // For now there is no initialize needed;
    // The Smoking_Simulators are created on the fly
@@ -83,6 +103,25 @@ Smoking_Simulator* SHGInterface::loadSimulator()
                                        sCPDDataFile, wOutputType,
                                        wCessationYear);
 };
+//' @name runSimFromDataFrame
+//' @title runSimFromDataFrame method
+//' @description runSimFromDataFrame offers a way to configure and run a simulation from an existing R dataframe. It returns a dataframe of simulated smoking histories with the same number of rows and order as the input dataframe.
+//' @param dfPopulation The input dataframe with named columns for race, sex, and birth_cohort
+//' @examples
+//' library(RcppSmokingHistoryGenerator)
+//'
+//' shg <- new(SHGInterface)
+//' N <- 10^6
+//' pop <- list(
+//'     race = rep(0, N),
+//'     sex = sample(x = c(0, 1), size = N, prob = c(0.5, 0.5), replace = TRUE),
+//'     birth_cohort = rep(1930:1949, N / 20)
+//' )
+//' shg$rng_strategy <- "RngStream"
+//' shg$number_of_segments <- 10
+//' shg$run_multi_threaded <- TRUE
+//' 
+//' smoking_history <- shg$runSimFromDataFrame(pop)
 
 Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) {
 
@@ -171,6 +210,18 @@ Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) 
 
     return df;
 }
+//' @name runSimFromFixedValues
+//' @title runSimFromFixedValues method
+//' @description runSimFromFixedValues offers a way to configure and run a simulation from fixed values for race, sex, and birth year cohort rather than passing a data frame. It returns a dataframe of simulated smoking histories for n individuals.
+//' @param repeat The number of individuals to simulate
+//' @param race (default = 0 and refers to all races combined)
+//' @param sex (0 for male, 1, for female)
+//' @param cohort_year (four digit birth cohort year)
+//' @examples
+//' library(RcppSmokingHistoryGenerator)
+//'
+//' shg <- new(SHGInterface)
+//' smoking_history <- shg$runSimFromFixedValues(N, 0, 0, 1950)
 
 Rcpp::DataFrame SHGInterface::runSimFromFixedValues(int repeat, short wRace, short wSex, short wYearBirth) {
 
@@ -324,7 +375,17 @@ bool SHGInterface::fileExists(const char* filename) {
    ifstream file(filename);
    return file.good();
 }
-
+//' @name LegacyRunWebVersion
+//' @title LegacyRunWebVersion method
+//' @description This method offers a way to configure and run a simulation from an input configuration file. Rather than return a R DataFrame, it produces results in an output file. It works in the same as calling the CLI version of the Smoking History Generator with a single input file parameter.
+//' @param input_file_name The name of the configuration file (see ./inst/inputs/ for 2 examples)
+//' @examples
+//' # Warning: This way of running a simulation ignores the Rcpp interface properties and relies soley 
+//' # on parameters set in the input configuration file. See main.cpp's RunWebVersion for more detail.
+//' library(RcppSmokingHistoryGenerator)
+//'
+//' shg <- new(SHGInterface)
+//' shg$LegacyRunWebVersion("/inst/inputs/test_input_example_MersenneTwister.txt")
 void SHGInterface::LegacyRunWebVersion(const char *sInputFileName)
 {
    RunWebVersion(sInputFileName);
@@ -335,12 +396,11 @@ RCPP_MODULE(SmokingSimulator) {
    using namespace Rcpp;
 
 // Rcpp_SHGInterface
-//' Rcpp_SHGInterface Class
+//' Rcpp SHG Interface Class
 //' @name Rcpp_SHGInterface
-//' @title Test title SHGInterface
+//' @title Rcpp SHG Interface Class
 //' @export
-//' @description TEST Type the name of the class to see its methods
-//' @field new Constructor
+//' @description This module provides an Rcpp interface to the Smoking History Generator (SHG) application.
    class_<SHGInterface>("SHGInterface")
        .constructor()
        .method("runSimFromFixedValues", &SHGInterface::runSimFromFixedValues, "Generates a data frame of simulated smoking histories for n individuals")

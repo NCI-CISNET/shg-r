@@ -2,16 +2,10 @@
 % Please edit documentation in R/RcppExports.R
 \name{Rcpp_SHGInterface}
 \alias{Rcpp_SHGInterface}
-\title{Test title SHGInterface}
+\title{Rcpp SHG Interface Class}
 \description{
-TEST Type the name of the class to see its methods
+This module provides an Rcpp interface to the Smoking History Generator (SHG) application.
 }
 \details{
-Rcpp_SHGInterface Class
+Rcpp SHG Interface Class
 }
-\section{Fields}{
-
-\describe{
-\item{\code{new}}{Constructor}
-}}
-
