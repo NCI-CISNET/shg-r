@@ -109,8 +109,8 @@ Smoking_Simulator* SHGInterface::loadSimulator()
 //' @param dfPopulation The input dataframe with named columns for race, sex, and birth_cohort
 //' @examples
 //' library(RcppSmokingHistoryGenerator)
-//'
 //' shg <- new(SHGInterface)
+//' shg$input_data_folder <- system.file("inputs/default", "", package="RcppSmokingHistoryGenerator")
 //' N <- 10^6
 //' pop <- list(
 //'     race = rep(0, N),
@@ -120,7 +120,6 @@ Smoking_Simulator* SHGInterface::loadSimulator()
 //' shg$rng_strategy <- "RngStream"
 //' shg$number_of_segments <- 10
 //' shg$run_multi_threaded <- TRUE
-//' 
 //' smoking_history <- shg$runSimFromDataFrame(pop)
 
 Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) {
@@ -221,6 +220,8 @@ Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) 
 //' library(RcppSmokingHistoryGenerator)
 //'
 //' shg <- new(SHGInterface)
+//' shg$input_data_folder <- system.file("inputs/default", "", package="RcppSmokingHistoryGenerator")
+//' N <- 10^6
 //' smoking_history <- shg$runSimFromFixedValues(N, 0, 0, 1950)
 
 Rcpp::DataFrame SHGInterface::runSimFromFixedValues(int repeat, short wRace, short wSex, short wYearBirth) {
@@ -383,9 +384,10 @@ bool SHGInterface::fileExists(const char* filename) {
 //' # Warning: This way of running a simulation ignores the Rcpp interface properties and relies soley 
 //' # on parameters set in the input configuration file. See main.cpp's RunWebVersion for more detail.
 //' library(RcppSmokingHistoryGenerator)
-//'
 //' shg <- new(SHGInterface)
-//' shg$LegacyRunWebVersion("/inst/inputs/examples/test_input_example_MersenneTwister.txt")
+//' shg$input_data_folder <- system.file("inputs/default", "", package="RcppSmokingHistoryGenerator")
+//' example_input_filepath <- system.file("inputs/examples/", "test_input_example_MersenneTwister.txt", package="RcppSmokingHistoryGenerator")
+//' shg$LegacyRunWebVersion(example_input_filepath)
 void SHGInterface::LegacyRunWebVersion(const char *sInputFileName)
 {
    RunWebVersion(sInputFileName);
