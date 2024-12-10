@@ -6,7 +6,7 @@
 #PKG_CPPFLAGS="⁠$(R_HOME)/bin/Rscript -e "Rcpp:::CxxFlags()"
 #pkgbuild::compile_dll(path=".", debug=FALSE) <-- doesnt seem to remove debug
 #https://rdrr.io/cran/pkgbuild/man/compile_dll.html
-PKG_CPPFLAGS = -O2 -g -DIS_RCPP #-O2 is apparently not allowed (non-portable flag)
+#PKG_CPPFLAGS = -O2 -g -DIS_RCPP #-O2 is apparently not allowed (non-portable flag)
 #PKG_CPPFLAGS = -DIS_RCPP
 CXX11FLAGS = -O2 -g 
 CXX17FLAGS = -O2 -g 
@@ -24,7 +24,7 @@ CXX17FLAGS = -O2 -g
 # Include paths and compiler flags (this affects how R compliles the DLL)
 #PKG_CXXFLAGS = -O3 -DIS_RCPP -I. -I/Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library/Rcpp/include -I$(R_HOME)/library/Rcpp/include
 #-O3 is apparently not a portable flag and not allowed
-PKG_CXXFLAGS = -DIS_RCPP -O2 -g -I. -I/Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library/Rcpp/include -I$(R_HOME)/library/Rcpp/include
+PKG_CXXFLAGS = -DIS_RCPP -g -I. -I/Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library/Rcpp/include -I$(R_HOME)/library/Rcpp/include
 ##-Wformat-truncation 
 #-Wformat-truncation 
 #-pg is for profiling
