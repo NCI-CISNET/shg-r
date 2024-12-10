@@ -1428,7 +1428,7 @@ int RunWebVersion(const char * sInputFileName)
    } // end if (bRunApp && bHaveVectorValues)
 
    if (bRunApp) {
-      
+      // TODO: Consider rather using the default seeds when a user does not specify them in the input file
       if (sSEED_Init == NULL || atol(sSEED_Init) == -1)
          lSeed_Init = time(0);
       else
