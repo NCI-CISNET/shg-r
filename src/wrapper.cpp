@@ -119,8 +119,8 @@ Smoking_Simulator* SHGInterface::loadSimulator()
 //'     birth_cohort = rep(1930:1949, N / 20)
 //' )
 //' shg$rng_strategy <- "RngStream"
-//' shg$number_of_segments <- 10
-//' shg$run_multi_threaded <- TRUE
+//' shg$number_of_segments <- 1
+//' shg$run_multi_threaded <- FALSE
 //' smoking_history <- shg$runSimFromDataFrame(pop)
 
 Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) {
