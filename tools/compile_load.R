@@ -6,8 +6,8 @@ devtools::load_all()
 library(RcppSmokingHistoryGenerator)
 shg <- new(SHGInterface)
 
-#shg$LegacyRunWebVersion("./inst/inputs/test_input_example_MersenneTwister.txt")
-shg$LegacyRunWebVersion("./inst/inputs/test_input_example_RngStream.txt")
+#shg$LegacyRunWebVersion("./inst/inputs/examples/test_input_example_MersenneTwister.txt")
+shg$LegacyRunWebVersion("./inst/inputs/examples/test_input_example_RngStream.txt")
 
 # N <- 100
 # start_time <- Sys.time()

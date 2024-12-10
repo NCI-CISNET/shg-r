@@ -63,7 +63,7 @@ NULL
 #' library(RcppSmokingHistoryGenerator)
 #'
 #' shg <- new(SHGInterface)
-#' shg$LegacyRunWebVersion("/inst/inputs/test_input_example_MersenneTwister.txt")
+#' shg$LegacyRunWebVersion("/inst/inputs/examples/test_input_example_MersenneTwister.txt")
 NULL
 
 #' Rcpp SHG Interface Class

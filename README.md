@@ -92,8 +92,8 @@ You can also use the `LegacyRunWebVersion()` method which configures the generat
 ```r
 library(RcppSmokingHistoryGenerator)
 shg <- new(SHGInterface)
-shg$LegacyRunWebVersion("./inst/inputs/test_input_example_MersenneTwister.txt")
-shg$LegacyRunWebVersion("./inst/inputs/test_input_example_RngStream.txt")
+shg$LegacyRunWebVersion("./inst/inputs/examples/test_input_example_MersenneTwister.txt")
+shg$LegacyRunWebVersion("./inst/inputs/examples/test_input_example_RngStream.txt")
 ```
 
 ## Authors

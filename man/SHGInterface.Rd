@@ -4,7 +4,7 @@
 \alias{SHGInterface}
 \title{SHGInterface}
 \description{
-The SHG Interface class provides an Rcpp interface to the Smoking History Generator (SHG) application.
+The SHG Interface class provides an Rcpp interface to the Smoking History Generator (SHG)
 }
 \details{
 SHGInterface Class
@@ -12,15 +12,13 @@ SHGInterface Class
 \section{Fields}{
 
 \describe{
-\item{\code{number_of_segments}}{Number of segments to use for single or multi-threaded simulation}
+\item{\code{number_of_segments}}{Number of segments to use for single or multi-threaded simulation (default is 1)}
 
-\item{\code{run_multi_threaded}}{True if the simulation should be run asynchonously; False otherwise}
+\item{\code{run_multi_threaded}}{True if the simulation should be run asynchonously; False otherwise (default is False)}
 
-\item{\code{rng_strategy}}{'RngStream' for MRG32k3a (default) or 'MersenneTwister' for Mersenne Twister RNG. Recommended to use 'RngStream' for reproducibility especially with multi-threaded simulations.}
+\item{\code{rng_strategy}}{'RngStream' for MRG32k3a (default) or 'MersenneTwister' for Mersenne Twister RNG. 'RngStream' is recommended for reproducibility especially with multi-threaded simulations.}
 
 \item{\code{input_data_folder}}{Set or get the base folder for input data files}
-
-\item{\code{immediate_cessation_year}}{Set or get Immediate Cessation Year; If 0, no immediate cessation}
 
 \item{\code{initiation_filename}}{Set or get the initiation filename}
 
@@ -29,5 +27,7 @@ SHGInterface Class
 \item{\code{lifetable_filename}}{Set or get the lifetable filename}
 
 \item{\code{cpd_filename}}{Set or get the cpd filename}
+
+\item{\code{immediate_cessation_year}}{Set or get Immediate Cessation Year; If 0, no immediate cessation}
 }}
 
