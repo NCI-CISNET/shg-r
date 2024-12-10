@@ -25,6 +25,7 @@ NULL
 #' @examples
 #' library(RcppSmokingHistoryGenerator)
 #' shg <- new(SHGInterface)
+#' print(system.file("inputs/default", "", package="RcppSmokingHistoryGenerator"))
 #' shg$input_data_folder <- system.file("inputs/default", "", package="RcppSmokingHistoryGenerator")
 #' N <- 10^6
 #' pop <- list(
