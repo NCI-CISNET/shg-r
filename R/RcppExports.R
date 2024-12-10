@@ -6,16 +6,17 @@
 #' @title SHGInterface
 #' @aliases SHGInterface
 #' @export
-#' @description The SHG Interface class provides an Rcpp interface to the Smoking History Generator (SHG) application.
-#' @field number_of_segments Number of segments to use for single or multi-threaded simulation
-#' @field run_multi_threaded True if the simulation should be run asynchonously; False otherwise
-#' @field rng_strategy 'RngStream' for MRG32k3a (default) or 'MersenneTwister' for Mersenne Twister RNG. Recommended to use 'RngStream' for reproducibility especially with multi-threaded simulations.
+#' @description The SHG Interface class provides an Rcpp interface to the Smoking History Generator (SHG)
+#' @field number_of_segments Number of segments to use for single or multi-threaded simulation (default is 1)
+#' @field run_multi_threaded True if the simulation should be run asynchonously; False otherwise (default is False)
+#' @field rng_strategy 'RngStream' for MRG32k3a (default) or 'MersenneTwister' for Mersenne Twister RNG. 'RngStream' is recommended for reproducibility especially with multi-threaded simulations.
 #' @field input_data_folder Set or get the base folder for input data files
 #' @field initiation_filename Set or get the initiation filename
 #' @field cessation_filename Set or get the cessation filename
 #' @field lifetable_filename Set or get the lifetable filename
 #' @field cpd_filename Set or get the cpd filename
 #' @field immediate_cessation_year Set or get Immediate Cessation Year; If 0, no immediate cessation
+NULL
 
 #' @name runSimFromDataFrame
 #' @title runSimFromDataFrame method
