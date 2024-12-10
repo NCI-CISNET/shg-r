@@ -1,9 +1,35 @@
-\name{Rcpp_SHGInterface}
-\alias{Rcpp_SHGInterface}
-\title{Rcpp SHG Interface Class}
+\name{Rcpp_SHGInterface-class}
+\docType{class}
+\alias{Rcpp_SHGInterface-class}
+
+\title{Class \code{"Rcpp_SHGInterface"}}
 \description{
-This module provides an Rcpp interface to the Smoking History Generator (SHG) application.
+This is a description.
 }
-\details{
-Rcpp SHG Interface Class
+\section{Extends}{
+Class \code{"\linkS4class{C++Object}"}, directly.
+
+All reference classes extend and inherit methods from \code{"\linkS4class{envRefClass}"}.
+
+}
+\references{
+These are my references
+}
+\author{
+I am the author
+}
+\note{
+Further Notes
+}
+
+%% ~Make other sections like Warning with \section{Warning }{....} ~
+
+\seealso{
+See also Sample
+}
+\examples{
+showClass("Rcpp_SHGInterface")
+}
+\keyword{classes}
+\section{Methods}{
 }
