@@ -3,6 +3,12 @@
 #install.packages("rstream") # maybe need this later
 
 library(Rcpp)
+install.packages("pkgbuild")
+
+library(Rcpp)
+#pkgbuild::compile_dll(path=".", debug=FALSE) <-- doesnt seem to remove debug
+Sys.setenv(PKG_BUILD_EXTRA_FLAGS = "false")
+#pkgbuild::compile_dll(path=".", quiet=FALSE, debug=FALSE)
 devtools::load_all()
 devtools::load_all()
 library(RcppSmokingHistoryGenerator)  # Package name
