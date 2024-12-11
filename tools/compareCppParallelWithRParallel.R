@@ -41,6 +41,28 @@ results1 <- benchmark(
     STREAM_SIM_R <- bind_rows(result_list)
   },
   order = "relative",
+  smokingHxGen = {
+    pop <-
+      list(
+        race = rep("white", N),
+        sex = sample(x = c("male", "female"), size = N, prob = c(0.5, 0.5), replace = TRUE),
+        birth_cohort = rep(1930:1949, N / 20),
+        some_other_var = stats::runif(N)
+      )
+
+    shg_bladder <- SmokingHistoryGenerator$new(
+      population = pop,
+      cause_of_death = "all_causes",
+      smoking_history_simulation_start_age = getOption("shg.min_smoking_initiation_age"), # 8
+      smoking_history_simulation_stop_age = getOption("shg.max_age"), # 110
+      lifetime_simulation_spawn_ages = 40,
+      lifetime_simulation_stop_ages = getOption("shg.max_age"),
+      specifications = getOption("shg.constants"), # coefficients
+      validate = TRUE
+    )
+    SHx <- shg_bladder$get_smoking_exposure_history(copy = FALSE)
+  },
+    order = "relative",
   replications = 1 # Number of times to run each expression
 )
 
