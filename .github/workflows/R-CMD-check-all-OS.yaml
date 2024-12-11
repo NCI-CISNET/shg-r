@@ -3,6 +3,7 @@
 on:
   workflow_dispatch:
     branches:
+      - '**'
 
 name: R-CMD-check-all-OS.yaml
 
