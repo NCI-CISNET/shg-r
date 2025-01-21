@@ -8,7 +8,7 @@
 // This helper class provides a strategy pattern for the RNGs used in the SHG simulation.
 // You can add your own strategies with other RNG engines by implementing the RNG_Strategy interface.
 // Two classes are provided below: MersenneTwisterRNG and RngStreamRNG.
-// MerseeneTwisterRNG uses the Mersenne Twister RNG engine and provides legacy support for the original SHG simulation.
+// MersenneTwisterRNG uses the Mersenne Twister RNG engine and provides legacy support for the original SHG simulation.
 // RngStreamRNG uses the RngStream RNG engine written by Pierre L'Ecuyer (University of Montreal) lecuyer@iro.umontreal.ca
 // RngStreamRNG utilizes substreams which guarantees IID properties and allows for IID parallel processing
 

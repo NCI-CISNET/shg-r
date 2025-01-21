@@ -39,15 +39,15 @@
 
 #define MAX(x) (std::numeric_limits<x>::max())
 
-#define DEFAULT_DATA_DIR const_cast<char*>("data/10_28_2014/")
+#define DEFAULT_DATA_DIR const_cast<char*>("data/2017-05-03/")
 #define COUNTERFACTUAL_DATA_DIR const_cast<char*>("data/counterfactual_inputs_jan_2009/")
 
 // Input file names
-#define INITIATION_DATA_FILE "lbc_smokehist_initiation.txt"
-#define CESSATION_DATA_FILE "lbc_smokehist_cessation.txt"
+#define INITIATION_DATA_FILE "lbc_shg_initiation.txt"
+#define CESSATION_DATA_FILE "lbc_shg_cessation.txt"
 #define OTHER_COD_DATA_FILE "lbc_smokehist_oc_mortality.txt"
 #define CPD_INTENSITY_PROBS "lbc_smokehist_cpdintensityprobs.txt"  
-#define CPD_DATA_FILE "lbc_smokehist_cpd.txt" 
+#define CPD_DATA_FILE "lbc_shg_cpd.txt" 
 
 #define VECTOR_DELIMITER ","
 #define MAX_NUM_REPS 1000000
@@ -447,6 +447,7 @@ short CountVectorValues(char* sDataString) {
 // }
 
 void LoadValue(char* sDest, char* sSource, int iValueNum) {
+   //bool bReturnValue;
    char *pTokenPtr = 0,
         *sBuffer = 0;
    int i;
@@ -505,6 +506,7 @@ bool RunFromParameters(char* sDataFileDir, char* sInitiationSeed,
                                          ulInitiationSeed, ulCessationSeed, ulOtherCODSeed, ulIndivRndSeed,  
                                          wOutputType, wCessationYear);
 
+
       pSimulator->RunSimulation(sInputFile, sOutputFile, false);
 
    } catch (SimException ex) {
@@ -537,13 +539,24 @@ bool IsPosLongInt(const char* sValue) {
    return bReturnValue;
 }
 
+void GetInput(char* sInputChar, short length) {
+   if (fgets(sInputChar, length, stdin) == NULL) {
+      PrintError("Error reading input\n");
+      exit(1);
+   }
+   else {
+      // Remove new line character from input
+      sInputChar[strcspn(sInputChar, "\n")] = '\0';
+   }
+}
+
 // Verify that a string value is a valid positive short integer
 bool IsPosShortInt(const char* sValue) {
    char 	sUpperValue[100]; // Max short int value is shorter than 100 digits
    bool 	bReturnValue;
    short wUpperValue      = MAX(short);
    snprintf(sUpperValue, sizeof(sUpperValue), "%hd", wUpperValue);
-   bReturnValue = ((strspn( sValue, "0123456789" ) == strlen(sValue)) &&
+   bReturnValue = ((strspn( sValue, "0123456789") == strlen(sValue)) &&
                    ((strlen(sValue) < strlen(sUpperValue)) ||
                     ((strlen(sValue) == strlen(sUpperValue)) &&
                      (strcmp(sValue,sUpperValue) <= 0))));
@@ -611,7 +624,7 @@ void RunInterface() {
 
    bValidInput = false;
    wCessationYear = 0; // 0 = do not use immediate cessation.
-   PrintMessageFormatted("nSelect which estimates to use as the model inputs:\n");
+   PrintMessageFormatted("\nSelect which estimates to use as the model inputs:\n");
    PrintMessage("1 - NHIS estimates.\n");
 // TODO: we can just use sim_fprintf_stdout instead of sim_simple_stdout
 
@@ -619,16 +632,20 @@ void RunInterface() {
    PrintMessage("3 - Immediate Cessation using NHIS estimates.\n");
    PrintMessage("(Please enter 1, 2 or 3):\n");
    while (!bValidInput) {
-      
-      if (fgets(sInputChar, 10, stdin) != NULL && IsPosShortInt(sInputChar) && ((atoi(sInputChar) >= 1) && (atoi(sInputChar) <= 3))) {
+      GetInput(sInputChar, 10);
+      if (IsPosShortInt(sInputChar) && ((atoi(sInputChar) >= 1) && (atoi(sInputChar) <= 3))) {
          wSourceData = atoi(sInputChar);
          bValidInput = true;
          if (wSourceData == 3) {
-            PrintMessageFormatted("\nEnter a year to use for immediate cessation.\nAll smokers will quit smoking on Jan 1st of this year.\n(Please enter a year in the range %d-%d):\n",
-                    wMIN_IMMEDIATE_CESSATION_YEAR,wSIM_CUTOFF_YEAR);
+            fprintf(stdout, "\nB Enter a year to use for immediate cessation.\nAll smokers will quit smoking on Jan 1st of this year.\n(Please enter a year in the range %04d-%04d):\n",
+                    wMIN_IMMEDIATE_CESSATION_YEAR, wSIM_CUTOFF_YEAR);
+
+            PrintMessageFormatted("\nAEnter a year to use for immediate cessation.\nAll smokers will quit smoking on Jan 1st of this year.\n(Please enter a year in the range %04d-%04d):\n",
+                    wMIN_IMMEDIATE_CESSATION_YEAR, wSIM_CUTOFF_YEAR);
             bValidInput = false;
             while (!bValidInput) {
-               if ( fgets(sInputChar, 10, stdin) != NULL && 
+               GetInput(sInputChar, 10);
+               if (sInputChar != NULL && 
                     IsPosShortInt(sInputChar) &&
                     ((atoi(sInputChar) >= wMIN_IMMEDIATE_CESSATION_YEAR) &&
                      (atoi(sInputChar) <= wSIM_CUTOFF_YEAR)))
@@ -637,13 +654,13 @@ void RunInterface() {
                   bValidInput = true;
                   }
                else
-                  PrintMessageFormatted("n\"%s\" - Invalid Input.\nPlease enter a value between %d and %d:\n",sInputChar,wMIN_IMMEDIATE_CESSATION_YEAR,wSIM_CUTOFF_YEAR);
+                  PrintMessageFormatted("%s\" - Invalid Input.\nPlease enter a value between %d and %d:\n",sInputChar,wMIN_IMMEDIATE_CESSATION_YEAR,wSIM_CUTOFF_YEAR);
                }
 
             }
          }
       else
-         PrintMessageFormatted("n\"%s\" - Invalid Input.\nPlease enter either 1, 2 or 3:\n", sInputChar);
+         PrintMessageFormatted("\n\"%s\" - Invalid Input.\nPlease enter either 1, 2 or 3:\n", sInputChar);
       }
 
    /* Load the filenames for the application */
@@ -662,17 +679,18 @@ void RunInterface() {
    }
 
    bValidInput         = false;
-   PrintMessageFormatted("nRandom Number Generator Seeds:\n");
+   PrintMessageFormatted("\nRandom Number Generator Seeds:\n");
    PrintMessage("Please enter a seed for the PRNG that generates Initiation Probabilities.\n");
    PrintMessageFormatted("Seed should be in range 0 - %ld.\n:",MAX(long));
    while (!bValidInput)
       {
-      if ( fgets(sInputChar, 10, stdin) != NULL && IsPosLongInt(sInputChar)) {
+      GetInput(sInputChar, 10);
+      if (IsPosLongInt(sInputChar)) {
          ulInitPRNGSeed = (unsigned long) atol(sInputChar);
          bValidInput = true;
          }
       else
-         PrintMessageFormatted("n\"%s\" - Invalid Input.\nPlease enter a value in range 0 - %ld.\n:",
+         PrintMessageFormatted("\n\"%s\" - Invalid Input.\nPlease enter a value in range 0 - %ld.\n:",
                  sInputChar,MAX(long));
       }
 
@@ -680,12 +698,13 @@ void RunInterface() {
    PrintMessage("Please enter a seed for the PRNG that generates Cessation Probabilities.\n");
    PrintMessageFormatted("Seed should be in range 0 - %ld.\n:",MAX(long));
    while (!bValidInput) {
-      if (fgets(sInputChar, 10, stdin) != NULL && IsPosLongInt(sInputChar)) {
+      GetInput(sInputChar, 10);
+      if (IsPosLongInt(sInputChar)) {
          ulCessPRNGSeed = (unsigned long) atol(sInputChar);
          bValidInput = true;
       }
       else
-         PrintMessageFormatted("n\"%s\" - Invalid Input.\nPlease enter a value in range 0 - %ld.\n:",
+         PrintMessageFormatted("\n\"%s\" - Invalid Input.\nPlease enter a value in range 0 - %ld.\n:",
                  sInputChar,MAX(long));
       }
 
@@ -693,12 +712,13 @@ void RunInterface() {
    PrintMessage("Please enter a seed for the PRNG that generates \nnon-lung cancer death probabilities.\n");
    PrintMessageFormatted("Seed should be in range 0 - %ld.\n:",MAX(long));
    while (!bValidInput) {
-      if (fgets(sInputChar, 100, stdin) != NULL && IsPosLongInt(sInputChar)) {
+      GetInput(sInputChar, 100);
+      if (IsPosLongInt(sInputChar)) {
          ulOthCODSeed = (unsigned long) atol(sInputChar);
          bValidInput = true;
          }
       else
-         PrintMessageFormatted("n\"%s\" - Invalid Input.\nPlease enter a value in range 0 - %ld.\n:",
+         PrintMessageFormatted("\n\"%s\" - Invalid Input.\nPlease enter a value in range 0 - %ld.\n:",
                  sInputChar,MAX(long));
       }
 
@@ -707,17 +727,18 @@ void RunInterface() {
    PrintMessage("This PRNG is for defining characteristics such as \nwill the person be a light or heavy smoker.\n");
    PrintMessageFormatted("Seed should be in range 0 - %ld.\n:",MAX(long));
    while (!bValidInput) {
-      if ( fgets(sInputChar, 10, stdin) != NULL && IsPosLongInt(sInputChar)) {
+      GetInput(sInputChar, 10);
+      if (IsPosLongInt(sInputChar)) {
          ulIndivRndSeed = (unsigned long) atol(sInputChar);
          bValidInput = true;
       }
       else {
-         PrintMessageFormatted("n\"%s\" - Invalid Input.\nPlease enter a value in range 0 - %ld.\n:",
+         PrintMessageFormatted("\n\"%s\" - Invalid Input.\nPlease enter a value in range 0 - %ld.\n:",
                  sInputChar,MAX(long));
       }
    }
    bValidInput = false;
-   PrintMessageFormatted("nData Input and Output Options:\n");
+   PrintMessageFormatted("\nData Input and Output Options:\n");
    PrintMessage("1 - Read values from a file and write results to an output file.\n");
    PrintMessage("2 - Read values from a file and write results to the screen only.\n");
    PrintMessage("3 - Manually enter Sex, Race and Year of Birth Values \n");
@@ -727,27 +748,37 @@ void RunInterface() {
    PrintMessage("(Please enter 1 to 4):\n");
 
    while (!bValidInput) {
-      if ( fgets(sInputChar, 10, stdin) != NULL && 
-           IsPosShortInt(sInputChar) && 
+      GetInput(sInputChar, 10);
+      if (IsPosShortInt(sInputChar) && 
            ((atoi(sInputChar) >= 1) && (atoi(sInputChar) <= 4))) {
          wInputOutputType = atoi(sInputChar);
          bValidInput = true;
       } else {
-         PrintMessageFormatted("n\"%s\" - Invalid Input.\nPlease enter a value 1 through 4:\n", sInputChar);
+         PrintMessageFormatted("\n\"%s\" - Invalid Input.\nPlease enter a value 1 through 4:\n", sInputChar);
       }
    }
 
    if (wInputOutputType == 1 || wInputOutputType == 2) {
-      PrintMessageFormatted("nSpecify input filename (100 char max):\n");
-      if (fgets(sInputChar, 10, stdin) != NULL)
+      PrintMessageFormatted("\nSpecify input filename (100 char max). Leave empty to use default ./data/test.in filename:\n");
+      GetInput(sInputChar, 100);
+      if (strlen(sInputChar) == 0) {
+         strcpy(sInputFileName, "./data/test.in"); // Use default filename
+      } else {
          strcpy(sInputFileName, sInputChar);
+      }
    }
 
    if (wInputOutputType == 1 || wInputOutputType == 3) {
-      PrintMessage("Specify an output filename (100 char max):\n");
+      PrintMessage("Specify an output filename (100 char max). Leave empty to use default ./data/test.out filename:\n");
 
-      // Verify a .txt extension, if not, add one.
-      if (fgets(sInputChar, 100, stdin) != NULL && strlen(sInputChar) > 4) {
+      GetInput(sInputChar, 100);
+      if (strlen(sInputChar) == 0) {
+         strcpy(sOutputFileName, "./data/test.out"); // Use default filename
+      } else {
+         strcpy(sOutputFileName, sInputChar);
+      }
+
+      if (strlen(sInputChar) > 4) {
          lExtCheckPosition = strlen(sInputChar) - 4;
          for (i=0; i <=3; i++)
             {
@@ -756,18 +787,6 @@ void RunInterface() {
          sExtensionCheck[4] = '\0';
       }
 
-      // If the extension check is not equal to ".TXT" or the name supplied is 4 characters or less in length
-      if (((strlen(sInputChar) > 4) && (strcmp(sExtensionCheck, ".TXT")!=0))||(strlen(sInputChar) <= 4)) {
-         strcpy(sOutputFileName, sInputChar);
-         strcat(sOutputFileName, ".TXT");
-         PrintMessage( "\nExtension '.TXT' was added to the end of the supplied filename.\n");
-         if (wInputOutputType == 1 ) {
-            PrintMessage( "Press 'Enter' to proceed");
-            getc(stdin);
-         }
-      } else {
-         strcpy(sOutputFileName, sInputChar);
-      }
       if (wInputOutputType == 3) {
          pOutputFile = fopen(sOutputFileName, "w");
       }
@@ -781,14 +800,13 @@ void RunInterface() {
    PrintMessage( "(Please enter 1 to 3):\n");
 
    while (!bValidInput) {
-      
-      if ( fgets(sInputChar, 100, stdin) != NULL && 
-           IsPosShortInt(sInputChar) && 
+      GetInput(sInputChar, 10);
+      if (IsPosShortInt(sInputChar) && 
            ((atoi(sInputChar) >= 1) && (atoi(sInputChar) <= 3))) {
          wOutputFormat = atoi(sInputChar);
          bValidInput = true;
       } else {
-         PrintMessageFormatted("n\"%s\" - Invalid Input.\nPlease enter a value 1 through 3:\n", sInputChar);
+         PrintMessageFormatted("\n\"%s\" - Invalid Input.\nPlease enter a value 1 through 3:\n", sInputChar);
       }
    }
 
@@ -803,10 +821,10 @@ void RunInterface() {
                                           wCessationYear);
 
       if (wInputOutputType == 1) {
-         PrintMessageFormatted("n\n");
+         PrintMessageFormatted("\n\n");
          pSimulator->RunSimulation(sInputFileName, sOutputFileName, true);
       } else if (wInputOutputType == 2) {
-         PrintMessageFormatted("n\n");
+         PrintMessageFormatted("\n\n");
          pSimulator->RunSimulation(sInputFileName);
       } else {  // manually enter sex, race, Year of Birth
 
@@ -814,48 +832,48 @@ void RunInterface() {
 
          while (bKeepRepeating) {
             wInputRace = 0; // Only All Races is available in this iteration of program
-            PrintMessageFormatted("nEnter a sex value. \n(0 = Male, 1 = Female):\n");
+            PrintMessageFormatted("\nEnter a sex value. \n(0 = Male, 1 = Female):\n");
             bValidInput = false;
             while (!bValidInput) {
-               if ( fgets(sInputChar, 100, stdin) != NULL && 
-                    IsPosShortInt(sInputChar) &&  
+               GetInput(sInputChar, 100);
+               if (IsPosShortInt(sInputChar) &&  
                     ((atoi(sInputChar) == 0) || (atoi(sInputChar) == 1))) {
                   wInputSex = (atoi(sInputChar));
                   bValidInput = true;
                } else {
-                  PrintMessageFormatted("n\"%s\" - Invalid Input.\nPlease enter 0 or 1:\n", sInputChar);
+                  PrintMessageFormatted("\n\"%s\" - Invalid Input.\nPlease enter 0 or 1:\n", sInputChar);
                }
             }
 
-            PrintMessageFormatted("nEnter a year of birth between %d and %d:\n",pSimulator->GetMinYearOfBirth(),pSimulator->GetMaxYearOfBirth());
+            PrintMessageFormatted("\nEnter a year of birth between %d and %d:\n",pSimulator->GetMinYearOfBirth(),pSimulator->GetMaxYearOfBirth());
             bValidInput = false;
             while (!bValidInput) {
-               if ( fgets(sInputChar, 100, stdin) != NULL && 
-                    IsPosShortInt(sInputChar) &&
+               GetInput(sInputChar, 100);
+               if (IsPosShortInt(sInputChar) &&
                     ((atoi(sInputChar) >= pSimulator->GetMinYearOfBirth()) &&
                      (atoi(sInputChar) <= pSimulator->GetMaxYearOfBirth()))) {
                   wInputYOB   = atoi(sInputChar);
                   bValidInput = true;
                } else {
-                  PrintMessageFormatted("n\"%s\" - Invalid Input.\nPlease enter a value between %d and %d:\n",
+                  PrintMessageFormatted("\n\"%s\" - Invalid Input.\nPlease enter a value between %d and %d:\n",
                          sInputChar,pSimulator->GetMinYearOfBirth(),pSimulator->GetMaxYearOfBirth());
                }
             }
 
-            PrintMessageFormatted("nNumber of persons to simulate for supplied values:\n");
+            PrintMessageFormatted("\nNumber of persons to simulate for supplied values:\n");
             bValidInput = false;
             while (!bValidInput) {
-               if ( fgets(sInputChar, 100, stdin) != NULL && 
-                     IsPosLongInt(sInputChar) && 
-                     (atol(sInputChar) >= 1)) {
+               GetInput(sInputChar, 100);
+               if (IsPosLongInt(sInputChar) && 
+                  (atol(sInputChar) >= 1)) {
                   lNumRepetitions = atol(sInputChar);
                   bValidInput = true;
                } else {
-                  PrintMessageFormatted("n\"%s\" is not a valid value.\nAllowable range is 1 to %ld \nPlease enter a new value:\n", sInputChar, MAX(long));
+                  PrintMessageFormatted("\n\"%s\" is not a valid value.\nAllowable range is 1 to %ld \nPlease enter a new value:\n", sInputChar, MAX(long));
                }
             }
 
-            PrintMessageFormatted("n");
+            PrintMessageFormatted("\n");
             for (long j = 1; j <= lNumRepetitions; j++) {
                pSimulator->RunSimulationSingle(wInputRace, wInputSex, wInputYOB, pOutputFile);
                #ifdef IS_RCPP
@@ -867,10 +885,11 @@ void RunInterface() {
             PrintMessage( "\nSimulations complete for supplied input.\n1 - Perform more simulations\n2 - Quit\n:");
             bValidInput = false;
             while (!bValidInput) {
-               if ( fgets(sInputChar, 1, stdin) != NULL && IsPosShortInt(sInputChar)) {
+               GetInput(sInputChar, 1);
+               if (IsPosShortInt(sInputChar)) {
                   wTempValue = atoi(sInputChar);
                   if ((wTempValue != 1) && (wTempValue != 2)) {
-                     PrintMessageFormatted("n\"%s\" - Invalid Input.\nPlease enter 1 or 2:\n", sInputChar);
+                     PrintMessageFormatted("\n\"%s\" - Invalid Input.\nPlease enter 1 or 2:\n", sInputChar);
                   } else {
                      if (wTempValue == 2) {
                         bKeepRepeating = false;
@@ -878,21 +897,21 @@ void RunInterface() {
                      bValidInput = true;
                   }
                } else {
-                  PrintMessageFormatted("n\"%s\" - Invalid Input.\nPlease enter 1 or 2:\n", sInputChar);
+                  PrintMessageFormatted("\n\"%s\" - Invalid Input.\nPlease enter 1 or 2:\n", sInputChar);
                }
             }
 
          } // while(bKeepRepeating)
       }
-      PrintMessage("nSimulations complete\nPress \"Enter\" to close this window\n");
+      PrintMessage("Simulations complete\nPress \"Enter\" to close this window\n");
       getc(stdin);
       }
    catch (SimException ex) {
-      PrintMessage("nInternal error occurred\n");
+      PrintMessage("Internal error occurred\n");
       PrintMessageFormatted("Error : %s\n", ex.GetError());
       getc(stdin);
    } catch (...) {
-      PrintMessage("nUnknown Error Occurred\n");
+      PrintMessage("Unknown Error Occurred\n");
       getc(stdin);
    }
 
@@ -1046,7 +1065,7 @@ int RunWebVersion(const char * sInputFileName)
                }
             }
             sPARAM_Sex[iCurrIndex]='\0';
-            if (strstr(sPARAM_Sex, ",") != NULL)
+            if (strchr(sPARAM_Sex, ',') != NULL)
                bHaveVectorValues = true;
          }
 
@@ -1061,7 +1080,7 @@ int RunWebVersion(const char * sInputFileName)
                }
             }
             sPARAM_Race[iCurrIndex]='\0';
-            if (strstr(sPARAM_Race, ",") != NULL)
+            if (strchr(sPARAM_Race, ',') != NULL)
                bHaveVectorValues = true;
          }
 
@@ -1076,7 +1095,7 @@ int RunWebVersion(const char * sInputFileName)
                }
             }
             sPARAM_YOB[iCurrIndex]='\0';
-            if (strstr(sPARAM_YOB, ",") != NULL)
+            if (strchr(sPARAM_YOB, ',') != NULL)
                bHaveVectorValues = true;
          }
 
@@ -1091,7 +1110,7 @@ int RunWebVersion(const char * sInputFileName)
                }
             }
             sPARAM_NumReps[iCurrIndex]='\0';
-            if (strstr(sPARAM_NumReps, ",") != NULL)
+            if (strchr(sPARAM_NumReps, ',') != NULL)
                bHaveVectorValues = true;
          }
 
@@ -1233,8 +1252,8 @@ int RunWebVersion(const char * sInputFileName)
             delete[] seedString;
          }
 
-         if (strstr(Str_toupper(sInputBuffer), "IMMEDIATECESS=") != NULL) {
-            iIndexLength = strlen("IMMEDIATECESS=");
+         if (strstr(Str_toupper(sInputBuffer), "CESSATION_YR=") != NULL) {
+            iIndexLength = strlen("CESSATION_YR=");
             sImmediateCess = new char[(iStringLength - iIndexLength)+1];
             iCurrIndex = 0;
             for (i = 0; i < (iStringLength - iIndexLength); i++) {
@@ -1243,7 +1262,7 @@ int RunWebVersion(const char * sInputFileName)
                   iCurrIndex++;
                }
             }
-            sErrorFile[iCurrIndex]='\0';
+            sImmediateCess[iCurrIndex]='\0';
          }
 
          if (strstr(Str_toupper(sInputBuffer), "NOTAGS") != NULL) {
@@ -1426,7 +1445,7 @@ int RunWebVersion(const char * sInputFileName)
    } // end if (bRunApp && bHaveVectorValues)
 
    if (bRunApp) {
-      // TODO: Consider rather using the default seeds when a user does not specify them in the input file
+      
       if (sSEED_Init == NULL || atol(sSEED_Init) == -1)
          lSeed_Init = time(0);
       else
@@ -1606,6 +1625,7 @@ int RunWebVersion(const char * sInputFileName)
       iReturnValue = 0;
 
    delete [] sErrorFile;
+   //delete sRNGStrategy;
    delete [] sInputBuffer;
    delete [] sFILE_InitProb;
    delete [] sFILE_CessProb;
@@ -1653,7 +1673,7 @@ void Usage(void) {
    PrintMessage("        Runs a user interface version of program.\n\n");
    PrintMessage("Or\n\n");
    PrintMessage(" Smoking_Initiation DATA_DIR INIT_SEED CESS_SEED OTH_COD_SEED INPUT_FILE OUTPUT_FILE OUTPUT_TYPE CESS_YEAR\n");
-   PrintMessageFormatted("nOr\n\n");
+   PrintMessageFormatted("\nOr\n\n");
    PrintMessage(" Smoking_Initiation INIT_SEED CESS_SEED OTH_COD_SEED INPUT_FILE OUTPUT_FILE OUTPUT_TYPE CESS_YEAR\n");
    PrintMessage(" Where:\n");
    PrintMessage("    DATA_DIR     - Directory that contains the input files used by the application \n");

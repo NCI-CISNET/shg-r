@@ -1518,7 +1518,8 @@ void Smoking_Simulator::RunSimulation(const char* sInputFileName, const char* sO
       pInputFile = fopen(sInputFileName, "r");
 
       if (pInputFile == NULL) {
-         throw SimException("ERROR",
+         PrintMessage(sInputFileName);
+          throw SimException("ERROR",
             "Problem opening input file. Please verify file exists and is not in use by another program.\n");
       }
 
@@ -1990,15 +1991,15 @@ void PrintError(const char* format, ...) {
 // RCPP does not allow fprintf to be used, so this function is used to replace it
 void PrintMessageFormatted(const char* format, ...) {
    va_list args;
-   va_start(args, format);
    #ifdef IS_RCPP
       // Not expecting that we will need to print to console in R but including an option just in case
       Rprintf(format, args);
       //Rcpp::Rcout << fmt::vformat(format, args);
    #else
-      fprintf(stdout, format, args);
+      va_start(args, format);
+      vfprintf(stdout, format, args);
+      va_end(args);
    #endif
-   va_end(args);
 }
 
 void PrintMessage(const char* message) {
