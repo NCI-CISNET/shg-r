@@ -542,7 +542,9 @@ bool IsPosLongInt(const char* sValue) {
 void GetInput(char* sInputChar, short length) {
    if (fgets(sInputChar, length, stdin) == NULL) {
       PrintError("Error reading input\n");
-      exit(1);
+      #ifndef IS_RCPP
+         exit(1);
+      #endif
    }
    else {
       // Remove new line character from input
@@ -626,8 +628,6 @@ void RunInterface() {
    wCessationYear = 0; // 0 = do not use immediate cessation.
    PrintMessageFormatted("\nSelect which estimates to use as the model inputs:\n");
    PrintMessage("1 - NHIS estimates.\n");
-// TODO: we can just use sim_fprintf_stdout instead of sim_simple_stdout
-
    PrintMessage("2 - Counterfactual estimates.\n");
    PrintMessage("3 - Immediate Cessation using NHIS estimates.\n");
    PrintMessage("(Please enter 1, 2 or 3):\n");
@@ -637,7 +637,7 @@ void RunInterface() {
          wSourceData = atoi(sInputChar);
          bValidInput = true;
          if (wSourceData == 3) {
-            fprintf(stdout, "\nB Enter a year to use for immediate cessation.\nAll smokers will quit smoking on Jan 1st of this year.\n(Please enter a year in the range %04d-%04d):\n",
+            PrintMessageFormatted("\nB Enter a year to use for immediate cessation.\nAll smokers will quit smoking on Jan 1st of this year.\n(Please enter a year in the range %04d-%04d):\n",
                     wMIN_IMMEDIATE_CESSATION_YEAR, wSIM_CUTOFF_YEAR);
 
             PrintMessageFormatted("\nAEnter a year to use for immediate cessation.\nAll smokers will quit smoking on Jan 1st of this year.\n(Please enter a year in the range %04d-%04d):\n",
@@ -645,10 +645,9 @@ void RunInterface() {
             bValidInput = false;
             while (!bValidInput) {
                GetInput(sInputChar, 10);
-               if (sInputChar != NULL && 
-                    IsPosShortInt(sInputChar) &&
-                    ((atoi(sInputChar) >= wMIN_IMMEDIATE_CESSATION_YEAR) &&
-                     (atoi(sInputChar) <= wSIM_CUTOFF_YEAR)))
+               if (IsPosShortInt(sInputChar) &&
+                   ((atoi(sInputChar) >= wMIN_IMMEDIATE_CESSATION_YEAR) &&
+                    (atoi(sInputChar) <= wSIM_CUTOFF_YEAR)))
                   {
                   wCessationYear = atoi(sInputChar);
                   bValidInput = true;
@@ -876,9 +875,8 @@ void RunInterface() {
             PrintMessageFormatted("\n");
             for (long j = 1; j <= lNumRepetitions; j++) {
                pSimulator->RunSimulationSingle(wInputRace, wInputSex, wInputYOB, pOutputFile);
-               #ifdef IS_RCPP
-               #else
-               pSimulator->WriteToStream(stdout);
+               #ifndef IS_RCPP
+                  pSimulator->WriteToStream(stdout);
                #endif
             }
 
