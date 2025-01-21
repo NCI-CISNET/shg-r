@@ -1047,7 +1047,7 @@ int RunWebVersion(const char * sInputFileName)
                }
             }
             sPARAM_Sex[iCurrIndex]='\0';
-            if (strchr(sPARAM_Sex, ',') != NULL)
+            if (strstr(sPARAM_Sex, ",") != NULL)
                bHaveVectorValues = true;
          }
 
@@ -1062,7 +1062,7 @@ int RunWebVersion(const char * sInputFileName)
                }
             }
             sPARAM_Race[iCurrIndex]='\0';
-            if (strchr(sPARAM_Race, ',') != NULL)
+            if (strstr(sPARAM_Race, ",") != NULL)
                bHaveVectorValues = true;
          }
 
@@ -1077,7 +1077,7 @@ int RunWebVersion(const char * sInputFileName)
                }
             }
             sPARAM_YOB[iCurrIndex]='\0';
-            if (strchr(sPARAM_YOB, ',') != NULL)
+            if (strstr(sPARAM_YOB, ",") != NULL)
                bHaveVectorValues = true;
          }
 
@@ -1092,7 +1092,7 @@ int RunWebVersion(const char * sInputFileName)
                }
             }
             sPARAM_NumReps[iCurrIndex]='\0';
-            if (strchr(sPARAM_NumReps, ',') != NULL)
+            if (strstr(sPARAM_NumReps, ",") != NULL)
                bHaveVectorValues = true;
          }
 
@@ -1607,7 +1607,6 @@ int RunWebVersion(const char * sInputFileName)
       iReturnValue = 0;
 
    delete [] sErrorFile;
-   //delete sRNGStrategy;
    delete [] sInputBuffer;
    delete [] sFILE_InitProb;
    delete [] sFILE_CessProb;
