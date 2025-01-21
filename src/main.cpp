@@ -39,8 +39,8 @@
 
 #define MAX(x) (std::numeric_limits<x>::max())
 
-#define DEFAULT_DATA_DIR "data/10_28_2014/"
-#define COUNTERFACTUAL_DATA_DIR "data/counterfactual_inputs_jan_2009/"
+#define DEFAULT_DATA_DIR const_cast<char*>("data/10_28_2014/")
+#define COUNTERFACTUAL_DATA_DIR const_cast<char*>("data/counterfactual_inputs_jan_2009/")
 
 // Input file names
 #define INITIATION_DATA_FILE "lbc_smokehist_initiation.txt"
