@@ -447,7 +447,6 @@ short CountVectorValues(char* sDataString) {
 // }
 
 void LoadValue(char* sDest, char* sSource, int iValueNum) {
-   //bool bReturnValue;
    char *pTokenPtr = 0,
         *sBuffer = 0;
    int i;
