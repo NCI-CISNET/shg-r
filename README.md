@@ -18,7 +18,7 @@ devtools::install_github("CSNW/rcpp-shg@[branch-of-your-choice]")
 ## Installation for end-users from CRAN
 Under development: Eventually this package will be hosted on CRAN
 ```r
-install.packages("RcppSmokingHistoryGenerator")
+install.packages("RcppSmokingHistoryGenerator")  # Not working yet. Coming soon!
 ```
 
 ## Installation for developers
