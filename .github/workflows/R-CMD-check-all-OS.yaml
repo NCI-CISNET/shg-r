@@ -5,7 +5,7 @@ on:
     branches:
       - '**'
 
-name: R-CMD-check-all-OS.yaml
+name: R CMD check all OS
 
 permissions: read-all
 
