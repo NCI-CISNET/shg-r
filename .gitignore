@@ -1,0 +1,17 @@
+
+*.o
+*.dll
+inst/.DS_Store
+inst/inputs/.DS_Store
+.DS_Store
+.Rproj.user
+src/RcppSmokingHistoryGenerator.so
+src/wrapper_backup.xcpp
+.Rhistory
+/out
+.RDataTmp
+SHG_multi.out
+/..Rcheck
+/RcppSmokingHistoryGenerator.Rcheck
+RcppSmokingHistoryGenerator_0.0.1.tar.gz
+

@@ -1,0 +1,37 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "(lldb) Launch debug.R",
+        "type": "lldb",
+        "request": "launch",
+        "program": "/Library/Frameworks/R.framework/Resources/bin/exec/R",
+        "args": [
+          "--vanilla",
+          "-e",
+          "source('tools/debug.R')"
+        ],
+        "env": {
+          "R_HOME" : "/Library/Frameworks/R.framework/Resources"
+        },
+        "terminal": "console",
+        "stopOnEntry": false
+      },
+      {
+        "name": "(lldb) Launch compile_load.R",
+        "type": "lldb",
+        "request": "launch",
+        "program": "/Library/Frameworks/R.framework/Resources/bin/exec/R",
+        "args": [
+          "--vanilla",
+          "-e",
+          "source('tools/compile_load.R')"
+        ],
+        "env": {
+          "R_HOME" : "/Library/Frameworks/R.framework/Resources"
+        },
+        "terminal": "console",
+        "stopOnEntry": false
+      }
+    ]
+  }

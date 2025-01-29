@@ -1,0 +1,16 @@
+RNGSTRATEGY=RngStream
+RNGSTREAM_SEED=12345,12345,12345,12345,12345,12345
+
+RACE=0
+SEX=0
+YOB=1950
+CESSATION_YEAR=0
+REPEAT=1000
+
+INIT_PROB=./inst/inputs/default/lbc_smokehist_initiation.txt
+CESS_PROB=./inst/inputs/default/lbc_smokehist_cessation.txt
+OCD_PROB=./inst/inputs/default/lbc_smokehist_oc_mortality.txt
+CPD_DATA=./inst/inputs/default/lbc_smokehist_cpd.txt
+
+OUTPUTFILE=./out/RNGSTREAM_test_output.out
+ERRORFILE=./out/RNGSTREAM_test_errors.txt
