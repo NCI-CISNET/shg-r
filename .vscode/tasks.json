@@ -11,12 +11,12 @@
 			"label": "R: Build"
 		},
 		{
-			"label": "R: Check",
+			"label": "R: CMD Check",
 			"type": "shell",
 			"command": "sh",
 			"args": [
 				"-c",
-				"rm -rf .Rcheck && R CMD build . && R CMD check RcppSmokingHistoryGenerator_*.tar.gz"
+				"rm -rf .Rcheck && R CMD build . && R CMD check SmokingHistoryGenerator_*.tar.gz"
 			],
 			"group": "build",
 			"problemMatcher": []

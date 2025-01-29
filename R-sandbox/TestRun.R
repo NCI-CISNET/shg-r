@@ -11,7 +11,7 @@ Sys.setenv(PKG_BUILD_EXTRA_FLAGS = "false")
 #pkgbuild::compile_dll(path=".", quiet=FALSE, debug=FALSE)
 devtools::load_all()
 devtools::load_all()
-library(RcppSmokingHistoryGenerator)  # Package name
+library(SmokingHistoryGenerator)  # Package name
 shg <- new(SHGInterface) # Class
 
 rng1 <- new("rstream.mrg32k3a")
@@ -45,7 +45,7 @@ end_time - start_time
 
 
 # Could also load libary and then access member functions
-#library(RcppSmokingHistoryGenerator)
+#library(SmokingHistoryGenerator)
 #smokinghistorygenerator()
 
 # Also works for

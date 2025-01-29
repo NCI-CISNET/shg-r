@@ -1,20 +1,20 @@
-\name{RcppSmokingHistoryGenerator-package}
-\alias{RcppSmokingHistoryGenerator-package}
-\alias{RcppSmokingHistoryGenerator}
+\name{SmokingHistoryGenerator-package}
+\alias{SmokingHistoryGenerator-package}
+\alias{SmokingHistoryGenerator}
 \docType{package}
 \title{
-\packageTitle{RcppSmokingHistoryGenerator}
+\packageTitle{SmokingHistoryGenerator}
 }
 \description{
-\packageDescription{RcppSmokingHistoryGenerator}
+\packageDescription{SmokingHistoryGenerator}
 }
 \details{
 Details sample
 }
 \author{
-\packageAuthor{RcppSmokingHistoryGenerator}
+\packageAuthor{SmokingHistoryGenerator}
 
-Maintainer: \packageMaintainer{RcppSmokingHistoryGenerator}
+Maintainer: \packageMaintainer{SmokingHistoryGenerator}
 }
 \references{
     \enumerate{
@@ -26,9 +26,9 @@ Maintainer: \packageMaintainer{RcppSmokingHistoryGenerator}
 }
 \keyword{package}
 
-%% Uncomment below to imitate parts of library(help = RcppSmokingHistoryGenerator)
-%\section{The \file{DESCRIPTION} File}{\packageDESCRIPTION{RcppSmokingHistoryGenerator}}
-%\section{Documentation Index}{\packageIndices{RcppSmokingHistoryGenerator}}
+%% Uncomment below to imitate parts of library(help = SmokingHistoryGenerator)
+%\section{The \file{DESCRIPTION} File}{\packageDESCRIPTION{SmokingHistoryGenerator}}
+%\section{Documentation Index}{\packageIndices{SmokingHistoryGenerator}}
 
 \seealso{
 CISNET Smoking History Generator source code: \url{https://github.com/CSNW/smoking-history-generator/}

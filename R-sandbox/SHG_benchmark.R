@@ -7,7 +7,7 @@ Sys.setenv(PKG_BUILD_EXTRA_FLAGS = "false")
 devtools::clean_dll()
 devtools::load_all()
 
-library(RcppSmokingHistoryGenerator)  # Package name
+library(SmokingHistoryGenerator)  # Package name
 # shg <- new(SHGInterface) # Class
 
 # shg$setRNGtype("MT") # Use internal (non-R) Mersenne Twister

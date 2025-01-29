@@ -1,4 +1,4 @@
-Package: RcppSmokingHistoryGenerator
+Package: SmokingHistoryGenerator
 Type: Package
 Title: R wrapper for the Smoking History Generator
 Version: 0.0.1
