@@ -3,7 +3,7 @@ devtools::clean_dll()
 devtools::load_all()
 devtools::load_all()
 library(rbenchmark)
-library(RcppSmokingHistoryGenerator)
+library(SmokingHistoryGenerator)
 library(parallel)
 library(dplyr)  # For bind_rows to combine DataFrames
 

@@ -1,4 +1,4 @@
-# RcppSmokingHistoryGenerator<img src="./man/cisnet-logo.svg" width="100px;" align="right">
+# SmokingHistoryGenerator<img src="./man/cisnet-logo.svg" width="100px;" align="right">
   <!-- badges: start -->
   [![R-CMD-check](https://github.com/CSNW/rcpp-shg/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/CSNW/rcpp-shg/actions/workflows/R-CMD-check.yaml)
   [![License: GPL-3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://choosealicense.com/licenses/gpl-3.0/)
@@ -18,7 +18,7 @@ devtools::install_github("CSNW/rcpp-shg@[branch-of-your-choice]")
 ## Installation for end-users from CRAN
 Under development: Eventually this package will be hosted on CRAN
 ```r
-install.packages("RcppSmokingHistoryGenerator")  # Not working yet. Coming soon!
+install.packages("SmokingHistoryGenerator")  # Not working yet. Coming soon!
 ```
 
 ## Installation for developers
@@ -43,13 +43,13 @@ pkgbuild::compile_dll(path = ".", debug = FALSE)
 
 # Recompile the package if necessary (typically after changes to the C++ source)
 devtools::load_all() 
-library(RcppSmokingHistoryGenerator)
+library(SmokingHistoryGenerator)
 ```
 
 ## Basic usage
 Relying on the default values for input filepaths, RNG strategy, multi-threading, immediate cessation, segments you can launch a smoking history simulation as follows: 
 ```r
-library(RcppSmokingHistoryGenerator)
+library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
 N <- 10^5 # Individuals to simulate (REPEAT)
 race = 0 # All races combined
@@ -78,7 +78,7 @@ RNGSTREAM_SIM_POP <- shg$runSimFromDataFrame(pop)
 You can also run the simulator using the (legacy) Mersenne Twister RNG.
 
 ```r
-library(RcppSmokingHistoryGenerator)
+library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
 N <- 10^5 # Individuals to simulate (REPEAT)
 shg$rng_strategy <- "MersenneTwister"
@@ -90,7 +90,7 @@ RNGSTREAM_SIM <- shg$runSimFromFixedValues(N, 0, 0, 1940)
 
 You can also use the `LegacyRunWebVersion()` method which configures the generator using input file (rather than properties) and sends the output to a text file. Two example input files are included with the package. Note that if you use `LegacyRunWebVersion()` none of the properties of `shg` you may have set in R will be taken into consideration. Only the properties that you set in the input file will be considered. Also note that legacy mode runs with a single segment and with no multi-threading.
 ```r
-library(RcppSmokingHistoryGenerator)
+library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
 shg$LegacyRunWebVersion("./inst/inputs/examples/test_input_example_MersenneTwister.txt")
 shg$LegacyRunWebVersion("./inst/inputs/examples/test_input_example_RngStream.txt")

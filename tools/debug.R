@@ -5,7 +5,7 @@ pkgbuild::compile_dll(path = ".", debug = FALSE)
 
 #devtools::load_all()
 devtools::load_all()
-library(RcppSmokingHistoryGenerator)
+library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
 
 # Test very small population to determine overhead
