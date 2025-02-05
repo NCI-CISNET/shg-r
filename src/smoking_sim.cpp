@@ -75,7 +75,7 @@ Smoking_Simulator::Smoking_Simulator(const char* sInitiationProbFile, const char
       LoadProbabilityData(sCessationProbFile, Smoking_Simulator::DATA_Cessation);
       LoadCPDFile(sCpdDataFile);
       LoadOtherCODFile(sLifeTableFile);
-   
+  
       // To maintain the legacy constructor signature, we need to initialize default Mersenne Twister strategy here
       MersenneTwisterRNG* pRngStrategy = new MersenneTwisterRNG(ulInitPRNGSeed, ulCessPRNGSeed, ulLifeTableSeed, ulIndivRndsSeed);
       setRNGStrategy(pRngStrategy);
@@ -434,7 +434,8 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
             for (j = 0; j < nColumns; j++) {
                // TODO: the group, group * nColumns + j is a bit confusing and maybe incorrect
                // warning: left operand of comma operator has no effect (maybe should remove group?)
-               switchProbs[j] = Tij[group, group * nColumns + j] / r0[group];
+               // switchProbs[j] = Tij[group, group * nColumns + j] / r0[group];
+               switchProbs[j] = Tij[group * nColumns + j] / r0[group];
             }
 
             // double sumProbs;
@@ -731,7 +732,8 @@ std::lock_guard<std::mutex> lock(dataMutex);
       if (gdIntensityProbs == NULL)
          throw SimException("Error", "The smoking intensity probability file must be loaded before the Cigarettes per day data file.\n");
       */
-// TODO: can we easily switch between compressed and uncompressed files? Can R packages just uncompress upon loading the package?
+      
+      // TODO: can we easily switch between compressed and uncompressed files? Can R packages just uncompress upon loading the package?
       pCpdFile = fopen(sCpdFile, "r");
       if (pCpdFile == NULL) {
 	      snprintf(sErrorMessage, sizeof(sErrorMessage), "The specified input file '%s' does not exist\n or could not be opened.\n\n", sCpdFile);
@@ -2006,6 +2008,6 @@ void PrintMessage(const char* message) {
    #ifdef IS_RCPP
       Rcpp::Rcout << message;
    #else
-      fprintf(stdout, message);
+      fprintf(stdout, "%s", message);
    #endif
 }
