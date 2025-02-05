@@ -42,7 +42,9 @@ if result.returncode == 0:
 else:
     recent_tag = "No recent tag found"
 
-src_hash = md5_dir(target_dir)
+# Note we generate a hash from the source dir because it does not include the wrapper.cpp
+# which is not relevant for the hash from shg-cli
+src_hash = md5_dir(source_dir)
 
 # Read DESCRIPTION file in rcpp-shg
 with open('DESCRIPTION', 'r') as file:

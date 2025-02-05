@@ -4,7 +4,7 @@ Title: R wrapper for the Smoking History Generator
 Version: 0.0.1
 SHGMostRecentTag: v6.4.0-rc-3
 SHGCommitHash: 6328e0a
-SHGsrcHash: 5d4b98c6291af6680f4b579dc4e08a3f
+SHGsrcHash: 4c1ac725361a0eb9d6b59a1bb1dce460
 Date: 2025-02-05
 Authors@R: c(
     person("John", "Clarke", role = c("aut", "cre"), email = "john.clarke@cornerstonenw.com", comment= "Author and maintainer of Rcpp wrapper for the SHG"),
