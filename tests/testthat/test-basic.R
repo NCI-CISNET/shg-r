@@ -93,7 +93,7 @@ MT_fixture_A <- get_run_details(test_path("../fixtures/MT/yob_1950_cessation_0.t
 MT_output_B <- generate_output("MersenneTwister", 2010, 2050, outputs_folder)
 MT_fixture_B <- get_run_details(test_path("../fixtures/MT/yob_2010_cessation_2050.txt"))
 
-test_that("MersenneTwister simulation output in R does not differ from C++ fixture", {
+test_that("MersenneTwister simulation output in R does not differ from C++ fixtures", {
   expect_equal(MT_output_A$run, MT_fixture_A$run)
   expect_equal(MT_output_A$cessation, "0")
   expect_equal(MT_fixture_A$cessation, "0")
@@ -108,7 +108,7 @@ RS_fixture_A <- get_run_details(test_path("../fixtures/RS/yob_1950_cessation_0.t
 RS_output_B <- generate_output("RngStream", 2010, 2050, outputs_folder)
 RS_fixture_B <- get_run_details(test_path("../fixtures/RS/yob_2010_cessation_2050.txt"))
 
-test_that("RngStream simulation output in R does not differ from C++ fixture", {
+test_that("RngStream simulation output in R does not differ from C++ fixtures", {
   expect_equal(RS_output_A$run, RS_fixture_A$run)
   expect_equal(RS_output_A$cessation, "0")
   expect_equal(RS_fixture_A$cessation, "0")
@@ -120,16 +120,19 @@ shg$rng_strategy <- "MersenneTwister"
 MT_SIM <- shg$runSimFromFixedValues(N, 0, 0, 1940)
 
 shg$rng_strategy <- "RngStream"
-RS_SIM2 <- shg$runSimFromFixedValues(N, 0, 0, 1940)
+RS_SIM <- shg$runSimFromFixedValues(N, 0, 0, 1940)
 
 MT_STATS <- get_stats_from_df(MT_SIM)
-RS_STATS <- get_stats_from_df(RS_SIM2)
+RS_STATS <- get_stats_from_df(RS_SIM)
 
 test_that("Comparison between MT-SIM and RNGSTREAM-SIM", {
-  expect_equal(dim(RS_SIM2), dim(MT_SIM))
+  expect_equal(dim(RS_SIM), dim(MT_SIM))
   expect_equal(MT_STATS$mean_initiation, RS_STATS$mean_initiation, tolerance = 0.01)
   expect_equal(MT_STATS$mean_cessation, RS_STATS$mean_cessation, tolerance = 0.01)
   expect_equal(MT_STATS$mean_age_at_death, RS_STATS$mean_age_at_death, tolerance = 0.01)
+  
+  # it MT_STATS and RS_STATS are equal, it would indicate there is a problem with the RNG -- they should be very similar but *not* identical
+  expect_false(isTRUE(all.equal(MT_STATS, RS_STATS))) 
 })
 
 pop <- list(
