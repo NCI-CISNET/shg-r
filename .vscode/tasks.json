@@ -4,6 +4,15 @@
 		{
 			"type": "R",
 			"code": [
+				"devtools::test()"
+			],
+			"group": "build",
+			"problemMatcher": [],
+			"label": "R: Test"
+		},
+		{
+			"type": "R",
+			"code": [
 				"devtools::build()"
 			],
 			"group": "build",
