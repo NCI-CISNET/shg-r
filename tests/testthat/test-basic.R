@@ -1,6 +1,6 @@
 library(SmokingHistoryGenerator)
 library(glue)
-libary(testthat)
+library(testthat)
 
 # Helper functions
 extract_tag <- function(vector, start_tag, end_tag) {
