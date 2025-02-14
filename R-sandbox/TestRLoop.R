@@ -1,5 +1,5 @@
 devtools::load_all()
-library(RcppSmokingHistoryGenerator)
+library(SmokingHistoryGenerator)
 shg <-new(SHGInterface)
 
 library(parallel)

@@ -9,7 +9,7 @@ library(rstream)
 devtools::load_all() # recompiles the package if necessary
 devtools::load_all() # recompiles the package if necessary
 
-library(RcppSmokingHistoryGenerator)  # Package name
+library(SmokingHistoryGenerator)  # Package name
 shg <- new(SHGInterface) # Class
 
 rng1 <- new("rstream.mrg32k3a")

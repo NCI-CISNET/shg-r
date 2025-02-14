@@ -46,17 +46,15 @@
 #define INITIATION_DATA_FILE "lbc_shg_initiation.txt"
 #define CESSATION_DATA_FILE "lbc_shg_cessation.txt"
 #define OTHER_COD_DATA_FILE "lbc_smokehist_oc_mortality.txt"
-#define CPD_INTENSITY_PROBS "lbc_smokehist_cpdintensityprobs.txt"  
-#define CPD_DATA_FILE "lbc_shg_cpd.txt" 
+#define CPD_INTENSITY_PROBS "lbc_smokehist_cpdintensityprobs.txt"
+#define CPD_DATA_FILE "lbc_shg_cpd.txt"
 
 #define VECTOR_DELIMITER ","
-#define MAX_NUM_REPS 1000000
-#define VERSION_FILE "version.json"
+#define MAX_NUM_REPS 10000000
 #define ERROR_MESSAGE_SIZE 1000
 using namespace std;
 
-std::string VERSIONJSON;
-std::string VERSION_NUM;
+const char* VERSION_NUM = "6.4.0";
 std::string gInputFileName;
 bool gWithHoldTags = false;
 
@@ -70,7 +68,6 @@ const char sRACE_LABELS[2][10] = {"All Races", "White"};
 char* AssignFilename(const char* sDirectory, const char * sFilename);
 short CountVectorValues(char* sDataString);
 bool CreateDataFile(const char *sNumToSimulate, const char* sOutFileName, char*);
-// void Help(const char* sAppName, FILE* pHelpStream);
 bool IsPosLongInt(const char *sValue);
 bool IsPosShortInt(const char *sValue);
 bool IsValidNumReps(const char* sNumReps);
@@ -78,7 +75,6 @@ bool IsValidSeed(const char* sSeedValue);
 void LoadValue(char* sDest, char* sSource, int iValueNum);
 void ModifyCutoffYear(char*);
 bool RunFromParameters(char*, char*, char*, char*, char*, char*, char*, char*, char*, char*);
-void RunInfiniteLoop();
 void RunInterface();
 int RunWebVersion(const char *sInputFileName);
 char* Str_toupper(char *s);
@@ -88,10 +84,9 @@ short min(short, short);
 bool ValidateParameters(char*, char*, char*, char*, char*, char*, char*, char*, char*);
 bool ValidateParameters(char*, char*, char*, char*, char*, char*, char*, char*, char*, char*);
 void WriteInputTag(FILE* , char*, char*, const char*, const char*);
-void WriteRunInfoTag(FILE* , std::string, const char*, const char*, const char*,
+void WriteRunInfoTag(FILE*, const char*, const char*, const char*, const char*,
                      const char*, const char*, const char*, const char*, const char*,
                      const char*, const char*, const char*, const char*, const char*);
-void PropagateVersionInformation();
 
 // Removing the main() function for RCPP because it is unwanted
 // But we include all the other methods and variables to avoid DRY violations in the Rcpp wrapper
@@ -102,8 +97,6 @@ int main(int argc, char* argv[]) {
 	int iReturnValue;
    FILE* pHelpFile = 0;
 
-   PropagateVersionInformation();
-
    switch (argc) {
 
       // No input parameters, run the user-interface version
@@ -111,40 +104,10 @@ int main(int argc, char* argv[]) {
    		RunInterface();
 	   	iReturnValue = 0; break;
 
-      // 1 input parameter, could be a call to
-      //  - Run the program for the web-based version of application
-      //  - Write the helpfile to a .txt file or to the screen
-      //  - Put the program in an infinite loop (used for error testing with the website)
-      // Which routine to run is based on the value in argv[1]
+      // 1 input parameter, could be a call Run the program for the web-based version of application
       case 2:
-         // TODO: Don't allow 
-         // char buffer[20];
-         // std::string str ("Test string...");
-         // std::size_t length = argv[1].copy(buffer,6,5);
-         // buffer[length]='\0';
-         // std::cout << "buffer contains: " << buffer << '\n';
-         /*
-         if (strcmp(Str_toupper(argv[1]), "HELP") == 0) {  
-            // Write help to screen
-            Help(argv[0],stdout);
-            iReturnValue = 0;
-         } else if (strcmp(Str_toupper(argv[1]), "WRITEHELP") == 0) { // Write help to file
-            pHelpFile = fopen("HelpFile.txt", "w");
-            if (pHelpFile != NULL) {
-               Help(argv[0], pHelpFile);
-               fclose(pHelpFile);
-               iReturnValue = 0;
-            } else {
-               iReturnValue = 1;
-            }
-         } else if (strcmp(Str_toupper(argv[1]), "LOOP")==0) {  
-            RunInfiniteLoop();
-         } else { 
-            argv[1] = Str_tolower(argv[1]);
-         */
          iReturnValue = RunWebVersion(argv[1]);
          break;
-
 
       // 3 input parameters, Create a data file - FOR TESTING ONLY - NOT TO BE USED IN SIMULATIONS
       case 4:
@@ -258,196 +221,7 @@ short CountVectorValues(char* sDataString) {
    return wReturnValue;
 }
 
-// TODO probably can remove this because it is no longer called
-// Write the help text to FILE*
-// void Help(const char* sAppName,FILE* pOutStream) {
-//    WriteToFile(pOutStream, "\nCancer Intervention and Surveillance Modeling Network\n");
-//    WriteToFile(pOutStream, "(CISNET)\n");
-//    WriteToFile(pOutStream, "Lung Cancer Base Case\n\n");
-//    WriteToFile(pOutStream, "Smoking History Generator Application\n");
-//    WriteToFile(pOutStream, "The use of immediate cessation has changed with this release.\n");
-//    WriteToFile(pOutStream, "To apply immediatte cessation, the year for immediate cessation must now be supplied to the application.\n");
-//    WriteToFile(pOutStream, "The year value is now supplied as the last input parameter (See Section 2 below).\n");
-//    WriteToFile(pOutStream, "If the year value supplied is '0', immediate cessation will not be used in the run.\n");
-//    WriteToFile(pOutStream, "If a year value is supplied, Immediatte Cessation will occur on January 1st of year provided.\n\n");
-//    WriteToFile(pOutStream, "Section 1: Usage\n\n");
-//    WriteToFile(pOutStream, "1. User Interface Mode\n");
-//    WriteToFile(pOutStream, "Type:  %s\n\n",sAppName);
-//    WriteToFile(pOutStream, "2. Command Line Mode\n");
-//    WriteToFile(pOutStream, "Type: %s Source_Dir Init_Seed Cess_Seed Oth_Cod_Seed Indiv_Seed Input_File Output_File Output_Type Immediate_Cessation\n",sAppName);
-//    WriteToFile(pOutStream, " or\n");
-//    WriteToFile(pOutStream, "Type: %s Init_Seed Cess_Seed Oth_Cod_Seed Indiv_Seed Input_File Output_File Output_Type Immediate_Cessation\n",sAppName);
-//    WriteToFile(pOutStream, "Where:\n");
-//    WriteToFile(pOutStream, "\tSource_Dir     - Directory containing the NHIS or counterfactual inputs for the simulation model. Application will use the NHIS estiamtes if this value is ommitted.\n");
-//    WriteToFile(pOutStream, "\tInit_Seed      - An integer seed for the Initiation Probability PRNG (>= 0)\n");
-//    WriteToFile(pOutStream, "\tCess_Seed      - An integer seed for the Cessation Probability PRNG (>= 0)\n");
-//    WriteToFile(pOutStream, "\tOth_Cod_Seed   - An integer seed for the Other Cause of Death Probability PRNG (>=0)\n");
-//    WriteToFile(pOutStream, "\tIndiv_Seed     - An integer seed for the PRNG that will be used for defining characteristics of the individual (>= 0).\n");
-//    WriteToFile(pOutStream, "\tInput_File     - Name of file containing the covariate combinations to simulate. Should be formatted using Input File Format 1 (defined below).\n");
-//    WriteToFile(pOutStream, "\tOutput_File    - Name of the output file that the application should write to.\n");
-//    WriteToFile(pOutStream, "\tOutput_Type    - Style of output to write: 1 = Data ,  2 = Text,  3 = Timeline\n");
-//    WriteToFile(pOutStream, "\tCessation_Year - 4-digit Year Value. All smokers will stop smoking on January 1st of year provided. Enter a value of '0' to disable the immediate cessation option.\n\n");
-//    WriteToFile(pOutStream, "3. Web Interface Mode\n");
-//    WriteToFile(pOutStream, "NOTE: This mode was designed for use with a website. It will provide the same results but it does have\n");
-//    WriteToFile(pOutStream, "\tdifferent requirements in terms of how the input to the program should be formatted and the results\n");
-//    WriteToFile(pOutStream, "\tare presented within HTML style tags.\n");
-//    WriteToFile(pOutStream, "Type: %s INFILE_PATH\n",sAppName);
-//    WriteToFile(pOutStream, "Where:\n");
-//    WriteToFile(pOutStream, "\tINFILE_PATH = Path to the input file to be used for the application\n");
-//    WriteToFile(pOutStream, "\tThis input file must be formatted using Input File Format 2 (defined below).\n\n");
-//    WriteToFile(pOutStream, "4. Additional calls\n");
-//    WriteToFile(pOutStream, "Type: %s Loop\n",sAppName);
-//    WriteToFile(pOutStream, "\t- Force the application into an infinite loop\n");
-//    WriteToFile(pOutStream, "Type: %s Help\n",sAppName);
-//    WriteToFile(pOutStream, "\t- Calls this help writing function.\n\n");
-//    WriteToFile(pOutStream, "The application returns a value of 0 upon successful completion\n");
-//    WriteToFile(pOutStream, " and a value of 1 if an error occurred.\n");
-//    WriteToFile(pOutStream, "\n\n");
-//    WriteToFile(pOutStream, "Section 2: Input File Formats\n\n");
-//    WriteToFile(pOutStream, "Input File Format 1:\n");
-//    WriteToFile(pOutStream, "This format is required for Usage: \n");
-//    WriteToFile(pOutStream, "\t%s Source_Dir Init_Seed Cess_Seed Oth_Cod_Seed Indiv_Seed Input_File Output_File Output_Type\n",sAppName);
-//    WriteToFile(pOutStream, "The input file needs to a DOS formatted text file.\n");
-//    WriteToFile(pOutStream, "Only one record per line is allowed.\n");
-//    WriteToFile(pOutStream, "Values in a record must be semi-colon delimited integer values.\n");
-//    WriteToFile(pOutStream, "Record Layout:\n");
-//    WriteToFile(pOutStream, "\tRace, Sex, Year Of Birth\n");
-//    WriteToFile(pOutStream, "Acceptable Values for Record Variables:\n");
-//    WriteToFile(pOutStream, "Variable		  Values       Formats\n");
-//    WriteToFile(pOutStream, "Race           0,           (All Races)\n");
-//    WriteToFile(pOutStream, "Sex            0, 1         (Male, Female)\n");
-//    WriteToFile(pOutStream, "Year of Birth  1890-1984\n");
-//    WriteToFile(pOutStream, "Record Example:\n");
-//    WriteToFile(pOutStream, "0,1,1956\n");
-//    WriteToFile(pOutStream, "(Female born in 1956)\n\n");
-//    WriteToFile(pOutStream, "Input File Format 2 (for the web-based interface):\n");
-//    WriteToFile(pOutStream, "This format is required for Usage: \n");
-//    WriteToFile(pOutStream, "\t%s INFILE_PATH\n\n",sAppName);
-//    WriteToFile(pOutStream, "KEY VALUE\n\n");
-//    WriteToFile(pOutStream, "Keys are not case-sensitive.\n");
-//    WriteToFile(pOutStream, "Valid keys for Input File:\n");
-//    WriteToFile(pOutStream, "Key               Description\n");
-//    WriteToFile(pOutStream, "--------------------------------------------------------\n");
-//    WriteToFile(pOutStream, "SEED_INIT=     Seed value for PRNG used for Initiation Probabilitie\n");
-//    WriteToFile(pOutStream, "SEED_CESS=     Seed for PRNG used for Cessation Probabilities\n");
-//    WriteToFile(pOutStream, "SEED_OCD=      Seed for PRNG used for Other COD Probabilities\n");
-//    WriteToFile(pOutStream, "SEED_MISC=     Seed for PRNG used to generate misc. random variables needed by app.\n");
-//    WriteToFile(pOutStream, "RACE=          Race (Valid Values listed below)\n");
-//    WriteToFile(pOutStream, "SEX=           Sex  (Valid Values listed below)\n");
-//    WriteToFile(pOutStream, "YOB=           Year of Birth (Valid Values listed below)\n");
-//    WriteToFile(pOutStream, "CESSATION_YR=  Year value that forces smokers to quit on January 1st of that year. Enter '0' to disable immediate cessation\n");
-//    WriteToFile(pOutStream, "REPEAT=        Number of times to repeat simulation parameters (Optional)\n");
-//    WriteToFile(pOutStream, "INIT_PROB=     File containing the initiation probabilities\n");
-//    WriteToFile(pOutStream, "CESS_PROB=     File containing the cessation probabilities\n");
-//    WriteToFile(pOutStream, "OCD_PROB=      File containing the other COD probabilities\n");
-//    WriteToFile(pOutStream, "CPD_QUINTILES= File containing the smoking quintile probabilities\n");
-//    WriteToFile(pOutStream, "CPD_DATA=      File containing cigarette per day values\n");
-//    WriteToFile(pOutStream, "OUTPUTFILE=    Output file name\n");
-//    WriteToFile(pOutStream, "ERRORFILE=     Error log\n\n");
-//    WriteToFile(pOutStream, "RNGSTRATEGY=   Random Number Generator Strategy (MersenneTwister or RngStream)\n\n");
-//    WriteToFile(pOutStream, "The repeat= key is optional and can be excluded.\n");
-//    WriteToFile(pOutStream, "\n\n");
-//    WriteToFile(pOutStream, "Section 3: Valid Values for Select Keys\n\n");
-//    WriteToFile(pOutStream, "Key            Valid Values\n");
-//    WriteToFile(pOutStream, "--------------------------------------------------------\n");
-//    WriteToFile(pOutStream, "SEED_INIT=     Integer from -1 to %ld\n", MAX(long));
-//    WriteToFile(pOutStream, "               A value of -1 uses the clock time as the seed\n");
-//    WriteToFile(pOutStream, "SEED_CESS=     Same as SEED_INIT\n");
-//    WriteToFile(pOutStream, "SEED_OCD=      Same as SEED_INIT\n");
-//    WriteToFile(pOutStream, "SEED_MISC=     Same as SEED_INIT\n\n");
-//    WriteToFile(pOutStream, "RACE=          0\n");
-//    WriteToFile(pOutStream, "               (0 = All Races)\n\n");
-//    WriteToFile(pOutStream, "SEX=           0, 1\n");
-//    WriteToFile(pOutStream, "               (0 = Male)\n");
-//    WriteToFile(pOutStream, "               (1 = Female)\n\n");
-//    WriteToFile(pOutStream, "YOB=           Integer from 1890 to 1984\n\n");
-//    WriteToFile(pOutStream, "CESSATION_YR=  Integer from %d to %d\n\n",wMIN_IMMEDIATE_CESSATION_YEAR,wSIM_CUTOFF_YEAR);
-//    WriteToFile(pOutStream, "\n\n");
-//    WriteToFile(pOutStream, "Section 4: Using Vector Values\n\n");
-//    WriteToFile(pOutStream, "The following keys can contain multiple inputs in a comma-delimited vector:\n");
-//    WriteToFile(pOutStream, "  RACE\n");
-//    WriteToFile(pOutStream, "  SEX\n");
-//    WriteToFile(pOutStream, "  YOB\n");
-//    WriteToFile(pOutStream, "  REPEAT\n\n");
-//    WriteToFile(pOutStream, "Vector Notes/Restrictions:\n\n");
-//    WriteToFile(pOutStream, "  Vectors may be used for more than 1 key, but the number of values\n");
-//    WriteToFile(pOutStream, "    in each key must be equivalent.\n");
-//    WriteToFile(pOutStream, "  The keys that do not use vectors must still have one value\n");
-//    WriteToFile(pOutStream, "    REPEAT is still optional as explained in Section 2.\n");
-//    WriteToFile(pOutStream, "  If the REPEAT value is included and is not a vector value, each set of\n");
-//    WriteToFile(pOutStream, "    parameters will be repeated by the amount specified.\n");
-//    WriteToFile(pOutStream, "  If the REPEAT value is included and is a vector value, the repeat\n");
-//    WriteToFile(pOutStream, "    value will pertain to the value set that it corresponds to.\n\n\n");
-//    WriteToFile(pOutStream, "\n\n");
-//    WriteToFile(pOutStream, "Section 5: Output File Tags\n\n");
-//    WriteToFile(pOutStream, "  In the output file, the information is written within XML-style tags\n");
-//    WriteToFile(pOutStream, "  This section will outline the valid tags and the content written inside of these tags.\n\n");
-//    WriteToFile(pOutStream, "  Tag                 Parent Tag     Content\n");
-//    WriteToFile(pOutStream, "----------------------------------------------------------------------------------------\n");
-//    WriteToFile(pOutStream, "  <RUNINFO>           N/A            Run info for the software including version, seeds and datafiles.\n");
-//    WriteToFile(pOutStream, "  <VERSION>           <RUNINFO>      Software version number.\n");
-//    WriteToFile(pOutStream, "  <SEEDS>             <RUNINFO>      Seeds used for this run of the application.\n");
-//    WriteToFile(pOutStream, "  <INIT_PRNG_SEED>    <SEEDS>        Seed used for Initiation PRNG.\n");
-//    WriteToFile(pOutStream, "  <CESS_PRNG_SEED>    <SEEDS>        Seed used for Cessation PRNG.\n");
-//    WriteToFile(pOutStream, "  <OCD_PRNG_SEED>     <SEEDS>        Seed used for Other Cause of Death PRNG.\n");
-//    WriteToFile(pOutStream, "  <MISC_PRNG_SEED>    <SEEDS>        Seed used for Other PRNs used by the application.\n");
-//    WriteToFile(pOutStream, "  <DATAFILES>         <RUNINFO>      Datafiles used by this run of the application.\n");
-//    WriteToFile(pOutStream, "  <INITIATION>        <DATAFILES>    Initiation Probablities File.\n");
-//    WriteToFile(pOutStream, "  <CESSATION>         <DATAFILES>    Cessation Probablities File.\n");
-//    WriteToFile(pOutStream, "  <OCD>               <DATAFILES>    Other Cause of Death Probabilities File.\n");
-//    WriteToFile(pOutStream, "  <QUINTILES>         <DATAFILES>    Smoking Intensity Quintile Probabilities File.\n");
-//    WriteToFile(pOutStream, "  <CIG_PER_DAY>       <DATAFILES>    Cigarettes per Day Datafile.\n");
-//    WriteToFile(pOutStream, "  <OPTIONS>           <RUNINFO>      Run Options. Affects all runs done by program.\n");
-//    WriteToFile(pOutStream, "  <CESSATION_YR>      <OPTIONS>      Immediate Cessation Year. 0 = Immediate cessation not used.\n");
-//    WriteToFile(pOutStream, "  <OUTFILES>          <RUNINFO>      Files created by the application.\n");
-//    WriteToFile(pOutStream, "  <OUTPUT>            <OUTFILES>     Output File.\n");
-//    WriteToFile(pOutStream, "  <ERRORS>            <OUTFILES>     Error Log.\n");
-//    WriteToFile(pOutStream, "  <SIMULATION>        N/A            Encapsulates a simulation run for a set of inputs.\n");
-//    WriteToFile(pOutStream, "  <INPUTS>            <SIMULATION>   Inputs for the simulation block.\n");
-//    WriteToFile(pOutStream, "  <RACE>              <INPUTS>       Race\n");
-//    WriteToFile(pOutStream, "  <SEX>               <INPUTS>       Sex\n");
-//    WriteToFile(pOutStream, "  <YOB>               <INPUTS>       YOB\n");
-//    WriteToFile(pOutStream, "  <REPEAT>            <INPUTS>       Number of times the simulation is run for given inputs.\n");
-//    WriteToFile(pOutStream, "  <RUNS>              <SIMULATION>   Encapsulates the results for the simulation block.\n");
-//    WriteToFile(pOutStream, "  <RESULT>            <RUNS>         Encapsulates the results for a simulated individual.\n");
-//    WriteToFile(pOutStream, "  <INITIATION_AGE>    <RESULT>       Age at smoking initiation (-999 = N/A).\n");
-//    WriteToFile(pOutStream, "  <CESSATION_AGE>     <RESULT>       Age at smoking cessation (-999 = N/A).\n");
-//    WriteToFile(pOutStream, "  <OCD_AGE>           <RESULT>       Age at death from cause other than lung cancer (-999 = Still Alive).\n");
-//    WriteToFile(pOutStream, "  <SMOKING_HIST>      <RESULT>       Encapsulates the smoking history for the individual.\n");
-//    WriteToFile(pOutStream, "  <INTENSITY>         <SMOKING_HIST> Smoking Intesity. 5 groups ranging from light to heavy smoker.\n");
-//    WriteToFile(pOutStream, "  <AGE_CPD_COUNT>     <SMOKING_HIST> Number of age/cigarette per day combos in smoking history.\n");
-//    WriteToFile(pOutStream, "  <AGE_CPD>           <SMOKING_HIST> Encapsulates an age/cigarette per day, combination.\n");
-//    WriteToFile(pOutStream, "  <AGE>               <AGE_CPD>      Age value for age-cigaretters per day combination.\n");
-//    WriteToFile(pOutStream, "  <AGE>               <AGE_CPD>      Cigaretters smoked per day for age in corresponding <AGE> tag.\n");
-//    WriteToFile(pOutStream, "\n\n");
-//    WriteToFile(pOutStream, "Section 6: Version History\n\n");
-//    WriteToFile(pOutStream, "Version 6.0.0 (May 2012) - \n");
-//    WriteToFile(pOutStream, "Code was modified to be compatible with Linux compiler GCC version 3.4.4. Includes modifications to include files and \n");
-//    WriteToFile(pOutStream, "implementation of a string to upper and lower case functions that were not available in standard headers for Linux compiler.\n");
-//    WriteToFile(pOutStream, "Version 5.2.1 (January 2009) - \n");
-//    WriteToFile(pOutStream, "Fixed a bug in the ValidateParameters function in main.cpp. Function did not accept '0' as a valid immediate cessation value.\n");
-//    WriteToFile(pOutStream, "Version 5.2.0 (January 2009) - \n");
-//    WriteToFile(pOutStream, "Immediate cessation was changed to allow the user to specify the year of immediate cessation. \n");
-//    WriteToFile(pOutStream, "NHIS and Counterfactual estimates were modified to include year of birth cohorts 1890-1894 and 1895-1899. \n");
-//    WriteToFile(pOutStream, "Application is now limited to producing simulations for All Races Males and All Races Females. \n");
-//    WriteToFile(pOutStream, "Version 5.1.0 (September 2008) - \n");
-//    WriteToFile(pOutStream, "Counterfactual estimates for All Race Male and All Races Female were added to the application. \n");
-//    WriteToFile(pOutStream, "Version 5.0.0 (July 2008) - \n");
-//    WriteToFile(pOutStream, "Smoking History Application modified to include an immediate cessation option. \n");
-//    WriteToFile(pOutStream, "NHIS Inputs for All Races Male and All Races Female were added to the project. \n");
-//    WriteToFile(pOutStream, "Version 4.0.0 (February 2008) - \n");
-//    WriteToFile(pOutStream, "Smoking History Application modified for use with the counterfactual inputs. \n");
-//    WriteToFile(pOutStream, "\tUsers can specify the source directory for this applications input data files.\n");
-//    WriteToFile(pOutStream, "\tCounterfactual inputs were formatted for use with this application and supplied with the application.\n\n");
-//    WriteToFile(pOutStream, "Version 3.2.0 (May 2006) - \n");
-//    WriteToFile(pOutStream, "Smoking History Application modified for use with the CISNET Parameter \n");
-//    WriteToFile(pOutStream, "Generator Model Interface website\n");
-//    WriteToFile(pOutStream, "\tProgram was modifed to read from an input file provided by the website.\n");
-//    WriteToFile(pOutStream, "\tProgram was modifed write output in an XML style format.\n");
-// }
-
 void LoadValue(char* sDest, char* sSource, int iValueNum) {
-   //bool bReturnValue;
    char *pTokenPtr = 0,
         *sBuffer = 0;
    int i;
@@ -505,7 +279,6 @@ bool RunFromParameters(char* sDataFileDir, char* sInitiationSeed,
   		pSimulator = new Smoking_Simulator(sInitiationFile, sCessationFile, sOtherCODFile, sCPDIntensityFile, sCPDDataFile, 
                                          ulInitiationSeed, ulCessationSeed, ulOtherCODSeed, ulIndivRndSeed,  
                                          wOutputType, wCessationYear);
-
 
       pSimulator->RunSimulation(sInputFile, sOutputFile, false);
 
@@ -571,7 +344,7 @@ bool IsValidNumReps(const char* sNumReps) {
    bool bReturnValue= false;
    if (IsPosLongInt(sNumReps)) {
       wNumReps = atoi(sNumReps);
-      if (wNumReps <= MAX_NUM_REPS) // TODO: update to more than 1M
+      if (wNumReps <= MAX_NUM_REPS && wNumReps >= 1)
          bReturnValue = true;
    }
    return bReturnValue;
@@ -632,7 +405,7 @@ void RunInterface() {
    PrintMessage("3 - Immediate Cessation using NHIS estimates.\n");
    PrintMessage("(Please enter 1, 2 or 3):\n");
    while (!bValidInput) {
-      GetInput(sInputChar, 10);
+      GetInput(sInputChar, 4);
       if (IsPosShortInt(sInputChar) && ((atoi(sInputChar) >= 1) && (atoi(sInputChar) <= 3))) {
          wSourceData = atoi(sInputChar);
          bValidInput = true;
@@ -697,7 +470,7 @@ void RunInterface() {
    PrintMessage("Please enter a seed for the PRNG that generates Cessation Probabilities.\n");
    PrintMessageFormatted("Seed should be in range 0 - %ld.\n:",MAX(long));
    while (!bValidInput) {
-      GetInput(sInputChar, 10);
+      GetInput(sInputChar, 20);
       if (IsPosLongInt(sInputChar)) {
          ulCessPRNGSeed = (unsigned long) atol(sInputChar);
          bValidInput = true;
@@ -711,8 +484,9 @@ void RunInterface() {
    PrintMessage("Please enter a seed for the PRNG that generates \nnon-lung cancer death probabilities.\n");
    PrintMessageFormatted("Seed should be in range 0 - %ld.\n:",MAX(long));
    while (!bValidInput) {
-      GetInput(sInputChar, 100);
-      if (IsPosLongInt(sInputChar)) {
+      GetInput(sInputChar, 20);
+      if (IsPosLongInt(sInputChar))
+         {
          ulOthCODSeed = (unsigned long) atol(sInputChar);
          bValidInput = true;
          }
@@ -726,8 +500,9 @@ void RunInterface() {
    PrintMessage("This PRNG is for defining characteristics such as \nwill the person be a light or heavy smoker.\n");
    PrintMessageFormatted("Seed should be in range 0 - %ld.\n:",MAX(long));
    while (!bValidInput) {
-      GetInput(sInputChar, 10);
-      if (IsPosLongInt(sInputChar)) {
+      GetInput(sInputChar, 20);
+      if ( IsPosLongInt(sInputChar))
+         {
          ulIndivRndSeed = (unsigned long) atol(sInputChar);
          bValidInput = true;
       }
@@ -737,6 +512,7 @@ void RunInterface() {
       }
    }
    bValidInput = false;
+
    PrintMessageFormatted("\nData Input and Output Options:\n");
    PrintMessage("1 - Read values from a file and write results to an output file.\n");
    PrintMessage("2 - Read values from a file and write results to the screen only.\n");
@@ -758,21 +534,21 @@ void RunInterface() {
    }
 
    if (wInputOutputType == 1 || wInputOutputType == 2) {
-      PrintMessageFormatted("\nSpecify input filename (100 char max). Leave empty to use default ./data/test.in filename:\n");
+      PrintMessageFormatted("\nSpecify input filename (100 char max). Leave empty to use default ./data/test_input_rows.txt filename:\n");
       GetInput(sInputChar, 100);
       if (strlen(sInputChar) == 0) {
-         strcpy(sInputFileName, "./data/test.in"); // Use default filename
+         strcpy(sInputFileName, "./data/test_input_rows.txt"); // Use default filename
       } else {
          strcpy(sInputFileName, sInputChar);
       }
    }
 
    if (wInputOutputType == 1 || wInputOutputType == 3) {
-      PrintMessage("Specify an output filename (100 char max). Leave empty to use default ./data/test.out filename:\n");
+      PrintMessage("Specify an output filename (100 char max). Leave empty to use default ./test.out filename:\n");
 
       GetInput(sInputChar, 100);
       if (strlen(sInputChar) == 0) {
-         strcpy(sOutputFileName, "./data/test.out"); // Use default filename
+         strcpy(sOutputFileName, "./test.out"); // Use default filename
       } else {
          strcpy(sOutputFileName, sInputChar);
       }
@@ -799,7 +575,7 @@ void RunInterface() {
    PrintMessage( "(Please enter 1 to 3):\n");
 
    while (!bValidInput) {
-      GetInput(sInputChar, 10);
+      GetInput(sInputChar, 4);
       if (IsPosShortInt(sInputChar) && 
            ((atoi(sInputChar) >= 1) && (atoi(sInputChar) <= 3))) {
          wOutputFormat = atoi(sInputChar);
@@ -834,7 +610,7 @@ void RunInterface() {
             PrintMessageFormatted("\nEnter a sex value. \n(0 = Male, 1 = Female):\n");
             bValidInput = false;
             while (!bValidInput) {
-               GetInput(sInputChar, 100);
+               GetInput(sInputChar, 4);
                if (IsPosShortInt(sInputChar) &&  
                     ((atoi(sInputChar) == 0) || (atoi(sInputChar) == 1))) {
                   wInputSex = (atoi(sInputChar));
@@ -847,7 +623,7 @@ void RunInterface() {
             PrintMessageFormatted("\nEnter a year of birth between %d and %d:\n",pSimulator->GetMinYearOfBirth(),pSimulator->GetMaxYearOfBirth());
             bValidInput = false;
             while (!bValidInput) {
-               GetInput(sInputChar, 100);
+               GetInput(sInputChar, 8);
                if (IsPosShortInt(sInputChar) &&
                     ((atoi(sInputChar) >= pSimulator->GetMinYearOfBirth()) &&
                      (atoi(sInputChar) <= pSimulator->GetMaxYearOfBirth()))) {
@@ -862,11 +638,11 @@ void RunInterface() {
             PrintMessageFormatted("\nNumber of persons to simulate for supplied values:\n");
             bValidInput = false;
             while (!bValidInput) {
-               GetInput(sInputChar, 100);
+               GetInput(sInputChar, 10);
                if (IsPosLongInt(sInputChar) && 
                   (atol(sInputChar) >= 1)) {
-                  lNumRepetitions = atol(sInputChar);
-                  bValidInput = true;
+                     lNumRepetitions = atol(sInputChar);
+                     bValidInput = true;
                } else {
                   PrintMessageFormatted("\n\"%s\" is not a valid value.\nAllowable range is 1 to %ld \nPlease enter a new value:\n", sInputChar, MAX(long));
                }
@@ -883,7 +659,7 @@ void RunInterface() {
             PrintMessage( "\nSimulations complete for supplied input.\n1 - Perform more simulations\n2 - Quit\n:");
             bValidInput = false;
             while (!bValidInput) {
-               GetInput(sInputChar, 1);
+               GetInput(sInputChar, 4);
                if (IsPosShortInt(sInputChar)) {
                   wTempValue = atoi(sInputChar);
                   if ((wTempValue != 1) && (wTempValue != 2)) {
@@ -1392,7 +1168,7 @@ int RunWebVersion(const char * sInputFileName)
       // Check the optional sPARAM_NumReps value if we are not using a vector
       if (sPARAM_NumReps != NULL && !bHaveVectorValues && !IsValidNumReps(sPARAM_NumReps)) {
          WriteToFile(pErrorStream, "\n<ERROR>\nInvalid Number of Repetitions: %s,\n Value must be a positive integer with a max value of %d.\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
-                 sPARAM_NumReps, MAX_NUM_REPS);
+          sPARAM_NumReps, MAX_NUM_REPS);
          bRunApp = false;
       } 
       else if (sPARAM_NumReps!=NULL && !bHaveVectorValues) {
@@ -1491,7 +1267,7 @@ int RunWebVersion(const char * sInputFileName)
 
          // Measure & build input data string
          if (!gWithHoldTags) {
-            WriteRunInfoTag(pOutStream,VERSION_NUM, sSEED_Init, sSEED_Cess, sSEED_OCD,
+            WriteRunInfoTag(pOutStream, VERSION_NUM, sSEED_Init, sSEED_Cess, sSEED_OCD,
                          sSEED_Misc, sImmediateCess, sFILE_InitProb, sFILE_CessProb, sFILE_OCDProb,
                          sFILE_Quintiles, sFILE_CPDData, sOutputFile, sErrorFile, sRNGStrategy);
          }
@@ -1614,13 +1390,13 @@ int RunWebVersion(const char * sInputFileName)
          remove(sErrorFile);
       }
    }
-   // JC: added the ! below because it seems wrong to return 1 when bRunApp==True (indicating a normal execution)
+   // JC: it seems wrong to return 1 when bRunApp==True (indicating a normal execution)
    // However, it was that way for a long time, so I'm not sure if it was intentional
    // TODO: Review this and make sure it's correct
-   if (!bRunApp) 
-      iReturnValue = 1;
-   else
+   if (bRunApp)
       iReturnValue = 0;
+   else
+      iReturnValue = 1;
 
    delete [] sErrorFile;
    //delete sRNGStrategy;
@@ -1780,7 +1556,7 @@ bool ValidateParameters(char* sInitiationSeed, char* sCessationSeed, char* sOthe
 }
 
 //Writes out tagged information about the program to pOutStream
-void WriteRunInfoTag(FILE* pOutStream, std::string sVersion, const char* sInitSeed,
+void WriteRunInfoTag(FILE* pOutStream, const char* sVersion, const char* sInitSeed,
                      const char* sCessSeed, const char* sOCDSeed, const char* sMiscSeed,
                      const char* sImmediateCessYear, const char* sInitFile, const char* sCessFile,
                      const char* sOCDProbFile, const char* sQuintilesFile, const char* sCPDDataFile,
@@ -1790,7 +1566,7 @@ void WriteRunInfoTag(FILE* pOutStream, std::string sVersion, const char* sInitSe
       throw SimException("WriteRunInfoTag()::ERROR","Output stream is not initialized.\n");
 
    WriteToFile(pOutStream,"<RUNINFO>\n");
-   WriteToFile(pOutStream,"<VERSIONINFO>\n%s\n</VERSIONINFO>\n", VERSIONJSON.c_str());
+   WriteToFile(pOutStream,"<VERSION>\n%s\n</VERSION>\n", sVersion);
    WriteToFile(pOutStream,"<SEEDS>\n<INIT_PRNG_SEED>\n%s\n</INIT_PRNG_SEED>\n", sInitSeed);
    WriteToFile(pOutStream,"<CESS_PRNG_SEED>\n%s\n</CESS_PRNG_SEED>\n", sCessSeed);
    WriteToFile(pOutStream,"<OCD_PRNG_SEED>\n%s\n</OCD_PRNG_SEED>\n", sOCDSeed);
@@ -1915,11 +1691,4 @@ bool CreateDataFile(const char *sNumToSimulate, const char* sOutFileName, char* 
 
 	delete pSimulator;
 	return bReturnValue;
-}
-
-void PropagateVersionInformation() {
-   std::ifstream infile(VERSION_FILE);
-   std::string fileData((std::istreambuf_iterator<char> (infile)), std::istreambuf_iterator<char> ());
-   infile.close();
-   VERSIONJSON = fileData;
 }

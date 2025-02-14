@@ -109,9 +109,9 @@ Smoking_Simulator* SHGInterface::loadSimulator()
 //' @param dfPopulation The input dataframe with named columns for race, sex, and birth_cohort
 //' @examples
 //' \dontrun{
-//' library(RcppSmokingHistoryGenerator)
+//' library(SmokingHistoryGenerator)
 //' shg <- new(SHGInterface)
-//' shg$input_data_folder <- system.file("inputs/default", "", package="RcppSmokingHistoryGenerator")
+//' shg$input_data_folder <- system.file("inputs/default", "", package="SmokingHistoryGenerator")
 //' N <- 10^6
 //' pop <- list(
 //'     race = rep(0, N),
@@ -220,9 +220,9 @@ Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) 
 //' @param cohort_year (four digit birth cohort year)
 //' @examples
 //' \dontrun{
-//' library(RcppSmokingHistoryGenerator)
+//' library(SmokingHistoryGenerator)
 //' shg <- new(SHGInterface)
-//' shg$input_data_folder <- system.file("inputs/default", "", package="RcppSmokingHistoryGenerator")
+//' shg$input_data_folder <- system.file("inputs/default", "", package="SmokingHistoryGenerator")
 //' N <- 10^6
 //' smoking_history <- shg$runSimFromFixedValues(N, 0, 0, 1950)
 //' }
@@ -371,7 +371,7 @@ void SHGInterface::runSimSegment(int repeat,
       ageAtDeath[k] = sPersonsAgeAtDeath;
       cpdString[k] = Rcpp::String(cpd);
    }
-   fclose(pOutStream);
+   // fclose(pOutStream); # this caused a segfault in Ubuntu and is probably not needed because there is no output file for the Rcpp version
 }
 
 bool SHGInterface::fileExists(const char* filename) {
@@ -386,10 +386,10 @@ bool SHGInterface::fileExists(const char* filename) {
 //' \dontrun{
 //' # Warning: This way of running a simulation ignores the Rcpp interface properties and relies soley 
 //' # on parameters set in the input configuration file. See main.cpp's RunWebVersion for more detail.
-//' library(RcppSmokingHistoryGenerator)
+//' library(SmokingHistoryGenerator)
 //' shg <- new(SHGInterface)
-//' shg$input_data_folder <- system.file("inputs/default", "", package="RcppSmokingHistoryGenerator")
-//' example_input_filepath <- system.file("inputs/examples/", "test_input_example_MersenneTwister.txt", package="RcppSmokingHistoryGenerator")
+//' shg$input_data_folder <- system.file("inputs/default", "", package="SmokingHistoryGenerator")
+//' example_input_filepath <- system.file("inputs/examples/", "test_input_example_MersenneTwister.txt", package="SmokingHistoryGenerator")
 //' shg$LegacyRunWebVersion(example_input_filepath)
 //' }
 void SHGInterface::LegacyRunWebVersion(const char *sInputFileName)

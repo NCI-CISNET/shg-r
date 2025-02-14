@@ -8,7 +8,7 @@ devtools::load_all() # recompiles the package if necessary
 # for some reason, it appears this needs to be run twice otherwise, recent changes to code aren't applied
 
 devtools::load_all()
-library(RcppSmokingHistoryGenerator)  # Package name
+library(SmokingHistoryGenerator)  # Package name
 
 # helper function
 advance_substreams <- function(rng, steps) {

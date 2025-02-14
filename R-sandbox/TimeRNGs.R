@@ -6,7 +6,7 @@ library(rbenchmark)
 # library(Rcpp)
 devtools::load_all()
 devtools::load_all()
-library(RcppSmokingHistoryGenerator)  # Package name
+library(SmokingHistoryGenerator)  # Package name
 shg <- new(SHGInterface) # Class
 rng1 <- new("rstream.mrg32k3a")
 rng2 <- rstream.clone(rng1)

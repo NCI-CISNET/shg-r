@@ -17,9 +17,9 @@ runSimFromFixedValues offers a way to configure and run a simulation from fixed 
 }
 \examples{
 \dontrun{
-library(RcppSmokingHistoryGenerator)
+library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
-shg$input_data_folder <- system.file("inputs/default", "", package="RcppSmokingHistoryGenerator")
+shg$input_data_folder <- system.file("inputs/default", "", package="SmokingHistoryGenerator")
 N <- 10^6
 smoking_history <- shg$runSimFromFixedValues(N, 0, 0, 1950)
 }

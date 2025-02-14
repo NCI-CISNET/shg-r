@@ -129,7 +129,7 @@ class Smoking_Simulator {
 
       void Init();
       void Free();
-      void CalcCigarettesPerDay();
+      // void CalcCigarettesPerDay();
       void CalcCigarettesPerDaySwitch();
       short GetAgeOfDeathFromOtherCOD(short wStartAge, short wEndAge, SmokingStatus eStatus, bool &bWentPastData);
       double GetNextInitRand();

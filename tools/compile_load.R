@@ -3,7 +3,7 @@ Sys.setenv(PKG_BUILD_EXTRA_FLAGS = "false")
 #pkgbuild::compile_dll(path = ".", debug = TRUE)
 #devtools::load_all()
 devtools::load_all()
-library(RcppSmokingHistoryGenerator)
+library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
 
 #shg$LegacyRunWebVersion("./inst/inputs/examples/test_input_example_MersenneTwister.txt")
