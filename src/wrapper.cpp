@@ -371,7 +371,7 @@ void SHGInterface::runSimSegment(int repeat,
       ageAtDeath[k] = sPersonsAgeAtDeath;
       cpdString[k] = Rcpp::String(cpd);
    }
-   fclose(pOutStream);
+   // fclose(pOutStream); # this caused a segfault in Ubuntu and is probably not needed because there is no output file for the Rcpp version
 }
 
 bool SHGInterface::fileExists(const char* filename) {

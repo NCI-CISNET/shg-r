@@ -1,5 +1,6 @@
 library(SmokingHistoryGenerator)
 library(glue)
+library(testthat)
 
 # Helper functions
 extract_tag <- function(vector, start_tag, end_tag) {
@@ -26,9 +27,9 @@ get_run_details <- function(file_path){
 
 write_input_file_from_template <- function(rng_strategy, yob, cessation_yr, data_folder, outputs_folder) {
   # The main motivation to write custom config files was due to pathing discrepancies between devtools:test() and CMD Check
+  template_input <- readLines("../templates/test_input_example.txt")
   input_filepath <- test_path(glue("../inputs/test_input_{rng_strategy}_{yob}_{cessation_yr}.txt"))
-  variables <- list(rng_strategy = rng_strategy, yob = yob, cessation_yr = cessation_yr, data_folder = data_folder, outputs_folder = outputs_folder)
-  formatted_input <- lapply(template_input, glue, .envir = variables)
+  formatted_input <- glue(paste(template_input, collapse = "\n"))
   writeLines(as.character(formatted_input), con = input_filepath)
   return(input_filepath)
 }
@@ -85,7 +86,6 @@ dir.create("../inputs")
 dir.create("../outputs")
 
 outputs_folder <- "../outputs"
-template_input <- readLines("../templates/test_input_example.txt")
 
 MT_output_A <- generate_output("MersenneTwister", 1950, 0, outputs_folder)
 MT_fixture_A <- get_run_details(test_path("../fixtures/MT/yob_1950_cessation_0.txt"))
