@@ -9,16 +9,16 @@ extract_tag <- function(vector, start_tag, end_tag) {
   return(vector[i1[1]:i2[1]])
 }
 
-extract_run <- function(vector){
+extract_run <- function(vector) {
   return(extract_tag(vector, "<RUN>", "</RUN>"))
 }
 
-extract_cessation <- function(vector){
+extract_cessation <- function(vector) {
   cessation <- extract_tag(vector, "<CESSATION_YR>", "</CESSATION_YR>")
   return(cessation[2])
 }
 
-get_run_details <- function(file_path){
+get_run_details <- function(file_path) {
   vector <- readLines(file_path)
   run <- extract_run(vector)
   cessation <- extract_cessation(vector)
@@ -80,8 +80,8 @@ test_that("SHG inputs/default folder exists", {
 
 shg$input_data_folder <- data_folder
 
-clear_test_artifacts('../inputs')
-clear_test_artifacts('../outputs')
+clear_test_artifacts("../inputs")
+clear_test_artifacts("../outputs")
 dir.create("../inputs")
 dir.create("../outputs")
 
@@ -130,9 +130,9 @@ test_that("Comparison between MT-SIM and RNGSTREAM-SIM", {
   expect_equal(MT_STATS$mean_initiation, RS_STATS$mean_initiation, tolerance = 0.01)
   expect_equal(MT_STATS$mean_cessation, RS_STATS$mean_cessation, tolerance = 0.01)
   expect_equal(MT_STATS$mean_age_at_death, RS_STATS$mean_age_at_death, tolerance = 0.01)
-  
-  # it MT_STATS and RS_STATS are equal, it would indicate there is a problem with the RNG -- they should be very similar but *not* identical
-  expect_false(isTRUE(all.equal(MT_STATS, RS_STATS))) 
+  # If MT_STATS and RS_STATS are equal, it would indicate there is a problem with the RNG
+  # Results should be very similar but *not* identical
+  expect_false(isTRUE(all.equal(MT_STATS, RS_STATS)))
 })
 
 pop <- list(
