@@ -1,5 +1,6 @@
 library(SmokingHistoryGenerator)
 library(glue)
+library(testthat)
 
 # Helper functions
 extract_tag <- function(vector, start_tag, end_tag) {
@@ -8,16 +9,16 @@ extract_tag <- function(vector, start_tag, end_tag) {
   return(vector[i1[1]:i2[1]])
 }
 
-extract_run <- function(vector){
+extract_run <- function(vector) {
   return(extract_tag(vector, "<RUN>", "</RUN>"))
 }
 
-extract_cessation <- function(vector){
+extract_cessation <- function(vector) {
   cessation <- extract_tag(vector, "<CESSATION_YR>", "</CESSATION_YR>")
   return(cessation[2])
 }
 
-get_run_details <- function(file_path){
+get_run_details <- function(file_path) {
   vector <- readLines(file_path)
   run <- extract_run(vector)
   cessation <- extract_cessation(vector)
@@ -26,9 +27,9 @@ get_run_details <- function(file_path){
 
 write_input_file_from_template <- function(rng_strategy, yob, cessation_yr, data_folder, outputs_folder) {
   # The main motivation to write custom config files was due to pathing discrepancies between devtools:test() and CMD Check
+  template_input <- readLines("../templates/test_input_example.txt")
   input_filepath <- test_path(glue("../inputs/test_input_{rng_strategy}_{yob}_{cessation_yr}.txt"))
-  variables <- list(rng_strategy = rng_strategy, yob = yob, cessation_yr = cessation_yr, data_folder = data_folder, outputs_folder = outputs_folder)
-  formatted_input <- lapply(template_input, glue, .envir = variables)
+  formatted_input <- glue(paste(template_input, collapse = "\n"))
   writeLines(as.character(formatted_input), con = input_filepath)
   return(input_filepath)
 }
@@ -79,13 +80,12 @@ test_that("SHG inputs/default folder exists", {
 
 shg$input_data_folder <- data_folder
 
-clear_test_artifacts('../inputs')
-clear_test_artifacts('../outputs')
+clear_test_artifacts("../inputs")
+clear_test_artifacts("../outputs")
 dir.create("../inputs")
 dir.create("../outputs")
 
 outputs_folder <- "../outputs"
-template_input <- readLines("../templates/test_input_example.txt")
 
 MT_output_A <- generate_output("MersenneTwister", 1950, 0, outputs_folder)
 MT_fixture_A <- get_run_details(test_path("../fixtures/MT/yob_1950_cessation_0.txt"))
@@ -130,9 +130,9 @@ test_that("Comparison between MT-SIM and RNGSTREAM-SIM", {
   expect_equal(MT_STATS$mean_initiation, RS_STATS$mean_initiation, tolerance = 0.01)
   expect_equal(MT_STATS$mean_cessation, RS_STATS$mean_cessation, tolerance = 0.01)
   expect_equal(MT_STATS$mean_age_at_death, RS_STATS$mean_age_at_death, tolerance = 0.01)
-  
-  # it MT_STATS and RS_STATS are equal, it would indicate there is a problem with the RNG -- they should be very similar but *not* identical
-  expect_false(isTRUE(all.equal(MT_STATS, RS_STATS))) 
+  # If MT_STATS and RS_STATS are equal, it would indicate there is a problem with the RNG
+  # Results should be very similar but *not* identical
+  expect_false(isTRUE(all.equal(MT_STATS, RS_STATS)))
 })
 
 pop <- list(
