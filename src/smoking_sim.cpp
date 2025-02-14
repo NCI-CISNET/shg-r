@@ -112,186 +112,186 @@ Smoking_Simulator::~Smoking_Simulator() {
 //     per day for the ages less than 30. Details concerning the formula can be obtained from
 //     the file provided by Christy Anderson
 // The cigarettes smoked per day for ages 30+ come directly from the gdCigarettesPerDay array.
-void Smoking_Simulator::CalcCigarettesPerDay() {
+// void Smoking_Simulator::CalcCigarettesPerDay() {
 
-   short    wIntensityLookupAge,  // Age to look up in the smoking intensity groups
-            wIntensityIndex,      // Index to start at for look up of the smoking intensity groups
-            wYearsAsSmoker,       // Number of years in which person was a smoker.
-            wStartAgeInCpdData,   // The first age that has Cigarettes per day data in the table for the person's year of birth
-            wEndLoop,             // Age at which to end the uptake formula calculation
-            wLookupStartAge,      // Age to start at when getting the cigarettes per day directly from the data array
-            wPersonsYOB,          // Copy of gwPersonsYOB, when the year of birth is less than 1900, 1900 is used in the equation
-            i;
-   long     lCpdStartIndex,       // Index to start at for look up of cigarettes per day
-            lCurrCpdIndex;        // Current index in cigarettes per day array
-   double   dIntensityProb,       // Probability to find in the lookup tables
-            dUptake,              // Uptake formula results for persons current age
-            dUptakeAtCpdStart,    // Uptake formula results at age 30
-            dScalingFactor,       // (Cigarettes per day at age 30)/(Uptake formula at age 30)
-            dSumOfCpd = 0;        // Sum of the annual cigarettes per day value (used to get average)
-   bool     bValueFound;
+//    short    wIntensityLookupAge,  // Age to look up in the smoking intensity groups
+//             wIntensityIndex,      // Index to start at for look up of the smoking intensity groups
+//             wYearsAsSmoker,       // Number of years in which person was a smoker.
+//             wStartAgeInCpdData,   // The first age that has Cigarettes per day data in the table for the person's year of birth
+//             wEndLoop,             // Age at which to end the uptake formula calculation
+//             wLookupStartAge,      // Age to start at when getting the cigarettes per day directly from the data array
+//             wPersonsYOB,          // Copy of gwPersonsYOB, when the year of birth is less than 1900, 1900 is used in the equation
+//             i;
+//    long     lCpdStartIndex,       // Index to start at for look up of cigarettes per day
+//             lCurrCpdIndex;        // Current index in cigarettes per day array
+//    double   dIntensityProb,       // Probability to find in the lookup tables
+//             dUptake,              // Uptake formula results for persons current age
+//             dUptakeAtCpdStart,    // Uptake formula results at age 30
+//             dScalingFactor,       // (Cigarettes per day at age 30)/(Uptake formula at age 30)
+//             dSumOfCpd = 0;        // Sum of the annual cigarettes per day value (used to get average)
+//    bool     bValueFound;
 
-   try {
+//    try {
 
-      if (gdCigarettesPerDay == 0 || gdIntensityProbs == 0 ) { // || gpIndividualRNG == 0) {
-         throw SimException("Error", "One or more of the data components for cigarettes \nper \
-            day calculation has not been initialized.\n");
-      }
-      if (gwPersonsInitAge == -999) {
-         throw SimException("Error", "CalcCigarettesPerDay should not be called for \nindividuals \
-            that do not initiate smoking.\n");
-      }
+//       if (gdCigarettesPerDay == 0 || gdIntensityProbs == 0 ) { // || gpIndividualRNG == 0) {
+//          throw SimException("Error", "One or more of the data components for cigarettes \nper \
+//             day calculation has not been initialized.\n");
+//       }
+//       if (gwPersonsInitAge == -999) {
+//          throw SimException("Error", "CalcCigarettesPerDay should not be called for \nindividuals \
+//             that do not initiate smoking.\n");
+//       }
 
-      // Get the probability for the quintile lookup
-      dIntensityProb = GetNextRandForIndiv();
+//       // Get the probability for the quintile lookup
+//       dIntensityProb = GetNextRandForIndiv();
 
-      // Get the age for intensity probabilities lookup
-      // Initiation Ages below the min age use the min intensity age probabilities
-      if (gwPersonsInitAge < gwIntensityMinAge) {      
-         wIntensityLookupAge = gwIntensityMinAge;
-      // Initiation Ages above the max age use the max intensity age probabilities
-      } else if (gwPersonsInitAge > gwIntensityMaxAge) {
-         wIntensityLookupAge = gwIntensityMaxAge;
-      // Otherwise look up the initiation age
-      } else {
-         wIntensityLookupAge = gwPersonsInitAge;
-      }
+//       // Get the age for intensity probabilities lookup
+//       // Initiation Ages below the min age use the min intensity age probabilities
+//       if (gwPersonsInitAge < gwIntensityMinAge) {      
+//          wIntensityLookupAge = gwIntensityMinAge;
+//       // Initiation Ages above the max age use the max intensity age probabilities
+//       } else if (gwPersonsInitAge > gwIntensityMaxAge) {
+//          wIntensityLookupAge = gwIntensityMaxAge;
+//       // Otherwise look up the initiation age
+//       } else {
+//          wIntensityLookupAge = gwPersonsInitAge;
+//       }
 
-      // Set the starting point for the lookup (Age - min age) * age offset
-      bValueFound = false;
-      wIntensityIndex = (wIntensityLookupAge - gwIntensityMinAge) * gwIntensityAgeOffset;
+//       // Set the starting point for the lookup (Age - min age) * age offset
+//       bValueFound = false;
+//       wIntensityIndex = (wIntensityLookupAge - gwIntensityMinAge) * gwIntensityAgeOffset;
 
 
-      // Loop through Intensity probabilities to find quintile for person
-      for (i = 0; i < (gwNumIntensityGrps - 1) && !bValueFound; i++) {
-         if (dIntensityProb <  gdIntensityProbs[i + wIntensityIndex]) {
-            gwPersonsSmkIntensity = (SmokingIntensity) i;
-            bValueFound = true;
-         }
-      }
-      // If the value was not found, assume that the probabilties did not correctly sum to one, 
-      // and assign the person to the last quintile
-      if (!bValueFound) {
-         gwPersonsSmkIntensity = (SmokingIntensity)(SMKR_NumGroups - 1);
-      }
+//       // Loop through Intensity probabilities to find quintile for person
+//       for (i = 0; i < (gwNumIntensityGrps - 1) && !bValueFound; i++) {
+//          if (dIntensityProb <  gdIntensityProbs[i + wIntensityIndex]) {
+//             gwPersonsSmkIntensity = (SmokingIntensity) i;
+//             bValueFound = true;
+//          }
+//       }
+//       // If the value was not found, assume that the probabilties did not correctly sum to one, 
+//       // and assign the person to the last quintile
+//       if (!bValueFound) {
+//          gwPersonsSmkIntensity = (SmokingIntensity)(SMKR_NumGroups - 1);
+//       }
 
-      gdTempIntensityProb = dIntensityProb;
+//       gdTempIntensityProb = dIntensityProb;
 
-      // Set up the array for storing the number of cigarettes smoked per day by age
-      if (gwPersonsCessAge == -999) { 
-         // Person does not quit smoking
-         wYearsAsSmoker = (wSIM_CUTOFF_YEAR - (gwPersonsYOB + gwPersonsInitAge)) + 1;
-      } else {
-         // Person will quit at some time
-         wYearsAsSmoker = (gwPersonsCessAge - gwPersonsInitAge) + 1;
-      }
-      gdPersonsCPDbyAge = new double[wYearsAsSmoker];
-      for ( i = 0; i < wYearsAsSmoker; i++) {
-         gdPersonsCPDbyAge[i] = 0;
-      }
+//       // Set up the array for storing the number of cigarettes smoked per day by age
+//       if (gwPersonsCessAge == -999) { 
+//          // Person does not quit smoking
+//          wYearsAsSmoker = (wSIM_CUTOFF_YEAR - (gwPersonsYOB + gwPersonsInitAge)) + 1;
+//       } else {
+//          // Person will quit at some time
+//          wYearsAsSmoker = (gwPersonsCessAge - gwPersonsInitAge) + 1;
+//       }
+//       gdPersonsCPDbyAge = new double[wYearsAsSmoker];
+//       for ( i = 0; i < wYearsAsSmoker; i++) {
+//          gdPersonsCPDbyAge[i] = 0;
+//       }
 
-      // Find the age at which the cigarette per day numbers begin for the persons YOB
-      // In most cases this is age 30, but for those born in 1975-1979 or 1980-1984, the ages are lower (26 and 21)
-      bValueFound      = false;
-      lCpdStartIndex   = (glCpdRaceOffset * (gwPersonsRace)) +
-                         (glCpdSexOffset  * (gwPersonsSex))  +
-                         (glCpdYOBOffset  * GetYOBCohortGroup(gwPersonsYOB)) +
-                         (long)gwPersonsSmkIntensity;
-      lCurrCpdIndex    = lCpdStartIndex;
+//       // Find the age at which the cigarette per day numbers begin for the persons YOB
+//       // In most cases this is age 30, but for those born in 1975-1979 or 1980-1984, the ages are lower (26 and 21)
+//       bValueFound      = false;
+//       lCpdStartIndex   = (glCpdRaceOffset * (gwPersonsRace)) +
+//                          (glCpdSexOffset  * (gwPersonsSex))  +
+//                          (glCpdYOBOffset  * GetYOBCohortGroup(gwPersonsYOB)) +
+//                          (long)gwPersonsSmkIntensity;
+//       lCurrCpdIndex    = lCpdStartIndex;
 
-      while (!bValueFound) {
-         if (gdCigarettesPerDay[lCurrCpdIndex] >= 0) {
-            bValueFound = true;
-            wStartAgeInCpdData = (short)(((lCurrCpdIndex - lCpdStartIndex) / glCpdAgeOffset) + gwCpdMinAge);
-            lCpdStartIndex = lCurrCpdIndex;
-         } else {
-            lCurrCpdIndex += glCpdAgeOffset;
-         }
-      }
+//       while (!bValueFound) {
+//          if (gdCigarettesPerDay[lCurrCpdIndex] >= 0) {
+//             bValueFound = true;
+//             wStartAgeInCpdData = (short)(((lCurrCpdIndex - lCpdStartIndex) / glCpdAgeOffset) + gwCpdMinAge);
+//             lCpdStartIndex = lCurrCpdIndex;
+//          } else {
+//             lCurrCpdIndex += glCpdAgeOffset;
+//          }
+//       }
 
-      // Use the uptake formula to calculate the cigarettes per day before age 30
-      // The age is lower (26 and 21) for the later birth cohorts (1975-1979 and 1980-1984)
-      // In the notes below only age 30 will be referenced but it applies to ages 26 & 21 when necessary
-      if (gwPersonsInitAge < wStartAgeInCpdData) {
+//       // Use the uptake formula to calculate the cigarettes per day before age 30
+//       // The age is lower (26 and 21) for the later birth cohorts (1975-1979 and 1980-1984)
+//       // In the notes below only age 30 will be referenced but it applies to ages 26 & 21 when necessary
+//       if (gwPersonsInitAge < wStartAgeInCpdData) {
 
-         if ( gwPersonsYOB >= 1900) {
-            wPersonsYOB = gwPersonsYOB;
-         } else {
-            wPersonsYOB = 1900;
-         }
+//          if ( gwPersonsYOB >= 1900) {
+//             wPersonsYOB = gwPersonsYOB;
+//          } else {
+//             wPersonsYOB = 1900;
+//          }
 
-         // Get age at which to stop the uptake loop
-         wEndLoop = min(wStartAgeInCpdData, (short)(gwPersonsInitAge + wYearsAsSmoker));
+//          // Get age at which to stop the uptake loop
+//          wEndLoop = min(wStartAgeInCpdData, (short)(gwPersonsInitAge + wYearsAsSmoker));
 
-         // Calculate the uptake formulas value at the age where the cigarette per day numbers begin
-         // TODO: should perhaps initialize dUptakeAtCpdStart to something to avoid uninitialized variable warning
-         if (gwPersonsSex == SEX_Male) {
-            dUptakeAtCpdStart = -38.578 + (3.342 * (sqrt(wStartAgeInCpdData - gwPersonsInitAge))) -
-                                (0.00168 * pow(max(79, ((wPersonsYOB + wStartAgeInCpdData) - 1900 )), 2)) -
-                                (17.538 * sqrt(wStartAgeInCpdData)) + (44.967 * log(wStartAgeInCpdData));
-         } else if (gwPersonsSex == SEX_Female) {
-            dUptakeAtCpdStart = -56.751 + (0.700*(wStartAgeInCpdData - gwPersonsInitAge)) -
-                                (0.00163 * pow(max(79, ((wPersonsYOB + wStartAgeInCpdData) - 1900)), 2)) -
-                                (3.473 * wStartAgeInCpdData) + (32.800 * sqrt(wStartAgeInCpdData));
-         }
-         else {
-            throw SimException("Error", "Invalid value for gwPersonsSex");
-         }
+//          // Calculate the uptake formulas value at the age where the cigarette per day numbers begin
+//          // TODO: should perhaps initialize dUptakeAtCpdStart to something to avoid uninitialized variable warning
+//          if (gwPersonsSex == SEX_Male) {
+//             dUptakeAtCpdStart = -38.578 + (3.342 * (sqrt(wStartAgeInCpdData - gwPersonsInitAge))) -
+//                                 (0.00168 * pow(max(79, ((wPersonsYOB + wStartAgeInCpdData) - 1900 )), 2)) -
+//                                 (17.538 * sqrt(wStartAgeInCpdData)) + (44.967 * log(wStartAgeInCpdData));
+//          } else if (gwPersonsSex == SEX_Female) {
+//             dUptakeAtCpdStart = -56.751 + (0.700*(wStartAgeInCpdData - gwPersonsInitAge)) -
+//                                 (0.00163 * pow(max(79, ((wPersonsYOB + wStartAgeInCpdData) - 1900)), 2)) -
+//                                 (3.473 * wStartAgeInCpdData) + (32.800 * sqrt(wStartAgeInCpdData));
+//          }
+//          else {
+//             throw SimException("Error", "Invalid value for gwPersonsSex");
+//          }
 
-         // Calculate the Quintile Scaling factor as (cigarettes per day at age 30)/(Uptake at age 30)
-         dScalingFactor = gdCigarettesPerDay[lCpdStartIndex] / dUptakeAtCpdStart;
+//          // Calculate the Quintile Scaling factor as (cigarettes per day at age 30)/(Uptake at age 30)
+//          dScalingFactor = gdCigarettesPerDay[lCpdStartIndex] / dUptakeAtCpdStart;
 
-         for (i = gwPersonsInitAge; i < wEndLoop; i++) {
+//          for (i = gwPersonsInitAge; i < wEndLoop; i++) {
 
-            if (gwPersonsSex == SEX_Male) {
-               dUptake = -38.578 + (3.342 * (sqrt(i - gwPersonsInitAge))) -
-                         (0.00168 * pow(max(79, ((wPersonsYOB + i) - 1900)), 2)) -
-                         (17.538 * sqrt(i)) + (44.967 * log(i));
+//             if (gwPersonsSex == SEX_Male) {
+//                dUptake = -38.578 + (3.342 * (sqrt(i - gwPersonsInitAge))) -
+//                          (0.00168 * pow(max(79, ((wPersonsYOB + i) - 1900)), 2)) -
+//                          (17.538 * sqrt(i)) + (44.967 * log(i));
 
-            } else if (gwPersonsSex == SEX_Female) {
-               dUptake = -56.751 + (0.700 * (i - gwPersonsInitAge)) -
-                         (0.00163 * pow(max(79, ((wPersonsYOB + i) - 1900)), 2)) -
-                         (3.473 * i) + (32.800 * sqrt(i));
-            }
+//             } else if (gwPersonsSex == SEX_Female) {
+//                dUptake = -56.751 + (0.700 * (i - gwPersonsInitAge)) -
+//                          (0.00163 * pow(max(79, ((wPersonsYOB + i) - 1900)), 2)) -
+//                          (3.473 * i) + (32.800 * sqrt(i));
+//             }
 
-            // In the younger ages, the uptake formula might return a negative value, use 0.10 in these cases
-            if (dUptake < 0) {
-               dUptake = 0.10;
-            }
+//             // In the younger ages, the uptake formula might return a negative value, use 0.10 in these cases
+//             if (dUptake < 0) {
+//                dUptake = 0.10;
+//             }
 
-            gdPersonsCPDbyAge[i - gwPersonsInitAge] = dScalingFactor * dUptake;
-            dSumOfCpd += gdPersonsCPDbyAge[i - gwPersonsInitAge];
-         }
-      }
+//             gdPersonsCPDbyAge[i - gwPersonsInitAge] = dScalingFactor * dUptake;
+//             dSumOfCpd += gdPersonsCPDbyAge[i - gwPersonsInitAge];
+//          }
+//       }
 
-      // If the persons started smoking before age 30, fill in the cig per day for ages 30+ (if they didn't quit before 30
-      // Other wise if they started smoking after age 30, fill in the cigarettes per day array starting at that age.
-      if (gwPersonsInitAge <= wStartAgeInCpdData) {
-         wLookupStartAge = wStartAgeInCpdData;
-      } else {
-         wLookupStartAge = gwPersonsInitAge;
-      }
+//       // If the persons started smoking before age 30, fill in the cig per day for ages 30+ (if they didn't quit before 30
+//       // Other wise if they started smoking after age 30, fill in the cigarettes per day array starting at that age.
+//       if (gwPersonsInitAge <= wStartAgeInCpdData) {
+//          wLookupStartAge = wStartAgeInCpdData;
+//       } else {
+//          wLookupStartAge = gwPersonsInitAge;
+//       }
 
-      // Fill in the Cigarettes per day for ages 30+ directly from the cpd table
-      for ( i = wLookupStartAge; i < (gwPersonsInitAge + wYearsAsSmoker); i++ ) {
-         lCurrCpdIndex = lCpdStartIndex + ((i - wStartAgeInCpdData)*glCpdAgeOffset);
-         if (gdCigarettesPerDay[lCurrCpdIndex] >= 0) {
-            gdPersonsCPDbyAge[i - gwPersonsInitAge] = gdCigarettesPerDay[lCurrCpdIndex];
-         } else {
-            //This is in case the persons age goes past the max cpd for the birth cohort
-            gdPersonsCPDbyAge[i - gwPersonsInitAge] = gdPersonsCPDbyAge[(i - 1) - gwPersonsInitAge];
-         }
-         dSumOfCpd += gdPersonsCPDbyAge[i - gwPersonsInitAge];
-      }
+//       // Fill in the Cigarettes per day for ages 30+ directly from the cpd table
+//       for ( i = wLookupStartAge; i < (gwPersonsInitAge + wYearsAsSmoker); i++ ) {
+//          lCurrCpdIndex = lCpdStartIndex + ((i - wStartAgeInCpdData)*glCpdAgeOffset);
+//          if (gdCigarettesPerDay[lCurrCpdIndex] >= 0) {
+//             gdPersonsCPDbyAge[i - gwPersonsInitAge] = gdCigarettesPerDay[lCurrCpdIndex];
+//          } else {
+//             //This is in case the persons age goes past the max cpd for the birth cohort
+//             gdPersonsCPDbyAge[i - gwPersonsInitAge] = gdPersonsCPDbyAge[(i - 1) - gwPersonsInitAge];
+//          }
+//          dSumOfCpd += gdPersonsCPDbyAge[i - gwPersonsInitAge];
+//       }
 
-      // Calculate average cigarettes smoked per day for the individual  
-      gdPersonsAvgCPD = dSumOfCpd / (double)wYearsAsSmoker;
+//       // Calculate average cigarettes smoked per day for the individual  
+//       gdPersonsAvgCPD = dSumOfCpd / (double)wYearsAsSmoker;
 
-   } catch(SimException ex) {
-      ex.AddCallPath("CalcCigarettesPerDay()");
-      throw ex;
-   }
-}
+//    } catch(SimException ex) {
+//       ex.AddCallPath("CalcCigarettesPerDay()");
+//       throw ex;
+//    }
+// }
 
 
 // Switching algorithm documentation

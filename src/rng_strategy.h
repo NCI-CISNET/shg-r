@@ -158,7 +158,7 @@ public:
         // once the initial seed is set for the Initiation stream, we use substreams for the other RNGs
         gpInitiationRNG = new RngStream();
         const unsigned long seed[6] = {12345, 12345, 12345, 12345, 12345, 12345};
-        gpInitiationRNG->SetPackageSeed(seed);
+        gpInitiationRNG->SetSeed(seed);
 
         gpCessationRNG = new RngStream(*gpInitiationRNG);
         gpCessationRNG->ResetNextSubstream();
