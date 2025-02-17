@@ -11,8 +11,31 @@ using namespace std;
 #define R_CPD_INTENSITY_PROBS "lbc_smokehist_cpdintensityprobs.txt"  
 #define R_CPD_DATA_FILE "lbc_smokehist_cpd.txt" 
 
-// TODO DRY violation -- but relevant to the CLI version
-// #define MAX_NUM_REPS 1000000
+std::string find_default_data_path() {
+    Rcpp::Environment base("package:base");
+    Rcpp::Function sys_file = base["system.file"];
+    Rcpp::StringVector path = "";
+    std::string default_data_path = R_DEFAULT_DATA_DIR;
+
+    // Depending on local testing environment or installed package environment, the path to the default data will vary
+    // TODO: review
+ 
+    // Try to find the inst/inputs/default folder; if empty, the folder was not found
+    path = sys_file("inst/inputs", "default", Rcpp::_["package"] = "SmokingHistoryGenerator");
+    default_data_path = Rcpp::as<std::string>(path);
+
+    if (default_data_path.length() == 0) {
+        // inst/inputs/default folder not found so package has likely been installed in R without the inst folder
+        path = sys_file("inputs", "default", Rcpp::_["package"] = "SmokingHistoryGenerator");
+        default_data_path = Rcpp::as<std::string>(path);
+    }
+    else if (default_data_path.length() == 0) {
+        // If still not found, we use default relative path;
+        default_data_path = R_DEFAULT_DATA_DIR;
+    }
+
+    return default_data_path;
+}
 
 class SHGInterface {
 public:
@@ -22,7 +45,7 @@ public:
     Rcpp::DataFrame runSimFromFixedValues(int repeat, short wRace, short wSex, short wYearBirth);
     Rcpp::DataFrame runSimFromDataFrame(Rcpp::DataFrame dfPopulation);
 
-    string input_data_folder = R_DEFAULT_DATA_DIR;
+    string input_data_folder = find_default_data_path();
     string initiation_filename = R_INITIATION_DATA_FILE;
     string cessation_filename = R_CESSATION_DATA_FILE;
     string lifetable_filename = R_OTHER_COD_DATA_FILE;
@@ -77,3 +100,5 @@ public:
     void LegacyRunWebVersion(const char *sInputFileName);
 
 };
+
+
