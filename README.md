@@ -72,12 +72,12 @@ pop <- list(
 
 # The following are default configuration values; change as needed
 shg$rng_strategy <- "RngStream"
-shg$number_of_segments <- 10
-shg$run_multi_threaded <- TRUE
+shg$number_of_segments <- 1
+shg$run_multi_threaded <- FALSE
 
 RNGSTREAM_SIM_POP <- shg$runSimFromDataFrame(pop)
 ```
-You can also run the simulator using the (legacy) Mersenne Twister RNG.
+If you want to produce identical results as with previous versions of the SHG, you must select the Mersenne Twister engine and be sure to set the number of segments to 1 and/or run_multi_threaded to FALSE.
 
 ```r
 library(SmokingHistoryGenerator)
@@ -85,12 +85,10 @@ shg <- new(SHGInterface)
 N <- 10^5 # Individuals to simulate (REPEAT)
 shg$rng_strategy <- "MersenneTwister"
 # Optionally set the number segments to 1 and disable multi-threaded in order to produce identical results as the CLI
-shg$number_of_segments <- 1
-shg$run_multi_threaded <- FALSE
 MT_SIM <- shg$runSimFromFixedValues(N, 0, 0, 1940)
 ```
 
-You can also use the `LegacyRunWebVersion()` method which configures the generator using input file (rather than properties) and sends the output to a text file. Two example input files are included with the package. Note that if you use `LegacyRunWebVersion()` none of the properties of `shg` you may have set in R will be taken into consideration. Only the properties that you set in the input file will be considered. Also note that legacy mode runs with a single segment and with no multi-threading.
+You can also use the `LegacyRunWebVersion()` method which configures the generator using input file (rather than properties) and sends the output to a text file. Two example input files are included with the package. Note that if you use `LegacyRunWebVersion()` none of the properties of `shg` you may have set in R will be taken into consideration. Only the properties that you set in the input file will be used. Also note that legacy mode runs with a single segment and with no multi-threading.
 ```r
 library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
