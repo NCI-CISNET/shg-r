@@ -11,6 +11,13 @@ using namespace std;
 #define R_CPD_INTENSITY_PROBS "lbc_smokehist_cpdintensityprobs.txt"  
 #define R_CPD_DATA_FILE "lbc_smokehist_cpd.txt" 
 
+Rcpp::StringVector get_extdata() {
+    Rcpp::Environment base("package:base");
+    Rcpp::Function sys_file = base["system.file"];
+    Rcpp::StringVector res = sys_file("inputs", "default", Rcpp::_["package"] = "SmokingHistoryGenerator");
+    return res;
+}
+
 class SHGInterface {
 public:
     SHGInterface();
@@ -75,9 +82,4 @@ public:
 
 };
 
-Rcpp::StringVector get_extdata() {
-    Rcpp::Environment base("package:base");
-    Rcpp::Function sys_file = base["system.file"];
-    Rcpp::StringVector res = sys_file("inputs", "default", Rcpp::_["package"] = "SmokingHistoryGenerator");
-    return res;
-}
+
