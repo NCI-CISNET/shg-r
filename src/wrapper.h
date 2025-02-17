@@ -11,12 +11,25 @@ using namespace std;
 #define R_CPD_INTENSITY_PROBS "lbc_smokehist_cpdintensityprobs.txt"  
 #define R_CPD_DATA_FILE "lbc_smokehist_cpd.txt" 
 
-Rcpp::StringVector get_extdata() {
+std::string get_extdata() {
     Rcpp::Environment base("package:base");
     Rcpp::Function sys_file = base["system.file"];
-    Rcpp::StringVector res = sys_file("inputs", "default", Rcpp::_["package"] = "SmokingHistoryGenerator");
-    Rcpp::Rcout << "FOLDER: " << res << std::endl;
-    return res;
+    Rcpp::StringVector res = "";
+
+    // Depending on local testing environment or installed package environment, the path to the default data will vary
+    // TODO: review
+    res = sys_file("inst/inputs", "default", Rcpp::_["package"] = "SmokingHistoryGenerator");
+    
+    if (res.size() == 0) {
+        res = sys_file("inputs", "default", Rcpp::_["package"] = "SmokingHistoryGenerator");
+    }
+
+    if (res.size() == 0) {
+        res = R_DEFAULT_DATA_DIR;
+    }
+
+    Rcpp::Rcout << "Input folder: " << res << std::endl;
+    return Rcpp::as<std::string>(res);
 }
 
 class SHGInterface {
@@ -27,7 +40,7 @@ public:
     Rcpp::DataFrame runSimFromFixedValues(int repeat, short wRace, short wSex, short wYearBirth);
     Rcpp::DataFrame runSimFromDataFrame(Rcpp::DataFrame dfPopulation);
 
-    string input_data_folder = Rcpp::as<std::string>(get_extdata()); //R_DEFAULT_DATA_DIR;
+    string input_data_folder = get_extdata(); //R_DEFAULT_DATA_DIR;
     string initiation_filename = R_INITIATION_DATA_FILE;
     string cessation_filename = R_CESSATION_DATA_FILE;
     string lifetable_filename = R_OTHER_COD_DATA_FILE;
