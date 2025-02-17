@@ -15,24 +15,32 @@ std::string get_extdata() {
     Rcpp::Environment base("package:base");
     Rcpp::Function sys_file = base["system.file"];
     Rcpp::StringVector res = "";
+    std::string path = "";
 
     // Depending on local testing environment or installed package environment, the path to the default data will vary
     // TODO: review
     Rcpp::Rcout << "Start";
     res = sys_file("inst/inputs", "default", Rcpp::_["package"] = "SmokingHistoryGenerator");
-    
-    if (res.size() == 0) {
+    path = Rcpp::as<std::string>(res);
+
+    // Rcpp::Rcout << "Size: " << path.size() << std::endl;
+    // Rcpp::Rcout << "Size2: " << path.length() << std::endl;
+    // Rcpp::Rcout << "Size3: " << path.empty() << std::endl;
+
+    if (path.length() == 0) {
         Rcpp::Rcout << "1 fail";
         res = sys_file("inputs", "default", Rcpp::_["package"] = "SmokingHistoryGenerator");
+        path = Rcpp::as<std::string>(res);
     }
 
-    else if (res.size() == 0) {
+    else if (path.length() == 0) {
         Rcpp::Rcout << "2 fail";
         res = R_DEFAULT_DATA_DIR;
+        path = Rcpp::as<std::string>(res);
     }
 
-    Rcpp::Rcout << "Input folder: " << res << std::endl;
-    return Rcpp::as<std::string>(res);
+    Rcpp::Rcout << "Input folder: " << path << std::endl;
+    return path;
 }
 
 class SHGInterface {
