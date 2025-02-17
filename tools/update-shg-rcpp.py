@@ -46,7 +46,7 @@ else:
 # which is not relevant for the hash from shg-cli
 src_hash = md5_dir(source_dir)
 
-# Read DESCRIPTION file in rcpp-shg
+# Read DESCRIPTION file in shg-rcpp
 with open('DESCRIPTION', 'r') as file:
     lines = file.readlines()
 

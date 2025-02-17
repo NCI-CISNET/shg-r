@@ -1,32 +1,35 @@
-# SmokingHistoryGenerator<img src="./man/cisnet-logo.svg" width="100px;" align="right">
+# Smoking History Generator: R Interface<img src="./man/cisnet-logo.svg" width="100px;" align="right">
   <!-- badges: start -->
-  [![R-CMD-check](https://github.com/NCI-CISNET/shg-rcpp/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/CSNW/rcpp-shg/actions/workflows/R-CMD-check.yaml)
+  [![R-CMD-check](https://github.com/NCI-CISNET/shg-rcpp/actions/workflows/R-CMD-check-all-OS.yaml/badge.svg)](https://github.com/NCI-CISNET/shg-rcpp/actions/workflows/R-CMD-check-all-OS.yaml)
   [![License: GPL-3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://choosealicense.com/licenses/gpl-3.0/)
   <!-- badges: end -->
-### Rcpp Smoking History Generator: An R interface to the CISNET Smoking History Generator
 
 ## About
-This package is a wrapper for the [CISNET](https://cisnet.cancer.gov/) [Smoking History Generator](https://github.com/CSNW/smoking-history-generator) C++ source code. It can produce the identical outputs as the command line version (CLI) of the Smoking History Generator in R. It offers an easy way for modelers to access the Smoking History Generator directly in R.
+This R package provides a convenient interface to the [CISNET](https://cisnet.cancer.gov/) [Smoking History Generator](https://github.com/NCI-CISNET/shg-cli). It can produce the identical outputs as the command line version (CLI) of the Smoking History Generator in R and offers an easy way for modelers to access the Smoking History Generator directly in R.
 
 ## Getting Started
 
-### Installation for end-users from Github
-```r
-install.packages("devtools")
-Sys.setenv(PKG_BUILD_EXTRA_FLAGS = "false") # optional, but should increase performance
-devtools::install_github("NCI-CISNET/shg-rcpp@[optional-branch-of-your-choice]")
-```
-
-### Installation for end-users from CRAN (coming soon)
+### Installation from CRAN (coming soon)
 Under development: Eventually this package will be hosted on CRAN
 ```r
 install.packages("SmokingHistoryGenerator")  # Not working yet. Coming soon!
 ```
 
-## Installation for developers
-Retrieve the `rcpp-shg` repository from Github and open an R session.
+### Installation from Github (requires devtools)
 ```r
-setwd("path-to-rcpp-shg")
+install.packages("devtools")
+Sys.setenv(PKG_BUILD_EXTRA_FLAGS = "false") # optional, but should increase performance
+devtools::install_github("NCI-CISNET/shg-rcpp")
+# OR
+devtools::install_github("NCI-CISNET/shg-rcpp@[optional-branch-of-your-choice]")
+```
+
+
+
+## Installation for developers
+Retrieve the `shg-rcpp` repository from Github and open an R session.
+```r
+setwd("path-to-shg-rcpp")
 install.packages("devtools")
 Sys.setenv(PKG_BUILD_EXTRA_FLAGS = "false") # optional, but should increase performance
 devtools::load_all()
