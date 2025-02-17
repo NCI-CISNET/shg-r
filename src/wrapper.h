@@ -15,6 +15,7 @@ Rcpp::StringVector get_extdata() {
     Rcpp::Environment base("package:base");
     Rcpp::Function sys_file = base["system.file"];
     Rcpp::StringVector res = sys_file("inputs", "default", Rcpp::_["package"] = "SmokingHistoryGenerator");
+    Rcpp::Rcout << "FOLDER: " << res << std::endl;
     return res;
 }
 
