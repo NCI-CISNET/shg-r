@@ -11,9 +11,6 @@ using namespace std;
 #define R_CPD_INTENSITY_PROBS "lbc_smokehist_cpdintensityprobs.txt"  
 #define R_CPD_DATA_FILE "lbc_smokehist_cpd.txt" 
 
-// TODO DRY violation -- but relevant to the CLI version
-// #define MAX_NUM_REPS 1000000
-
 class SHGInterface {
 public:
     SHGInterface();
@@ -22,7 +19,7 @@ public:
     Rcpp::DataFrame runSimFromFixedValues(int repeat, short wRace, short wSex, short wYearBirth);
     Rcpp::DataFrame runSimFromDataFrame(Rcpp::DataFrame dfPopulation);
 
-    string input_data_folder = R_DEFAULT_DATA_DIR;
+    string input_data_folder = Rcpp::as<std::string>(get_extdata()); //R_DEFAULT_DATA_DIR;
     string initiation_filename = R_INITIATION_DATA_FILE;
     string cessation_filename = R_CESSATION_DATA_FILE;
     string lifetable_filename = R_OTHER_COD_DATA_FILE;
@@ -77,3 +74,10 @@ public:
     void LegacyRunWebVersion(const char *sInputFileName);
 
 };
+
+Rcpp::StringVector get_extdata() {
+    Rcpp::Environment base("package:base");
+    Rcpp::Function sys_file = base["system.file"];
+    Rcpp::StringVector res = sys_file("inputs", "default", Rcpp::_["package"] = "SmokingHistoryGenerator");
+    return res;
+}
