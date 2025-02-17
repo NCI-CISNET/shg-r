@@ -18,13 +18,16 @@ std::string get_extdata() {
 
     // Depending on local testing environment or installed package environment, the path to the default data will vary
     // TODO: review
+    Rcpp::Rcout << "Start";
     res = sys_file("inst/inputs", "default", Rcpp::_["package"] = "SmokingHistoryGenerator");
     
     if (res.size() == 0) {
+        Rcpp::Rcout << "1 fail";
         res = sys_file("inputs", "default", Rcpp::_["package"] = "SmokingHistoryGenerator");
     }
 
-    if (res.size() == 0) {
+    else if (res.size() == 0) {
+        Rcpp::Rcout << "2 fail";
         res = R_DEFAULT_DATA_DIR;
     }
 
