@@ -399,7 +399,7 @@ void RunInterface() {
 
    bValidInput = false;
    wCessationYear = 0; // 0 = do not use immediate cessation.
-   PrintMessageFormatted("\nSelect which estimates to use as the model inputs:\n");
+   PrintMessage("\nSelect which estimates to use as the model inputs:\n");
    PrintMessage("1 - NHIS estimates.\n");
    PrintMessage("2 - Counterfactual estimates.\n");
    PrintMessage("3 - Immediate Cessation using NHIS estimates.\n");
@@ -463,7 +463,7 @@ void RunInterface() {
          }
       else
          PrintMessageFormatted("\n\"%s\" - Invalid Input.\nPlease enter a value in range 0 - %ld.\n:",
-                 sInputChar,MAX(long));
+                 sInputChar, MAX(long));
       }
 
    bValidInput = false;
@@ -498,7 +498,7 @@ void RunInterface() {
    bValidInput = false;
    PrintMessage("Please enter a seed for the PRNG that generates \nunique random numbers for the simulated individual.\n");
    PrintMessage("This PRNG is for defining characteristics such as \nwill the person be a light or heavy smoker.\n");
-   PrintMessageFormatted("Seed should be in range 0 - %ld.\n:",MAX(long));
+   PrintMessageFormatted("Seed should be in range 0 - %ld.\n:", MAX(long));
    while (!bValidInput) {
       GetInput(sInputChar, 20);
       if ( IsPosLongInt(sInputChar))
@@ -508,7 +508,7 @@ void RunInterface() {
       }
       else {
          PrintMessageFormatted("\n\"%s\" - Invalid Input.\nPlease enter a value in range 0 - %ld.\n:",
-                 sInputChar,MAX(long));
+                 sInputChar, MAX(long));
       }
    }
    bValidInput = false;
@@ -706,6 +706,7 @@ int RunWebVersion(const char * sInputFileName)
         bUseNumReps = false;
 
    char sInputLine[1000],
+        sMessage[1000],
         *sErrorFile      = 0,
         *sRNGStrategy    = 0,
         *sInputBuffer    = 0,
@@ -753,9 +754,11 @@ int RunWebVersion(const char * sInputFileName)
    gInputFileName = sInputFileName;
 
    pInputFile = fopen(sInputFileName,"r");
-   
+
    if (pInputFile == NULL) {
-      PrintMessage( "The specified input file does not exist or could not be opened.\n");
+      // Due to Rcpp not allowing variadic functions, we use snprintf to do substitution
+      snprintf(sMessage, 1000, "Input file '%s' could not be opened for reading.\n", sInputFileName);
+      PrintError(sMessage);
       bRunApp = false;
    }
    
@@ -1051,7 +1054,9 @@ int RunWebVersion(const char * sInputFileName)
 
       // Check for the error file string, open it if it exists, otherwise, open the default error file
       if (sErrorFile == NULL) {
-         PrintMessageFormatted("Name for Error log file was not found in input file: %s", sInputFileName);
+         // Due to Rcpp not allowing variadic functions, we use snprintf to do substitution
+         snprintf(sMessage, 1000, "Name for Error log file was not found in input file: %s", sInputFileName);
+         PrintMessage(sMessage);
          bRunApp = false;
       } else {
          pErrorStream = fopen(sErrorFile,"w");
@@ -1069,12 +1074,16 @@ int RunWebVersion(const char * sInputFileName)
          //PrintMessage("Using RngStream random number generator strategy.\n");
       }
       else {
-         PrintError("The specified RNG strategy is invalid: %s\n", sRNGStrategy);
+         // Due to Rcpp not allowing variadic functions, we use snprintf to do substitution
+         snprintf(sMessage, 1000, "The specified RNG strategy is invalid: %s\n", sRNGStrategy);
+         PrintError(sMessage);
          bRunApp = false;
       }
 
       if (bRunApp && pErrorStream == NULL) {
-         PrintError("Specified error file: %s could not be opened for writing.\n", sErrorFile);
+         // Due to Rcpp not allowing variadic functions, we use snprintf to do substitution
+         snprintf(sMessage, 1000, "Specified error file: '%s' could not be opened for writing.\n", sErrorFile);
+         PrintError(sMessage);
          bRunApp = false;
       }
    } 
@@ -1187,7 +1196,7 @@ int RunWebVersion(const char * sInputFileName)
       // Still can run, try to open the output file
       pOutStream   = fopen(sOutputFile,"w");
       if (pOutStream == NULL) {
-         WriteToFile(pErrorStream,"\n<ERROR>\nSupplied Output file: %s, could not be opened for writing.\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",sOutputFile);
+         WriteToFile(pErrorStream,"\n<ERROR>\nSupplied Output file: '%s', could not be opened for writing.\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",sOutputFile);
          bRunApp = false;
       }
    }
@@ -1202,9 +1211,9 @@ int RunWebVersion(const char * sInputFileName)
       for (i=0; i < 4; i++) {
          // TODO: Review warning about parenthesis here (probably need brackets around the second part of the condition)
       	if ((wValuesPerParam[i] > wMaxNumPerParam) && 
-             (wMaxNumPerParam > 1) || 
+             ((wMaxNumPerParam > 1) || 
              (wMaxNumPerParam > 1 && 
-              (wValuesPerParam[i] != wMaxNumPerParam && wValuesPerParam[i] > 1))) {
+              (wValuesPerParam[i] != wMaxNumPerParam && wValuesPerParam[i] > 1)))) {
 
             bRunApp = false;
             WriteToFile(pErrorStream, "\n<ERROR>");
@@ -1393,10 +1402,13 @@ int RunWebVersion(const char * sInputFileName)
    // JC: it seems wrong to return 1 when bRunApp==True (indicating a normal execution)
    // However, it was that way for a long time, so I'm not sure if it was intentional
    // TODO: Review this and make sure it's correct
-   if (bRunApp)
+   if (bRunApp) {
       iReturnValue = 0;
-   else
+   }
+   else {
+      PrintMessage("Aborted RunWebVersion() request.\n");
       iReturnValue = 1;
+   }
 
    delete [] sErrorFile;
    //delete sRNGStrategy;
@@ -1545,7 +1557,7 @@ bool ValidateParameters(char* sInitiationSeed, char* sCessationSeed, char* sOthe
          fclose(pTestInputStream);
       }
 		if (bReturnValue && pTestOutputStream == NULL) {
-         snprintf(sErrorMessage, 1000, "Output File %s could not be opened for writing.\n", sOutputFile);
+         snprintf(sErrorMessage, 1000, "Output File '%s' could not be opened for writing.\n", sOutputFile);
          bReturnValue = false;
 	  	}
 		if (pTestOutputStream != NULL) {
