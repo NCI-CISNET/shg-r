@@ -25,17 +25,17 @@ get_run_details <- function(file_path) {
   return(list(run = run, cessation = cessation))
 }
 
-write_input_file_from_template <- function(rng_strategy, yob, cessation_yr, data_folder, outputs_folder) {
+write_input_file_from_template <- function(template_path, rng_strategy, yob, cessation_yr, data_folder, outputs_folder) {
   # The main motivation to write custom config files was due to pathing discrepancies between devtools:test() and CMD Check
-  template_input <- readLines("../templates/test_input_example.txt")
   input_filepath <- test_path(glue("../inputs/test_input_{rng_strategy}_{yob}_{cessation_yr}.txt"))
-  formatted_input <- glue(paste(template_input, collapse = "\n"))
+  formatted_input <- glue(paste(template_path, collapse = "\n"))
   writeLines(as.character(formatted_input), con = input_filepath)
   return(input_filepath)
 }
 
 generate_output <- function(rng_strategy, yob, cessation_yr, outputs_folder) {
-  input_filepath = write_input_file_from_template(rng_strategy, yob, cessation_yr, data_folder, outputs_folder)
+  template_path <- readLines("../templates/test_input_example.txt")
+  input_filepath <- write_input_file_from_template(template_path, rng_strategy, yob, cessation_yr, data_folder, outputs_folder)
   shg$LegacyRunWebVersion(input_filepath)
   return(get_run_details(glue("../outputs/test_output_{rng_strategy}_{yob}_{cessation_yr}.txt")))
 }
@@ -165,6 +165,24 @@ test_that("Comparison between runSimFromDataFrame and runSimFromFixedValues for 
   expect_identical(RS_STATS_POP$mean_initiation, RS_STATS$mean_initiation)
   expect_identical(RS_STATS_POP$mean_cessation, RS_STATS$mean_cessation)
   expect_identical(RS_STATS_POP$mean_age_at_death, RS_STATS$mean_age_at_death)
+})
+
+test_that("Invalid input configuration path fails with proper error message", {
+  input_filepath <- "file_does_not_exist.txt"
+  expect_warning(shg$LegacyRunWebVersion(input_filepath), "Input file 'file_does_not_exist.txt' could not be opened for reading.")
+})
+
+test_that("Invalid input parameter path fails with proper error message", {
+  template_path <- readLines("../templates/test_input_example_incorrect_init_path.txt")
+  input_filepath <- write_input_file_from_template(template_path, "MersenneTwister", 1950, 0, data_folder, outputs_folder)
+  expect_warning(shg$LegacyRunWebVersion(input_filepath), "^SimException: Error: The specified Initiation/Cessation input file")
+})
+
+test_that("Invalid output path fails with proper error message", {
+  template_path <- readLines("../templates/test_input_example.txt")
+  outputs_folder <- "folder_does_not_exist"
+  input_filepath <- write_input_file_from_template(template_path, "MersenneTwister", 1950, 0, data_folder, outputs_folder)
+  expect_warning(shg$LegacyRunWebVersion(input_filepath), "Specified error file: 'folder_does_not_exist/test_errors_MersenneTwister_1950_0.txt' could not be opened for writing.")
 })
 
 # TODO: Compare Legacy tests with runSimFromFixedValues(): requires parsing of results
