@@ -125,8 +125,19 @@ You can also use the `LegacyRunWebVersion()` method which configures the generat
 ```r
 library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
-shg$LegacyRunWebVersion("./inst/inputs/examples/test_input_example_MersenneTwister.txt")
-shg$LegacyRunWebVersion("./inst/inputs/examples/test_input_example_RngStream.txt")
+wd <- getwd()
+# R recommends using the temp folder for external data inputs and outputs
+setwd(tempdir())
+inputs_folder <- system.file("inputs", package = "SmokingHistoryGenerator")
+# Here we use the inputs provided in the package, but you can copy your own input files
+file.copy(from = inputs_folder, to = "./", recursive = TRUE)
+# Here we use the example configuration files, but you can modify them as needed
+shg$LegacyRunWebVersion("./inputs/examples/test_input_example_MersenneTwister.txt")
+shg$LegacyRunWebVersion("./inputs/examples/test_input_example_RngStream.txt")
+# LegacyRunWebVersion() writes the results to a text file instead of a dataframe
+file.edit("MT_test_output.out")
+file.edit("RS_test_output.out")
+setwd(wd)
 ```
 
 ## Contributors
