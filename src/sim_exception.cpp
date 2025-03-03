@@ -14,10 +14,17 @@
 #include "sim_exception.h"
 #include <iostream>
 #include <cstring>
+#ifdef IS_RCPP
+#include <Rcpp.h>
+// [[Rcpp::depends(Rcpp)]]
+#endif
 
 //------------------------------------------------------------------------------
 SimException::SimException(const char* sErrorCallPath, const char* sThrownError, eExceptType eType)
 {
+   #ifdef IS_RCPP
+      Rcpp::warning("SimException: " + std::string(sErrorCallPath) + ": " + std::string(sThrownError));
+   #endif
    strcpy(gsError,sThrownError);
    strcpy(gsCallPath,sErrorCallPath);
    if(eType >= 0 &&  eType < NUM_VALUES)

@@ -19,10 +19,8 @@
 #include <math.h>
 #include <stdio.h>
 #include <cstdarg>
-
 #include <mutex>
 #include <vector>
-
 #include "rng_strategy.h"
 using namespace std;
 
@@ -736,7 +734,7 @@ std::lock_guard<std::mutex> lock(dataMutex);
       // TODO: can we easily switch between compressed and uncompressed files? Can R packages just uncompress upon loading the package?
       pCpdFile = fopen(sCpdFile, "r");
       if (pCpdFile == NULL) {
-	      snprintf(sErrorMessage, sizeof(sErrorMessage), "The specified input file '%s' does not exist\n or could not be opened.\n\n", sCpdFile);
+	      snprintf(sErrorMessage, sizeof(sErrorMessage), "The specified CPD input file '%s' could not be opened.\n", sCpdFile);
 	      throw SimException("Error", sErrorMessage);
 	   }
 
@@ -922,7 +920,7 @@ void Smoking_Simulator::LoadCPDIntensityProbs(const char* sDataFileName) {
    try {
       pProbabilityFile = fopen(sDataFileName, "r");
       if (pProbabilityFile == NULL) {
-	      snprintf(sErrorMessage, sizeof(sErrorMessage), "The specified input file '%s' does not exist\n or could not be opened.\n\n", sDataFileName);
+	      snprintf(sErrorMessage, sizeof(sErrorMessage), "The specified CPD input file '%s' could not be opened.\n", sDataFileName);
 	      throw SimException("Error", sErrorMessage);
 	   }
 
@@ -1104,11 +1102,11 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
 
       pProbabilityFile = fopen(sDataFileName, "r");
       if (pProbabilityFile == NULL) {
-	      snprintf(sErrorMessage, sizeof(sErrorMessage),"The specified input file '%s' does not exist\n or could not be opened.\n\n", sDataFileName);
+	      snprintf(sErrorMessage, sizeof(sErrorMessage), "The specified Initiation/Cessation input file '%s' could not be opened.\n", sDataFileName);
 	      throw SimException("Error", sErrorMessage);
 	   }
 
-	   //Read in the first line of the file. Line contains the line number where the data in the file begins
+	   // Read in the first line of the file. Line contains the line number where the data in the file begins
       // This allows documentation to be placed in the input file
       if (fgets(sInputLine, 3000, pProbabilityFile) == NULL) {
          snprintf(sErrorMessage, sizeof(sErrorMessage), "Error reading first DATA line of file %s", sDataFileName);
@@ -1127,7 +1125,7 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
          if ( fgets(sInputLine, 3000, pProbabilityFile) == NULL) {
      	      snprintf(sErrorMessage, sizeof(sErrorMessage), "Error in  file %s, End of File reached before location of first data line \
                as specified in line 1\n", sDataFileName);
-   	      throw SimException("Error", sErrorMessage);
+   	      throw SimException("LoadProbabilityData() Error", sErrorMessage);
          }
       }
 
@@ -1136,7 +1134,7 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
       // in the order they are listed here.
       if (fgets(sInputLine, sizeof(sInputLine), pProbabilityFile) == NULL) {
          snprintf(sErrorMessage, sizeof(sErrorMessage), "Error reading first DATA line of file %s", sDataFileName);
-         throw SimException("Error", sErrorMessage);
+         throw SimException("LoadProbabilityData() Error", sErrorMessage);
       }
 
       pTokenPtr = strtok(sInputLine, ",");
@@ -1342,7 +1340,7 @@ std::lock_guard<std::mutex> lock(dataMutex);
 
       pLifeTableFile = fopen(sLifeTableFileName, "r");
       if (pLifeTableFile == NULL) {
-	      snprintf(sErrorMessage, sizeof(sErrorMessage), "The specified input file '%s' does not exist\n or could not be opened.\n\n", sLifeTableFileName);
+	      snprintf(sErrorMessage, sizeof(sErrorMessage), "The specified LifeTable input file '%s' could not be opened.\n", sLifeTableFileName);
 	      throw SimException("Error", sErrorMessage);
 	   }
 
@@ -1974,30 +1972,26 @@ void WriteToFile(FILE* stream, const char* format, ...) {
    va_end(args);
 }
 
-// Write an error to either R's console or to stderr
+// Write an warning/error message to either R's console or to stderr
 void PrintError(const char* format, ...) {
    va_list args;
    va_start(args, format);
    #ifdef IS_RCPP
       // TODO: Review
-      // Maybe we should only Rcpp::Rcout and allow the program to control the stop.
-      // Or Consider Rcerr << vfmt::vformat(format, args);
-      // Rcpp::warning(fmt::vformat(format, args));
-      REprintf(format, args);
+      Rcpp::warning(format);
    #else
       vfprintf(stderr, format, args);
    #endif
    va_end(args);
 }
 
-// RCPP does not allow fprintf to be used, so this function is used to replace it
 void PrintMessageFormatted(const char* format, ...) {
    va_list args;
    va_start(args, format);
    #ifdef IS_RCPP
       // Not expecting that we will need to print to console in R but including an option just in case
-      Rprintf(format, args);
-      //Rcpp::Rcout << fmt::vformat(format, args);
+      // We'll only get the format string and not the arguments in Rcpp
+      Rcpp::Rcout << format;
    #else
       vfprintf(stdout, format, args);
    #endif

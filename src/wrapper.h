@@ -4,7 +4,7 @@
 using namespace std;
 
 // Note that the CLI SHG version might specify default paths differently
-#define R_DEFAULT_DATA_DIR "./inst/inputs/default/"
+#define R_DEFAULT_DATA_DIR "./inputs/default/"
 #define R_INITIATION_DATA_FILE "lbc_smokehist_initiation.txt"
 #define R_CESSATION_DATA_FILE "lbc_smokehist_cessation.txt"
 #define R_OTHER_COD_DATA_FILE "lbc_smokehist_oc_mortality.txt"

@@ -203,7 +203,7 @@ char* AssignFilename(const char* sDirectory, const char * sFilename);
 
 void WriteToFile(FILE* stream, const char*format, ...);
 void PrintMessage(const char* message);
-void PrintMessageFormatted(const char* format, ...);
+void PrintMessageFormatted(const char*, ...);
 void PrintError(const char* format, ...);
 
 #endif

@@ -394,6 +394,10 @@ bool SHGInterface::fileExists(const char* filename) {
 //' }
 void SHGInterface::LegacyRunWebVersion(const char *sInputFileName)
 {
+   // Paths inside config file are relative to the current working directory
+   std::filesystem::path currentPath = std::filesystem::current_path();
+   Rcpp::Rcout << "Current working directory: " << currentPath << std::endl;
+   Rcpp::Rcout << "Note: the input_data_folder is ignored with LegacyRunWebVersion because it relies on the paths in the config file." << std::endl;
    RunWebVersion(sInputFileName);
    return;
 }
