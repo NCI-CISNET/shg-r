@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Krapcho"
+  given-names: "Martin"
+  orcid: "https://orcid.org/0000-0000-0000-0000"
+- family-names: "Gaenko"
+  given-names: "Alexander"
+  orcid: "https://orcid.org/0000-0002-1901-0394"
+- family-names: "Feuer"
+  given-names: "Rocky"
+- family-names: "Clarke"
+  given-names: "John"
+  orcid: "https://orcid.org/0009-0007-6712-7638"  
+title: "CISNET Smoking History Generator"
+version: 6.4.0
+doi: 10.5281/zenodo.1234
+date-released: 2025-03-01
+url: "https://github.com/NCI-CISNET/shg-cli"
