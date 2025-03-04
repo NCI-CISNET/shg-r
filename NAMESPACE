@@ -1,5 +1,4 @@
 useDynLib(SmokingHistoryGenerator, .registration=TRUE)
 import(methods)
-##import(rstream)
 import(Rcpp)
 exportPattern("^[[:alpha:]]+")
