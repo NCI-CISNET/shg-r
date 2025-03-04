@@ -12,5 +12,5 @@ CESS_PROB=./inputs/default/lbc_smokehist_cessation.txt
 OCD_PROB=./inputs/default/lbc_smokehist_oc_mortality.txt
 CPD_DATA=./inputs/default/lbc_smokehist_cpd.txt
 
-OUTPUTFILE=RNGSTREAM_test_output.out
-ERRORFILE=RNGSTREAM_test_errors.txt
+OUTPUTFILE=RS_test_output.out
+ERRORFILE=RS_test_errors.txt
