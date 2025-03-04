@@ -25,6 +25,7 @@
 #include <cstdlib>    // General utilities
 #include <cstring>    // C-style string functions
 #include <iostream>   // Input/output stream objects
+#include <filesystem>
 #include <fstream>    // File stream objects
 #include <string>     // std::string class
 #include <limits>     // Numeric limits
