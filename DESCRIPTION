@@ -7,10 +7,15 @@ SHGCommitHash: a84eeda
 SHGsrcHash: 7d490210d122d0f28216641d29047807
 Date: 2025-02-05
 Authors@R: c(
-    person("John", "Clarke", role = c("aut", "cre"), email = "john.clarke@cornerstonenw.com", comment= "Author and maintainer of Rcpp wrapper for the SHG"),
-    person("Ben", "Racine", role = c("aut"), email = "", comment = "Co-author of the original SHG"),
-    person("Martin", "Krapcho", role = "aut", comment = "Co-author of the original SHG"),
-    person("Alexander", "Gaenko", role = "aut", comment = "Co-author of the original SHG"))
+    person("John", "Clarke", email = "john.clarke@cornerstonenw.com", role = c("aut", "cre"),
+           comment = "Author and maintainer of Rcpp wrapper for the SHG"),
+    person("Ben", "Racine", role = "aut",
+           comment = "Co-author of the original SHG"),
+    person("Martin", "Krapcho", role = "aut",
+           comment = "Co-author of the original SHG"),
+    person("Alexander", "Gaenko", role = "aut",
+           comment = "Co-author of the original SHG")
+  )
 Maintainer: John Clarke <john.clarke@cornerstonenw.com>
 Description: This package is an efficient R wrapper for the CISNET Smoking History Generator.
 RoxygenNote: 7.3.2
