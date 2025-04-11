@@ -7,7 +7,7 @@ import shutil
 import hashlib
 from pathlib import Path
 
-source_dir = Path('../smoking-history-generator/src')
+source_dir = Path('../shg-cli/src')
 target_dir = Path('src')
 
 def md5_update_from_dir(directory, hash):
