@@ -1042,8 +1042,6 @@ int RunWebVersion(const char * sInputFileName)
 
             delete[] sRngStreamSeed;
          }
-         //string temp = RngStreamToString(rngStreamSeed, 6);
-         //sFinalRngStreamSeed = strdup(temp.c_str());
          
          if (strstr(Str_toupper(sInputBuffer), "CESSATION_YR=") != NULL) {
             iIndexLength = strlen("CESSATION_YR=");
@@ -1077,7 +1075,6 @@ int RunWebVersion(const char * sInputFileName)
       }
 
       if (sRNGStrategy == NULL) {   
-         //PrintMessage("Using default random number strategy of RngStream because none was specified in input file: '%s'\n", sInputFileName);
           sRNGStrategy = const_cast<char*>("RngStream"); // strdup(DEFAULT_RNG_STRATEGY) not allowed
       }
       
@@ -1122,9 +1119,6 @@ int RunWebVersion(const char * sInputFileName)
             // TODO: Check this as potential source of error; should consider using string everywhere
             PrintMessage("Using default Cessation Seed\n");
             sSEED_Cess = strdup(MT_CESS_SEED_DEFAULT);
-            // This also works, but requires delete[] later
-            //sSEED_Cess = new char[strlen(MT_CESS_SEED_DEFAULT) + 1];
-            //strcpy(sSEED_Cess, MT_CESS_SEED_DEFAULT);
          }
 
          if (!IsValidSeed(sSEED_Cess)) {
