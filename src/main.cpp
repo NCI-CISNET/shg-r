@@ -44,7 +44,7 @@
 using namespace std;
 
 #define MAX(x) (std::numeric_limits<x>::max())
-#define DEFAULT_DATA_DIR const_cast<char*>("data/2017-05-03/")
+#define DEFAULT_DATA_DIR const_cast<char*>("data/NHIS-1965-2016/")
 #define COUNTERFACTUAL_DATA_DIR const_cast<char*>("data/counterfactual_inputs_jan_2009/")
 
 // Input file names
@@ -1075,7 +1075,7 @@ int RunWebVersion(const char * sInputFileName)
       }
 
       if (sRNGStrategy == NULL) {   
-          sRNGStrategy = const_cast<char*>("RngStream"); // strdup(DEFAULT_RNG_STRATEGY) not allowed
+          sRNGStrategy = strdup("RngStream"); //strdup(DEFAULT_RNG_STRATEGY) not allowed
       }
       
       else if (strcmp(sRNGStrategy, "MersenneTwister") == 0) {
@@ -1085,7 +1085,7 @@ int RunWebVersion(const char * sInputFileName)
          //PrintMessage("Using RngStream random number generator strategy.\n");
       }
       else if (sRNGStrategy == nullptr || strlen(sRNGStrategy) == 0) {
-         sRNGStrategy = const_cast<char*>("RngStream");
+         sRNGStrategy = strdup("RngStream"); 
          //PrintMessage("Using default (RngStream) random number generator strategy.\n");
       }
       else {
