@@ -1014,7 +1014,7 @@ int RunWebVersion(const char * sInputFileName)
          // Only one seed is requred for RngStream because it uses substreams to generate multiple (IID) streams
          if (strstr(Str_toupper(sInputBuffer), "RNGSTREAM_SEED=") != NULL) {
             iIndexLength = strlen("RNGSTREAM_SEED=");
-            char* sRngStreamSeed = new char[(iStringLength - iIndexLength) + 1];
+            sRngStreamSeed = new char[(iStringLength - iIndexLength) + 1];
             iCurrIndex = 0;
             for (i = 0; i < (iStringLength - iIndexLength); i++) {
                if (sInputLine[i + iIndexLength] != ' ') {
@@ -1223,24 +1223,26 @@ int RunWebVersion(const char * sInputFileName)
       wValuesPerParam[2] = CountVectorValues(sPARAM_YOB);
       wValuesPerParam[3] = CountVectorValues(sPARAM_NumReps);
       wMaxNumPerParam = 1;
-      for (i=0; i < 4; i++) {
-         // TODO: Review warning about parenthesis here (probably need brackets around the second part of the condition)
-      	if ((wValuesPerParam[i] > wMaxNumPerParam) && 
-             (wMaxNumPerParam > 1) || 
-             (wMaxNumPerParam > 1 && 
-              (wValuesPerParam[i] != wMaxNumPerParam && wValuesPerParam[i] > 1))) {
 
+      // First find the maximum number of vector values
+      wMaxNumPerParam = 1;
+      for (i=0; i < 4; i++) {
+         if (wValuesPerParam[i] > wMaxNumPerParam) {
+            wMaxNumPerParam = wValuesPerParam[i];
+         }
+      }
+      // Then verify all non-single values match the maximum
+      for (i=0; i < 4; i++) {
+         if (wValuesPerParam[i] > 1 && wValuesPerParam[i] != wMaxNumPerParam) {
             bRunApp = false;
             WriteToFile(pErrorStream, "\n<ERROR>");
             WriteToFile(pErrorStream, "\nInvalid use of vector values in the input file.");
             WriteToFile(pErrorStream, "\nIf vector values are used for more than 1 variable,");
             WriteToFile(pErrorStream, "\nthe same number of values must be supplied for each variable.");
             WriteToFile(pErrorStream, "\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n");
-	      } else if (wValuesPerParam[i] > wMaxNumPerParam) {
-	         wMaxNumPerParam = wValuesPerParam[i];
-	      }
-	   } // end for
-   } // end if (bRunApp && bHaveVectorValues)
+         }
+      }
+   }
 
    if (bRunApp) {
       if (sSEED_Init == NULL || atol(sSEED_Init) == -1)
