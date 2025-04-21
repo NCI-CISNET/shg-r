@@ -1,5 +1,5 @@
 #Sys.setenv(PKG_BUILD_EXTRA_FLAGS = "false")
-#devtools::clean_dll()
+devtools::clean_dll()
 # Note: debug = TRUE results in "(debug build)" and -O0 -g etc. which overrides Makevars
 pkgbuild::compile_dll(path = ".", debug = FALSE)
 
@@ -7,6 +7,23 @@ pkgbuild::compile_dll(path = ".", debug = FALSE)
 devtools::load_all()
 library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
+
+wd <- getwd()
+setwd(tempdir())
+inputs_folder <- system.file("inputs", package = "SmokingHistoryGenerator")
+file.copy(from = inputs_folder, to = "./", recursive = TRUE)
+shg$LegacyRunWebVersion("./inputs/examples/test_input_example_MersenneTwister.txt")
+setwd(wd)
+
+# SHG legacy version; results should be the same as above.
+# start_time <- Sys.time()
+# curdir <- getwd()
+# setwd("/Users/jclarke/Documents/GitHub/smoking-history-generator/")
+# system("./bin/lbc_smokehist_osx_6.3.3.exe test_input.txt")
+# setwd(curdir)
+# end_time <- Sys.time()
+# print(end_time - start_time)
+
 
 # Test very small population to determine overhead
 N <- 100
