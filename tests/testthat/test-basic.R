@@ -2,26 +2,42 @@ library(SmokingHistoryGenerator)
 library(glue)
 library(testthat)
 
-# Helper functions
-extract_tag <- function(vector, start_tag, end_tag) {
-  i1 <- which(vector %in% start_tag)
-  i2 <- which(vector %in% end_tag)
-  return(vector[i1[1]:i2[1]])
-}
+extract_tag <- function(vector, tag) {
+  # Find all occurrences of start and end tags
+  start_tag <- paste0("<", tag, ">")
+  end_tag <- paste0("</", tag, ">")
 
-extract_run <- function(vector) {
-  return(extract_tag(vector, "<RUN>", "</RUN>"))
-}
+  start_indices <- which(grepl(start_tag, vector, fixed = TRUE))
+  end_indices <- which(grepl(end_tag, vector, fixed = TRUE))
+ 
+  # Check if tags exist
+  if (length(start_indices) == 0 || length(end_indices) == 0) {
+    return(NULL)
+  }
+  
+  # Handle single-line case
+  if (any(start_indices == end_indices)) {
+    single_line_idx <- intersect(start_indices, end_indices)[1]
+    line_content <- vector[single_line_idx]
+    content <- gsub(paste0(".*", start_tag, "(.+)", end_tag, ".*"), "\\1", line_content)
+    return(content)
+  }
+  
+  # Handle multi-line case
+  first_start <- start_indices[1]+1
+  first_end <- end_indices[end_indices > first_start][1]-1
+  
+  if (is.na(first_end)) {
+    return(NULL)
+  }
 
-extract_cessation <- function(vector) {
-  cessation <- extract_tag(vector, "<CESSATION_YR>", "</CESSATION_YR>")
-  return(cessation[2])
+  return(vector[first_start:first_end])
 }
 
 get_run_details <- function(file_path) {
   vector <- readLines(file_path)
-  run <- extract_run(vector)
-  cessation <- extract_cessation(vector)
+  run <- extract_tag(vector, "RUN")
+  cessation <- extract_tag(vector, "CESSATION_YR")
   return(list(run = run, cessation = cessation))
 }
 
@@ -86,7 +102,6 @@ dir.create("../inputs")
 dir.create("../outputs")
 
 outputs_folder <- "../outputs"
-
 MT_output_A <- generate_output("MersenneTwister", 1950, 0, outputs_folder)
 MT_fixture_A <- get_run_details(test_path("../fixtures/MT/yob_1950_cessation_0.txt"))
 
@@ -169,20 +184,21 @@ test_that("Comparison between runSimFromDataFrame and runSimFromFixedValues for 
 
 test_that("Invalid input configuration path fails with proper error message", {
   input_filepath <- "file_does_not_exist.txt"
-  expect_warning(shg$LegacyRunWebVersion(input_filepath), "Input file 'file_does_not_exist.txt' could not be opened for reading.")
+  expect_error(shg$LegacyRunWebVersion(input_filepath), "The specified input file 'file_does_not_exist.txt' could not be opened for reading.")
 })
 
-test_that("Invalid input parameter path fails with proper error message", {
+test_that("Invalid input parameter path (eg initiation) fails with proper error message", {
+  # Test when initiation input file doesn't exist
   template_path <- readLines("../templates/test_input_example_incorrect_init_path.txt")
   input_filepath <- write_input_file_from_template(template_path, "MersenneTwister", 1950, 0, data_folder, outputs_folder)
-  expect_warning(shg$LegacyRunWebVersion(input_filepath), "^SimException: Error: The specified Initiation/Cessation input file")
+  expect_warning(shg$LegacyRunWebVersion(input_filepath), "^SimException: Error: The specified input file")
 })
 
 test_that("Invalid output path fails with proper error message", {
   template_path <- readLines("../templates/test_input_example.txt")
   outputs_folder <- "folder_does_not_exist"
   input_filepath <- write_input_file_from_template(template_path, "MersenneTwister", 1950, 0, data_folder, outputs_folder)
-  expect_warning(shg$LegacyRunWebVersion(input_filepath), "Specified error file: 'folder_does_not_exist/test_errors_MersenneTwister_1950_0.txt' could not be opened for writing.")
+  expect_error(shg$LegacyRunWebVersion(input_filepath), "Specified error file: 'folder_does_not_exist/test_errors_MersenneTwister_1950_0.txt' could not be opened for writing.")
 })
 
 # TODO: Compare Legacy tests with runSimFromFixedValues(): requires parsing of results

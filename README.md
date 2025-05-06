@@ -168,4 +168,4 @@ Funding for the CISNET Smoking History Generator and its Rcpp wrapper came from 
 - Grant 3
 
 ## License
-This package is released under the [GPL-3]((https://choosealicense.com/licenses/gpl-3.0/)), as is the [Smoking History Generator](https://github.com/CSNW/smoking-history-generator) C++ source code.
+This package is released under the [GPL-3]((https://choosealicense.com/licenses/gpl-3.0/)), as is the [Smoking History Generator](https://github.com/NCI-CISNET/shg-cli) C++ source code.

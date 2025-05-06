@@ -24,12 +24,12 @@ results <- benchmark(
     counter <- counter + 1
     cat('Running SIM_RSTREAM_PARALLEL, count:', counter, '\n')
     shg <- new(SHGInterface) # Class
-    RSTREAM_SIM <- shg$runSim(N, 0, 0, 1950)
+    RSTREAM_SIM <- shg$runSimFromFixedValues(N, 0, 0, 1950)
   },
   SIM_MT = {
     #shg$setRNGtype("MT")
     shg <- new(SHGInterface) # Class
-    MT_SIM <- shg$runSim(N, 0, 0, 1940)
+    MT_SIM <- shg$runSimFromFixedValues(N, 0, 0, 1940)
   },
   smokingHxGen = {
     pop <-

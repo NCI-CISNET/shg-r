@@ -1,6 +1,6 @@
 // CISNET (www.cisnet.cancer.gov)
-// Lung Cancer Base Case Group
-// Smoking History Simulation Application
+// CISNET Lung Cancer Group
+// Smoking History Generator
 // Application to Simulate Initiation and Cessation Ages of individuals based on sex, race and year of birth.
 // File: main.cpp
 // Author: Martin Krapcho & Ben Racine
@@ -37,9 +37,14 @@
 #include "sim_exception.h"
 #include "rng_strategy.h"
 
-#define MAX(x) (std::numeric_limits<x>::max())
+#ifdef IS_RCPP
+  #include <Rcpp.h>
+#endif
 
-#define DEFAULT_DATA_DIR const_cast<char*>("data/2017-05-03/")
+using namespace std;
+
+#define MAX(x) (std::numeric_limits<x>::max())
+#define DEFAULT_DATA_DIR const_cast<char*>("data/NHIS-1965-2016/")
 #define COUNTERFACTUAL_DATA_DIR const_cast<char*>("data/counterfactual_inputs_jan_2009/")
 
 // Input file names
@@ -49,13 +54,19 @@
 #define CPD_INTENSITY_PROBS "lbc_smokehist_cpdintensityprobs.txt"
 #define CPD_DATA_FILE "lbc_shg_cpd.txt"
 
+#define MT_INIT_SEED_DEFAULT "1898587603"
+#define MT_CESS_SEED_DEFAULT "1468371936"
+#define MT_OCD_SEED_DEFAULT "1551308340"
+#define MT_MISC_SEED_DEFAULT "1590227640"
+
+const unsigned long RNGSTREAM_SEED_DEFAULT[6] = {12345, 12345, 12345, 12345, 12345, 12345};
+
 #define VECTOR_DELIMITER ","
 #define MAX_NUM_REPS 10000000
 #define ERROR_MESSAGE_SIZE 1000
-using namespace std;
 
 const char* VERSION_NUM = "6.4.0";
-std::string gInputFileName;
+string gInputFileName;
 bool gWithHoldTags = false;
 
 const short wMIN_IMMEDIATE_CESSATION_YEAR = 1910;  // Minimum Year Value that can be used as the Immediatte Cessation Year
@@ -86,7 +97,8 @@ bool ValidateParameters(char*, char*, char*, char*, char*, char*, char*, char*, 
 void WriteInputTag(FILE* , char*, char*, const char*, const char*);
 void WriteRunInfoTag(FILE*, const char*, const char*, const char*, const char*,
                      const char*, const char*, const char*, const char*, const char*,
-                     const char*, const char*, const char*, const char*, const char*);
+                     const char*, const char*, const char*, const char*, const char*, const char*);
+string RngStreamToString(unsigned long arr[], int length);
 
 // Removing the main() function for RCPP because it is unwanted
 // But we include all the other methods and variables to avoid DRY violations in the Rcpp wrapper
@@ -96,7 +108,6 @@ int main(int argc, char* argv[]) {
 	char sErrorMessage[1000];
 	int iReturnValue;
    FILE* pHelpFile = 0;
-
    switch (argc) {
 
       // No input parameters, run the user-interface version
@@ -162,12 +173,10 @@ int main(int argc, char* argv[]) {
             iReturnValue = 1;
          } 
          break;
-
       default:
    		Usage();
          break;
       }
-
    return iReturnValue;
 }
 #endif
@@ -182,12 +191,12 @@ char* AssignFilename(const char* sDirectory, const char * sFilename) {
       sFullFilePath[iCurrIndex] = sDirectory[i];
       iCurrIndex++;
    }
-   #ifdef WIN32  // windows code goes here
+   #ifdef WIN32
       if (sFullFilePath[iCurrIndex-1] != '\\') {
          sFullFilePath[iCurrIndex] = '\\';
          iCurrIndex++;
       }
-   #else // unix code goes here
+   #else // posix
       if (sFullFilePath[iCurrIndex-1] != '/') {
          sFullFilePath[iCurrIndex] = '/';
          iCurrIndex++;
@@ -206,7 +215,6 @@ short CountVectorValues(char* sDataString) {
    short wReturnValue = 0;
    char  *pTokenPtr = 0,
          *sBuffer   = 0;
-         //size_t i;
 
    if (sDataString != NULL) {  // Designed so that the ERStatus string will count as 1 if missing
       sBuffer = new char[strlen(sDataString)+1];
@@ -453,7 +461,7 @@ void RunInterface() {
    bValidInput         = false;
    PrintMessageFormatted("\nRandom Number Generator Seeds:\n");
    PrintMessage("Please enter a seed for the PRNG that generates Initiation Probabilities.\n");
-   PrintMessageFormatted("Seed should be in range 0 - %ld.\n:",MAX(long));
+   PrintMessageFormatted("Seed should be in range 0 - %ld.\n:", MAX(long));
    while (!bValidInput)
       {
       GetInput(sInputChar, 10);
@@ -463,12 +471,12 @@ void RunInterface() {
          }
       else
          PrintMessageFormatted("\n\"%s\" - Invalid Input.\nPlease enter a value in range 0 - %ld.\n:",
-                 sInputChar, MAX(long));
+                 sInputChar,MAX(long));
       }
 
    bValidInput = false;
    PrintMessage("Please enter a seed for the PRNG that generates Cessation Probabilities.\n");
-   PrintMessageFormatted("Seed should be in range 0 - %ld.\n:",MAX(long));
+   PrintMessageFormatted("Seed should be in range 0 - %ld.\n:", MAX(long));
    while (!bValidInput) {
       GetInput(sInputChar, 20);
       if (IsPosLongInt(sInputChar)) {
@@ -482,7 +490,7 @@ void RunInterface() {
 
    bValidInput = false;
    PrintMessage("Please enter a seed for the PRNG that generates \nnon-lung cancer death probabilities.\n");
-   PrintMessageFormatted("Seed should be in range 0 - %ld.\n:",MAX(long));
+   PrintMessageFormatted("Seed should be in range 0 - %ld.\n:", MAX(long));
    while (!bValidInput) {
       GetInput(sInputChar, 20);
       if (IsPosLongInt(sInputChar))
@@ -508,7 +516,7 @@ void RunInterface() {
       }
       else {
          PrintMessageFormatted("\n\"%s\" - Invalid Input.\nPlease enter a value in range 0 - %ld.\n:",
-                 sInputChar, MAX(long));
+                 sInputChar,MAX(long));
       }
    }
    bValidInput = false;
@@ -682,7 +690,7 @@ void RunInterface() {
       }
    catch (SimException ex) {
       PrintMessage("Internal error occurred\n");
-      PrintMessageFormatted("Error : %s\n", ex.GetError());
+      PrintMessageFormatted("Error : '%s'\n", ex.GetError());
       getc(stdin);
    } catch (...) {
       PrintMessage("Unknown Error Occurred\n");
@@ -706,10 +714,11 @@ int RunWebVersion(const char * sInputFileName)
         bUseNumReps = false;
 
    char sInputLine[1000],
-        sMessage[1000],
         *sErrorFile      = 0,
+        sErrorMessage[1000],
         *sRNGStrategy    = 0,
         *sInputBuffer    = 0,
+        *sRngStreamSeed = 0,
         *sFILE_InitProb  = 0, // Datafile - Initiation Probabilities
         *sFILE_CessProb  = 0, // Datafile - Cessation Probabilities
         *sFILE_OCDProb   = 0, // Datafile - Life Table (Probability of Dying from Cause other than Lung Cancer)
@@ -743,7 +752,9 @@ int RunWebVersion(const char * sInputFileName)
          lSeed_OCD,
          lSeed_Misc,
          j;
-   unsigned long rngStreamSeed[6] =  {12345, 12345, 12345, 12345, 12345, 12345};
+   unsigned long rngStreamSeed[6];
+   memcpy(rngStreamSeed, RNGSTREAM_SEED_DEFAULT, sizeof(RNGSTREAM_SEED_DEFAULT));
+   char *sFinalRngStreamSeed = strdup("12345,12345,12345,12345,12345,12345");
 
    short wValuesPerParam[4],
          wMaxNumPerParam,
@@ -752,13 +763,16 @@ int RunWebVersion(const char * sInputFileName)
    Smoking_Simulator *pSimulator = 0;
 
    gInputFileName = sInputFileName;
-
-   pInputFile = fopen(sInputFileName,"r");
-
+   pInputFile = fopen(sInputFileName, "r");
+   
    if (pInputFile == NULL) {
-      // Due to Rcpp not allowing variadic functions, we use snprintf to do substitution
-      snprintf(sMessage, 1000, "Input file '%s' could not be opened for reading.\n", sInputFileName);
-      PrintError(sMessage);
+      // Config input file
+      snprintf(sErrorMessage, sizeof(sErrorMessage), "The specified input file '%s' could not be opened for reading.\n", sInputFileName);
+      #ifdef IS_RCPP 
+        Rcpp::stop(sErrorMessage); // Warning in R?
+      #else
+        PrintError(sErrorMessage);
+      #endif
       bRunApp = false;
    }
    
@@ -1000,18 +1014,18 @@ int RunWebVersion(const char * sInputFileName)
          // Only one seed is requred for RngStream because it uses substreams to generate multiple (IID) streams
          if (strstr(Str_toupper(sInputBuffer), "RNGSTREAM_SEED=") != NULL) {
             iIndexLength = strlen("RNGSTREAM_SEED=");
-            char* seedString = new char[(iStringLength - iIndexLength) + 1];
+            sRngStreamSeed = new char[(iStringLength - iIndexLength) + 1];
             iCurrIndex = 0;
             for (i = 0; i < (iStringLength - iIndexLength); i++) {
                if (sInputLine[i + iIndexLength] != ' ') {
-                     seedString[iCurrIndex] = sInputLine[i + iIndexLength];
+                     sRngStreamSeed[iCurrIndex] = sInputLine[i + iIndexLength];
                      iCurrIndex++;
                }
             }
-            seedString[iCurrIndex] = '\0';
+            sRngStreamSeed[iCurrIndex] = '\0';
 
             // Parse the comma-delimited string into an array of 6 unsigned long integers
-            char* token = strtok(seedString, ",");
+            char* token = strtok(sRngStreamSeed, ",");
             int index = 0;
             while (token != NULL && index < 6) {
                rngStreamSeed[index] = atoi(token);
@@ -1026,9 +1040,9 @@ int RunWebVersion(const char * sInputFileName)
                // Handle error appropriately (e.g., set a flag, exit, etc.)
             }
 
-            delete[] seedString;
+            delete[] sRngStreamSeed;
          }
-
+         
          if (strstr(Str_toupper(sInputBuffer), "CESSATION_YR=") != NULL) {
             iIndexLength = strlen("CESSATION_YR=");
             sImmediateCess = new char[(iStringLength - iIndexLength)+1];
@@ -1054,77 +1068,78 @@ int RunWebVersion(const char * sInputFileName)
 
       // Check for the error file string, open it if it exists, otherwise, open the default error file
       if (sErrorFile == NULL) {
-         // Due to Rcpp not allowing variadic functions, we use snprintf to do substitution
-         snprintf(sMessage, 1000, "Name for Error log file was not found in input file: %s", sInputFileName);
-         PrintMessage(sMessage);
+         PrintMessageFormatted("Name for Error log file was not found in input file: %s", sInputFileName);
          bRunApp = false;
       } else {
          pErrorStream = fopen(sErrorFile,"w");
       }
 
       if (sRNGStrategy == NULL) {   
-         //PrintMessage("Using default random number strategy of Mersenne Twister because none was specified in input file: %s\n", sInputFileName);
-          sRNGStrategy = const_cast<char*>("MersenneTwister");
+          sRNGStrategy = strdup("RngStream"); //strdup(DEFAULT_RNG_STRATEGY) not allowed
       }
       
       else if (strcmp(sRNGStrategy, "MersenneTwister") == 0) {
          //PrintMessage("Using Mersenne Twister random number generator strategy.\n");
       }
-      else if (strcmp(sRNGStrategy, "RngStream") == 0) {
+      else if (strcmp(sRNGStrategy, "RngStream") == 0 ) {
          //PrintMessage("Using RngStream random number generator strategy.\n");
       }
+      else if (sRNGStrategy == nullptr || strlen(sRNGStrategy) == 0) {
+         sRNGStrategy = strdup("RngStream"); 
+         //PrintMessage("Using default (RngStream) random number generator strategy.\n");
+      }
       else {
-         // Due to Rcpp not allowing variadic functions, we use snprintf to do substitution
-         snprintf(sMessage, 1000, "The specified RNG strategy is invalid: %s\n", sRNGStrategy);
-         PrintError(sMessage);
+         PrintError("The specified RNG strategy is invalid: '%s'\n", sRNGStrategy);
          bRunApp = false;
       }
 
       if (bRunApp && pErrorStream == NULL) {
-         // Due to Rcpp not allowing variadic functions, we use snprintf to do substitution
-         snprintf(sMessage, 1000, "Specified error file: '%s' could not be opened for writing.\n", sErrorFile);
-         PrintError(sMessage);
+         // Due to Rcpp not allowing variadic functions, we use snprintf to do substitution ***
+         PrintError(sErrorMessage);
+         snprintf(sErrorMessage, 1000, "Specified error file: '%s' could not be opened for writing.\n", sErrorFile);
+         #ifdef IS_RCPP 
+           Rcpp::stop(sErrorMessage); // Warning in R?
+         #endif
          bRunApp = false;
       }
    } 
-
    if (bRunApp) {
       // Make sure all necessary values were received
         if (strcmp(sRNGStrategy, "MersenneTwister") == 0) {
          // Check MT Seeds
          if (sSEED_Init == NULL) {
-            WriteToFile(pErrorStream,"\n<ERROR>\nSeed for Initiation PRNG was not found in input file: %s\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
-                  sInputFileName);
-            bRunApp = false;
-         } else if (!IsValidSeed(sSEED_Init)) {
-            WriteToFile(pErrorStream,"\n<ERROR>\nInvalid Initiation PRNG Seed: %s found in input file: %s\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
+            sSEED_Init = strdup(MT_INIT_SEED_DEFAULT);
+         } 
+         if (!IsValidSeed(sSEED_Init)) {
+            WriteToFile(pErrorStream,"\n<ERROR>\nInvalid Initiation Seed: '%s' found in input file: '%s'\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
                   sSEED_Init,sInputFileName);
             bRunApp = false;
          }
          if (sSEED_Cess == NULL) {
-            WriteToFile(pErrorStream,"\n<ERROR>\nSeed for Cessation PRNG was not found in input file: %s\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
-                  sInputFileName);
-            bRunApp = false;
-         } else if (!IsValidSeed(sSEED_Cess)) {
-            WriteToFile(pErrorStream,"\n<ERROR>\nInvalid Cessation PRNG Seed: %s found in input file: %s\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
+            // TODO: Check this as potential source of error; should consider using string everywhere
+            PrintMessage("Using default Cessation Seed\n");
+            sSEED_Cess = strdup(MT_CESS_SEED_DEFAULT);
+         }
+
+         if (!IsValidSeed(sSEED_Cess)) {
+            WriteToFile(pErrorStream,"\n<ERROR>\nInvalid Cessation Seed: '%s' found in input file: '%s'\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
                   sSEED_Cess,sInputFileName);
             bRunApp = false;
          }
          if (sSEED_OCD == NULL) {
-            WriteToFile(pErrorStream,"\n<ERROR>\nSeed for OCD PRNG was not found in input file: %s\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
-                  sInputFileName);
-            bRunApp = false;
-         } else if (!IsValidSeed(sSEED_OCD)) {
-            WriteToFile(pErrorStream,"\n<ERROR>\nInvalid OCD PRNG Seed: %s found in input file: %s\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
+            sSEED_OCD = strdup(MT_OCD_SEED_DEFAULT);
+
+         }
+         if (!IsValidSeed(sSEED_OCD)) {
+            WriteToFile(pErrorStream,"\n<ERROR>\nInvalid OCD Seed: '%s' found in input file: '%s'\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
                   sSEED_OCD,sInputFileName);
             bRunApp = false;
          }
          if (sSEED_Misc == NULL) {
-            WriteToFile(pErrorStream,"\n<ERROR>\nSeed for Miscellaneous PRNG was not found in input file: %s\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
-                  sInputFileName);
-            bRunApp = false;
-         } else if (!IsValidSeed(sSEED_Misc)) {
-            WriteToFile(pErrorStream,"\n<ERROR>\nInvalid Miscellaneous PRNG Seed: %s found in input file: %s\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
+            sSEED_Misc = strdup(MT_MISC_SEED_DEFAULT);
+         }
+         if (!IsValidSeed(sSEED_Misc)) {
+            WriteToFile(pErrorStream,"\n<ERROR>\nInvalid Miscellaneous Seed: '%s' found in input file: '%s'\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
                   sSEED_Misc,sInputFileName);
             bRunApp = false;
          }
@@ -1132,51 +1147,51 @@ int RunWebVersion(const char * sInputFileName)
 
       // Check Files
       if (sFILE_InitProb == NULL) {
-         WriteToFile(pErrorStream,"\n<ERROR>\nInitiation Probabilities file was not found in input file: %s\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
+         WriteToFile(pErrorStream,"\n<ERROR>\nInitiation Probabilities file was not found in input file: '%s'\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
                  sInputFileName);
          bRunApp = false;
       }
       if (sFILE_CessProb == NULL) {
-         WriteToFile(pErrorStream,"\n<ERROR>\nCessation Probabilities file was not found in input file: %s\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
+         WriteToFile(pErrorStream,"\n<ERROR>\nCessation Probabilities file was not found in input file: '%s'\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
                  sInputFileName);
          bRunApp = false;
       }
       if (sFILE_OCDProb == NULL) {
-         WriteToFile(pErrorStream,"\n<ERROR>\nOCD Probabilities file was not found in input file: %s\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
+         WriteToFile(pErrorStream,"\n<ERROR>\nOCD Probabilities file was not found in input file: '%s'\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
                  sInputFileName);
          bRunApp = false;
       }
       if (sFILE_CPDData == NULL) {
-         WriteToFile(pErrorStream,"\n<ERROR>\nCPD Data file was not found in input file: %s\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
+         WriteToFile(pErrorStream,"\n<ERROR>\nCPD Data file was not found in input file: '%s'\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
                  sInputFileName);
          bRunApp = false;
       }
       if (sOutputFile == NULL) {
-         WriteToFile(pErrorStream,"\n<ERROR>\nOutput file was not found in input file: %s\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
+         WriteToFile(pErrorStream,"\n<ERROR>\nOutput file was not found in input file: '%s'\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
                  sInputFileName);
          bRunApp = false;
       }
 
       // Check parameters
       if (sPARAM_Sex == NULL) {
-         WriteToFile(pErrorStream,"\n<ERROR>\nSex value(s) was not found in input file: %s\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
+         WriteToFile(pErrorStream,"\n<ERROR>\nSex value(s) was not found in input file: '%s'\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
                  sInputFileName);
          bRunApp = false;
       }
       if (sPARAM_Race == NULL) {
-         WriteToFile(pErrorStream,"\n<ERROR>\nRace value(s) was not found in input file: %s\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
+         WriteToFile(pErrorStream,"\n<ERROR>\nRace value(s) was not found in input file: '%s'\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
                  sInputFileName);
          bRunApp = false;
       }
       if (sPARAM_YOB == NULL) {
-         WriteToFile(pErrorStream,"\n<ERROR>\nYear of Birth value(s) was not found in input file: %s\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
+         WriteToFile(pErrorStream,"\n<ERROR>\nYear of Birth value(s) was not found in input file: '%s'\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
                  sInputFileName);
          bRunApp = false;
       }
 
       // Check the optional sPARAM_NumReps value if we are not using a vector
       if (sPARAM_NumReps != NULL && !bHaveVectorValues && !IsValidNumReps(sPARAM_NumReps)) {
-         WriteToFile(pErrorStream, "\n<ERROR>\nInvalid Number of Repetitions: %s,\n Value must be a positive integer with a max value of %d.\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
+         WriteToFile(pErrorStream, "\n<ERROR>\nInvalid Number of Repetitions: %s,\nValue must be a positive integer with a max value of %d.\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
           sPARAM_NumReps, MAX_NUM_REPS);
          bRunApp = false;
       } 
@@ -1208,32 +1223,33 @@ int RunWebVersion(const char * sInputFileName)
       wValuesPerParam[2] = CountVectorValues(sPARAM_YOB);
       wValuesPerParam[3] = CountVectorValues(sPARAM_NumReps);
       wMaxNumPerParam = 1;
-      for (i=0; i < 4; i++) {
-         // TODO: Review warning about parenthesis here (probably need brackets around the second part of the condition)
-      	if ((wValuesPerParam[i] > wMaxNumPerParam) && 
-             ((wMaxNumPerParam > 1) || 
-             (wMaxNumPerParam > 1 && 
-              (wValuesPerParam[i] != wMaxNumPerParam && wValuesPerParam[i] > 1)))) {
 
+      // First find the maximum number of vector values
+      wMaxNumPerParam = 1;
+      for (i=0; i < 4; i++) {
+         if (wValuesPerParam[i] > wMaxNumPerParam) {
+            wMaxNumPerParam = wValuesPerParam[i];
+         }
+      }
+      // Then verify all non-single values match the maximum
+      for (i=0; i < 4; i++) {
+         if (wValuesPerParam[i] > 1 && wValuesPerParam[i] != wMaxNumPerParam) {
             bRunApp = false;
             WriteToFile(pErrorStream, "\n<ERROR>");
             WriteToFile(pErrorStream, "\nInvalid use of vector values in the input file.");
             WriteToFile(pErrorStream, "\nIf vector values are used for more than 1 variable,");
             WriteToFile(pErrorStream, "\nthe same number of values must be supplied for each variable.");
             WriteToFile(pErrorStream, "\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n");
-	      } else if (wValuesPerParam[i] > wMaxNumPerParam) {
-	         wMaxNumPerParam = wValuesPerParam[i];
-	      }
-	   } // end for
-   } // end if (bRunApp && bHaveVectorValues)
+         }
+      }
+   }
 
    if (bRunApp) {
-      
       if (sSEED_Init == NULL || atol(sSEED_Init) == -1)
          lSeed_Init = time(0);
-      else
+      else {
          lSeed_Init = atol(sSEED_Init);
-
+      }
       if (sSEED_Cess == NULL || atol(sSEED_Cess) == -1)
          lSeed_Cess = time(0);
       else
@@ -1270,20 +1286,18 @@ int RunWebVersion(const char * sInputFileName)
             pSimulator->setRNGStrategy(new MersenneTwisterRNG(lSeed_Init, lSeed_Cess, lSeed_OCD, lSeed_Misc));
          }
          else {
-            WriteToFile(pErrorStream, "\n<ERROR>\nInvalid RNG Strategy: %s\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n", sRNGStrategy);
+            WriteToFile(pErrorStream, "\n<ERROR>\nInvalid RNG Strategy: '%s'\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n", sRNGStrategy);
             bRunApp = false;
          }
-
-         // Measure & build input data string
          if (!gWithHoldTags) {
             WriteRunInfoTag(pOutStream, VERSION_NUM, sSEED_Init, sSEED_Cess, sSEED_OCD,
                          sSEED_Misc, sImmediateCess, sFILE_InitProb, sFILE_CessProb, sFILE_OCDProb,
-                         sFILE_Quintiles, sFILE_CPDData, sOutputFile, sErrorFile, sRNGStrategy);
+                         sFILE_Quintiles, sFILE_CPDData, sOutputFile, sErrorFile, sRNGStrategy, sFinalRngStreamSeed);
          }
 
       } catch (SimException ex) {
-	      WriteToFile(pErrorStream, "\n<ERROR>\n%s\n</ERROR>\n", ex.GetError());
-         WriteToFile(pErrorStream, "<CALLPATH>\n%s\n</CALLPATH>", ex.GetCallPath());
+	      WriteToFile(pErrorStream, "\n<ERROR>%s</ERROR>\n", ex.GetError());
+         WriteToFile(pErrorStream, "<CALLPATH>%s</CALLPATH>", ex.GetCallPath());
          bRunApp = (ex.GetType() == SimException::NON_FATAL);
       }
    }
@@ -1318,7 +1332,6 @@ int RunWebVersion(const char * sInputFileName)
             if (!gWithHoldTags) {
                WriteToFile(pOutStream, "<RUN>\n");
             }
-
             if (bUseNumReps && !IsValidNumReps(sVecValues[3])) {
 	            WriteToFile(pErrorStream, "\n<ERROR>\nInvalid Number of Repetitions: %s, \n Value must be a positive integer with a max value of %d.\n</ERROR>", sVecValues[3], MAX_NUM_REPS);
                WriteToFile(pErrorStream, "\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>");
@@ -1330,8 +1343,8 @@ int RunWebVersion(const char * sInputFileName)
                      pSimulator->RunSimulationSingle(atoi(sVecValues[0]), atoi(sVecValues[1]),
                                                atoi(sVecValues[2]), pOutStream);
                   } catch (SimException ex) {
-            	      WriteToFile(pErrorStream,"\n<ERROR>\n%s\n</ERROR>\n",ex.GetError());
-                     WriteToFile(pErrorStream,"<CALLPATH>\n%s\n</CALLPATH>",ex.GetCallPath());
+            	      WriteToFile(pErrorStream,"\n<ERROR>%s</ERROR>\n",ex.GetError());
+                     WriteToFile(pErrorStream,"<CALLPATH>%s</CALLPATH>",ex.GetCallPath());
                      bRunApp = (ex.GetType() == SimException::NON_FATAL);
                      WriteToFile(pOutStream,"<RESULT>\nERROR\n</RESULT>\n");
                   }
@@ -1342,8 +1355,8 @@ int RunWebVersion(const char * sInputFileName)
                   pSimulator->RunSimulationSingle(atoi(sVecValues[0]), atoi(sVecValues[1]),
                                             atoi(sVecValues[2]), pOutStream);
                } catch (SimException ex) {
-           	      WriteToFile(pErrorStream,"\n<ERROR>\n%s\n</ERROR>\n",ex.GetError());
-                  WriteToFile(pErrorStream,"<CALLPATH>\n%s\n</CALLPATH>",ex.GetCallPath());
+           	      WriteToFile(pErrorStream,"\n<ERROR>%s</ERROR>\n",ex.GetError());
+                  WriteToFile(pErrorStream,"<CALLPATH>%s</CALLPATH>",ex.GetCallPath());
                   bRunApp = (ex.GetType() == SimException::NON_FATAL);
                   WriteToFile(pOutStream,"<RESULT>\nERROR\n</RESULT>\n");
                }
@@ -1361,8 +1374,8 @@ int RunWebVersion(const char * sInputFileName)
             try {
                pSimulator->RunSimulationSingle(atoi(sPARAM_Race),atoi(sPARAM_Sex),atoi(sPARAM_YOB),pOutStream);
             } catch(SimException ex) {
-        	      WriteToFile(pErrorStream,"\n<ERROR>\n%s\n</ERROR>\n",ex.GetError());
-               WriteToFile(pErrorStream,"<CALLPATH>\n%s\n</CALLPATH>",ex.GetCallPath());
+        	      WriteToFile(pErrorStream,"\n<ERROR>%s</ERROR>\n",ex.GetError());
+               WriteToFile(pErrorStream,"<CALLPATH>%s</CALLPATH>",ex.GetCallPath());
                bRunApp = (ex.GetType() == SimException::NON_FATAL);
                WriteToFile(pOutStream,"<RESULT>\nERROR\n</RESULT>\n");
             }
@@ -1378,21 +1391,22 @@ int RunWebVersion(const char * sInputFileName)
             if (!gWithHoldTags)
                WriteToFile(pOutStream,"</RUN>\n</SIMULATION>\n");
          } catch (SimException ex) {
-            WriteToFile(pErrorStream,"\n<ERROR>\n%s\n</ERROR>\n",ex.GetError());
-            WriteToFile(pErrorStream,"<CALLPATH>\n%s\n</CALLPATH>",ex.GetCallPath());
+            WriteToFile(pErrorStream,"\n<ERROR>%s</ERROR>\n",ex.GetError());
+            WriteToFile(pErrorStream,"<CALLPATH>%s</CALLPATH>",ex.GetCallPath());
             bRunApp = (ex.GetType() == SimException::NON_FATAL);
             WriteToFile(pOutStream,"<RESULT>\nERROR\n</RESULT>\n");
             WriteToFile(pOutStream,"</RUN>\n</SIMULATION>\n");
          }
       }
    }
-
    if (pOutStream != NULL)
       fclose(pOutStream);
+   
 
    if (pErrorStream != NULL) {
+
       fclose(pErrorStream);
-      std::ifstream errorFile(sErrorFile, std::ios::binary | std::ios::ate);
+      ifstream errorFile(sErrorFile, ios::binary | ios::ate);
       long fileSize = errorFile.tellg();
       errorFile.close();
       if (fileSize == 0) {
@@ -1402,33 +1416,30 @@ int RunWebVersion(const char * sInputFileName)
    // JC: it seems wrong to return 1 when bRunApp==True (indicating a normal execution)
    // However, it was that way for a long time, so I'm not sure if it was intentional
    // TODO: Review this and make sure it's correct
-   if (bRunApp) {
+   if (bRunApp)
       iReturnValue = 0;
-   }
-   else {
-      PrintMessage("Aborted RunWebVersion() request.\n");
+   else
       iReturnValue = 1;
-   }
 
    delete [] sErrorFile;
-   //delete sRNGStrategy;
+   delete [] sRNGStrategy;
    delete [] sInputBuffer;
    delete [] sFILE_InitProb;
    delete [] sFILE_CessProb;
    delete [] sFILE_OCDProb;
    delete [] sFILE_Quintiles;
    delete [] sFILE_CPDData;
-   delete [] sSEED_Init;
-   delete [] sSEED_Cess;
-   delete [] sSEED_OCD;
-   delete [] sSEED_Misc;
+   free(sSEED_Init);
+   free(sSEED_Cess);
+   free(sSEED_OCD);
+   free(sSEED_Misc);
    delete [] sOutputFile;
    delete [] sImmediateCess;
    delete [] sPARAM_Sex;
    delete [] sPARAM_Race;
    delete [] sPARAM_YOB;
    delete [] sPARAM_NumReps;
-   delete    pSimulator;
+   delete pSimulator;
 
    return iReturnValue;
 }
@@ -1557,7 +1568,7 @@ bool ValidateParameters(char* sInitiationSeed, char* sCessationSeed, char* sOthe
          fclose(pTestInputStream);
       }
 		if (bReturnValue && pTestOutputStream == NULL) {
-         snprintf(sErrorMessage, 1000, "Output File '%s' could not be opened for writing.\n", sOutputFile);
+         snprintf(sErrorMessage, 1000, "Output File %s could not be opened for writing.\n", sOutputFile);
          bReturnValue = false;
 	  	}
 		if (pTestOutputStream != NULL) {
@@ -1568,33 +1579,38 @@ bool ValidateParameters(char* sInitiationSeed, char* sCessationSeed, char* sOthe
 }
 
 //Writes out tagged information about the program to pOutStream
-void WriteRunInfoTag(FILE* pOutStream, const char* sVersion, const char* sInitSeed,
+void WriteRunInfoTag(FILE* pOutStream, const char* sVersion, const char* sInitiationSeed,
                      const char* sCessSeed, const char* sOCDSeed, const char* sMiscSeed,
                      const char* sImmediateCessYear, const char* sInitFile, const char* sCessFile,
                      const char* sOCDProbFile, const char* sQuintilesFile, const char* sCPDDataFile,
-                     const char* sOutputFile, const char* sErrorFile, const char* sRNGStrategy) {
-
+                     const char* sOutputFile, const char* sErrorFile, const char* sRNGStrategy, 
+                     const char* sRngStreamSeed) {
    if (pOutStream == NULL)
       throw SimException("WriteRunInfoTag()::ERROR","Output stream is not initialized.\n");
 
    WriteToFile(pOutStream,"<RUNINFO>\n");
-   WriteToFile(pOutStream,"<VERSION>\n%s\n</VERSION>\n", sVersion);
-   WriteToFile(pOutStream,"<SEEDS>\n<INIT_PRNG_SEED>\n%s\n</INIT_PRNG_SEED>\n", sInitSeed);
-   WriteToFile(pOutStream,"<CESS_PRNG_SEED>\n%s\n</CESS_PRNG_SEED>\n", sCessSeed);
-   WriteToFile(pOutStream,"<OCD_PRNG_SEED>\n%s\n</OCD_PRNG_SEED>\n", sOCDSeed);
-   WriteToFile(pOutStream,"<MISC_PRNG_SEED>\n%s\n</MISC_PRNG_SEED>\n</SEEDS>\n", sMiscSeed);
+   WriteToFile(pOutStream,"<VERSION>%s</VERSION>\n", sVersion);
+   WriteToFile(pOutStream,"<RNGSTRATEGY>%s</RNGSTRATEGY>\n", sRNGStrategy);
+   WriteToFile(pOutStream,"<SEEDS>\n");
+   if (strcmp(sRNGStrategy, "MersenneTwister") == 0) {
+      WriteToFile(pOutStream,"<INIT_PRNG_SEED>%s</INIT_PRNG_SEED>\n", sInitiationSeed);
+      WriteToFile(pOutStream,"<CESS_PRNG_SEED>%s</CESS_PRNG_SEED>\n", sCessSeed);
+      WriteToFile(pOutStream,"<OCD_PRNG_SEED>%s</OCD_PRNG_SEED>\n", sOCDSeed);
+      WriteToFile(pOutStream,"<MISC_PRNG_SEED>%s</MISC_PRNG_SEED>\n", sMiscSeed);
+   } else {
+      WriteToFile(pOutStream,"<RNGSTREAM_SEED>%s</RNGSTREAM_SEED>\n", sRngStreamSeed);
+   }
+   WriteToFile(pOutStream,"</SEEDS>\n");
    WriteToFile(pOutStream,"<DATAFILES>\n");
-   WriteToFile(pOutStream,"<INPUT_FILE>\n%s\n</INPUT_FILE>\n", gInputFileName.c_str());
-   WriteToFile(pOutStream,"<INITIATION>\n%s\n</INITIATION>\n", sInitFile);
-   WriteToFile(pOutStream,"<CESSATION>\n%s\n</CESSATION>\n", sCessFile);
-   WriteToFile(pOutStream,"<OCD>\n%s\n<OCD>\n", sOCDProbFile);
-   WriteToFile(pOutStream,"<CIG_PER_DAY>\n%s\n</CIG_PER_DAY>\n</DATAFILES>\n", sCPDDataFile);
-   WriteToFile(pOutStream,"<OUTFILES>\n<OUTPUT>\n%s\n</OUTPUT>\n", sOutputFile);
-   WriteToFile(pOutStream,"<ERRORS>\n%s\n</ERRORS>\n</OUTFILES>\n", sErrorFile);
-   WriteToFile(pOutStream,"<OPTIONS>\n<CESSATION_YR>\n%s\n</CESSATION_YR>\n", sImmediateCessYear);
-   WriteToFile(pOutStream,"<RNGSTRATEGY>\n%s\n</RNGSTRATEGY>\n", sRNGStrategy);
+   WriteToFile(pOutStream,"<INPUT_FILE>%s</INPUT_FILE>\n", gInputFileName.c_str());
+   WriteToFile(pOutStream,"<INITIATION>%s</INITIATION>\n", sInitFile);
+   WriteToFile(pOutStream,"<CESSATION>%s</CESSATION>\n", sCessFile);
+   WriteToFile(pOutStream,"<OCD>%s<OCD>\n", sOCDProbFile);
+   WriteToFile(pOutStream,"<CIG_PER_DAY>%s</CIG_PER_DAY>\n</DATAFILES>\n", sCPDDataFile);
+   WriteToFile(pOutStream,"<OUTFILES>\n<OUTPUT>%s</OUTPUT>\n", sOutputFile);
+   WriteToFile(pOutStream,"<ERRORS>%s</ERRORS>\n</OUTFILES>\n", sErrorFile);
+   WriteToFile(pOutStream,"<OPTIONS>\n<CESSATION_YR>%s</CESSATION_YR>\n", sImmediateCessYear);
    WriteToFile(pOutStream,"</OPTIONS>\n</RUNINFO>\n");
-
 }
 
 //Writes out tagged information about the current run to pOutStream
@@ -1614,20 +1630,20 @@ void WriteInputTag(FILE* pOutStream, char* sRace, char* sSex, const char* sYearO
          WriteToFile(pOutStream, "<INPUTS>\n");
 
          if (iRace >= 0 && iRace < Smoking_Simulator::NUM_RACES) {
-            WriteToFile(pOutStream, "<RACE>\n%s\n</RACE>\n", sRACE_LABELS[iRace]);
+            WriteToFile(pOutStream, "<RACE>%s</RACE>\n", sRACE_LABELS[iRace]);
          } else {
             WriteToFile(pOutStream, "<RACE>\n%d\n</RACE>\n", iRace);
          }
 
          if (iSex >= 0 && iSex < Smoking_Simulator::NUM_SEXES) {
-            WriteToFile(pOutStream,"<SEX>\n%s\n</SEX>\n", sSEX_LABELS[iSex]);
+            WriteToFile(pOutStream,"<SEX>%s</SEX>\n", sSEX_LABELS[iSex]);
          } else {
             WriteToFile(pOutStream,"<SEX>\n%d\n</SEX>\n", iSex);
          }
 
-         WriteToFile(pOutStream,"<YOB>\n%s\n</YOB>\n",sYearOfBirth);
+         WriteToFile(pOutStream,"<YOB>%s</YOB>\n",sYearOfBirth);
          if (sNumReps != NULL && (strcmp(sNumReps,"\0") != 0)) {
-            WriteToFile(pOutStream,"<REPEAT>\n%s\n</REPEAT>\n", sNumReps);
+            WriteToFile(pOutStream,"<REPEAT>%s</REPEAT>\n", sNumReps);
    	   }
          WriteToFile(pOutStream,"</INPUTS>\n");
       }
@@ -1689,18 +1705,33 @@ bool CreateDataFile(const char *sNumToSimulate, const char* sOutFileName, char* 
       } catch (SimException ex) {
          // * is replaced with 1000-1=999 characters to allow for the null terminator
          snprintf(sErrorMessage, ERROR_MESSAGE_SIZE, "%.*s", ERROR_MESSAGE_SIZE-1, ex.GetError());
-         delete pSimulator; pSimulator = 0;
+         if (pSimulator) {
+            delete pSimulator;
+            pSimulator = nullptr;
+         }
 		   bReturnValue = false;
    	} catch (...) {
          snprintf(sErrorMessage, ERROR_MESSAGE_SIZE, "Unknown Error Occurred\n");
-         delete pSimulator; pSimulator = 0;
+         delete pSimulator;
 		   bReturnValue = false;
    	}
    } else {
       snprintf(sErrorMessage, ERROR_MESSAGE_SIZE, "Invalid value: %s, supplied for number of simulations to run.\n", sNumToSimulate);
       bReturnValue = false;
    }
+   delete pSimulator;
 
-	delete pSimulator;
 	return bReturnValue;
+}
+
+string RngStreamToString(unsigned long arr[], int length) {
+   string sRngStream;
+   //int length = 6; // RngStream has 6 values
+   for (int i = 0; i < length; i++) {
+      sRngStream += to_string(arr[i]);
+      if (i < length - 1) {
+         sRngStream += ",";
+      }
+   }
+   return sRngStream;
 }

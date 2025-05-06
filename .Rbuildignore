@@ -18,3 +18,4 @@
 ^tools/update-shg-rcpp.py$
 ^\.lintr$
 ^CITATION\.cff$
+^\.venv/.*$
