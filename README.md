@@ -151,16 +151,40 @@ The Smoking History Generator CLI (Command Line Interface) was developed in the 
 ## Publications
 Multiple manuscripts based on the Smoking History Generator have been published over the years.
 
-- [Tobacco Control and the Reduction in Smoking-Related Premature Deaths in the United States, 1964-2012](https://resources.cisnet.cancer.gov/projects/#shg/tcpd)
-- [Patterns of Birth Cohort-Specific Smoking Histories, 1965-2009](https://resources.cisnet.cancer.gov/projects/#shg/tce)
-- [Public Health Implications of Raising the Minimum Age of Legal Access to Tobacco Products](https://resources.cisnet.cancer.gov/projects/#shg/iomr)
-- [Smoking and Lung Cancer Mortality in the United States From 2015 to 2065: A Comparative Modeling Approach](https://resources.cisnet.cancer.gov/projects/#shg/sbc2)
+- Holford et al. Tobacco control and the reduction in smoking-related premature deaths in the United States, 1964-2012. JAMA. 2014 Jan 8;311(2):164-71. doi: 10.1001/jama.2013.285112. PMID: 24399555; PMCID: PMC4056770. [PubMed](https://pubmed.ncbi.nlm.nih.gov/24399555/) | [Resources](https://resources.cisnet.cancer.gov/projects/#shg/tcpd)
+- Holford et al. Patterns of birth cohort-specific smoking histories, 1965-2009. Am J Prev Med. 2014 Feb;46(2):e31-7. doi: 10.1016/j.amepre.2013.10.022. PMID: 24439359; PMCID: PMC3951759. [PubMed](https://pubmed.ncbi.nlm.nih.gov/24439359/) | [Resources](https://resources.cisnet.cancer.gov/projects/#shg/tce)
+- Committee on the Public Health Implications of Raising the Minimum Age for Purchasing Tobacco Products; Board on Population Health and Public Health Practice; Institute of Medicine. Public Health Implications of Raising the Minimum Age of Legal Access to Tobacco Products. Bonnie RJ, Stratton K, Kwan LY, editors. Washington (DC): National Academies Press (US); 2015 Jul 23. PMID: 26269869. [PubMed](https://pubmed.ncbi.nlm.nih.gov/26269869/)
+[Resources](https://resources.cisnet.cancer.gov/projects/#shg/iomr)
+- Jeon et al. Smoking and Lung Cancer Mortality in the United States From 2015 to 2065: A Comparative Modeling Approach. Ann Intern Med. 2018;169(10):684-693. [PubMed](https://pubmed.ncbi.nlm.nih.gov/30304504/) | [Resources]((https://resources.cisnet.cancer.gov/projects/#shg/sbc2))
+- Criss et al. Cost-Effectiveness Analysis of Lung Cancer Screening in the United States: A Comparative Modeling Study. Ann Intern Med. 2019;171(11):796-804. [PubMed](https://pubmed.ncbi.nlm.nih.gov/31683314/)
+- Ten Haaf et al. A Comparative Modeling Analysis of Risk-Based Lung Cancer Screening Strategies. J Natl Cancer Inst. 2020;112(5):466-479. [PubMed](https://pubmed.ncbi.nlm.nih.gov/31566216/)
+- Cao et al. Potential Impact of Cessation Interventions at the Point of Lung Cancer Screening on Lung Cancer and Overall Mortality in the United States. J Thorac Oncol. 2020;15(7):1160-1169. [PubMed](https://pubmed.ncbi.nlm.nih.gov/32160967/)
+- Meza et al. Evaluation of the Benefits and Harms of Lung Cancer Screening With Low-Dose Computed Tomography. Modeling Study for the US Preventive Services Task Force. JAMA. 2021;325(10):988-997. [PubMed](https://pubmed.ncbi.nlm.nih.gov/33687469/)
+- Toumazis et al. Cost-effectiveness Evaluation of the 2021 US Preventive Services Task Force Recommendation for Lung Cancer Screening. JAMA Oncol. 2021;7(12):1833-1842. [PubMed](https://pubmed.ncbi.nlm.nih.gov/34673885/)
+- Cao et al. Evaluation of benefits and harms of adaptive screening schedules for lung cancer: A microsimulation study. J Med Screen. 2022;29(4):260-267. [PubMed](https://pubmed.ncbi.nlm.nih.gov/35989646/)
+- Cao et al. Cost-Effectiveness of a Telephone-Based Smoking Cessation Randomized Trial in the Lung Cancer Screening Setting. JNCI Cancer Spectr. 2022; 6(4):pkac048. [PubMed](https://pubmed.ncbi.nlm.nih.gov/35818125/)
+- Meza et al. Impact of Joint Lung Cancer Screening and Cessation Interventions Under the New Recommendations of the U.S. Preventive Services Task Force. J Thorac Oncol. 2022;17(1):160-166. [PubMed](https://pubmed.ncbi.nlm.nih.gov/34648947/)
+- Toumazis et al. Risk Model-Based Lung Cancer Screening : A Cost-Effectiveness Analysis. Ann Intern Med 2023;176(3):320-332. [PubMed](https://pubmed.ncbi.nlm.nih.gov/36745885/)
+- Meza et al. Assessing the impact of increasing lung screening eligibility by relaxing the maximum years-since-quit threshold: A simulation modeling study. Cancer. 2024;130(2):244-255 [PubMed](https://pubmed.ncbi.nlm.nih.gov/37909874/)
+- Ten Haaf et al. The Impact of Model Assumptions on Personalized Lung Cancer Screening Recommendations. Med Decis Making. 2024;44(5):497-511. [PubMed](https://pubmed.ncbi.nlm.nih.gov/38738534/)
+- Cao et al. Performance of smoking duration-based lung cancer screening eligibility criteria: a comparative modeling study. Submitted to JAMA Intern. Med.
+- de Nijs et al. Efficiency of the annual CT screening interval for those at a lower risk of lung cancer. Submitted to JAMA Netw. Open.
+
 
 ## Related publications pertaining to RngStream
 
-- [Good Parameter Sets for Combined Multiple Recursive Random Number Generators (1999)](https://pubsonline.informs.org/doi/10.1287/opre.47.1.159)
-- [An Objected-Oriented Random-Number Package with Many Long Streams and Substreams (2002)](https://pubsonline.informs.org/doi/10.1287/opre.50.6.1073.358)
+- Fischer, Gregory & Carmon, Ziv & Zauberman, Gal & L’Ecuyer, Pierre. (1999). Good Parameters and Implementations for Combined Multiple Recursive Random Number Generators. Operations Research. 47. 159-164. 10.1287/opre.47.1.159. [Abstract](https://pubsonline.informs.org/doi/10.1287/opre.47.1.159) | [PDF](https://pubsonline.informs.org/doi/epdf/10.1287/opre.47.1.159)
+- Pierre L'Ecuyer, Richard Simard, E. Jack Chen, and W. David Kelton. An Object-Oriented Random-Number Package with Many Long Streams and Substreams. Operations Research 2002 50:6, 1073-1075[Abstract](https://pubsonline.informs.org/doi/10.1287/opre.50.6.1073.358) | [PDF](https://www.iro.umontreal.ca/~lecuyer/myftp/papers/streams00.pdf)
 
+## Funding
+Funding for the CISNET Smoking History Generator came from the following National Cancer Institute (NCI) grants:
+- U01CA253858
+- U01CA199284 
+- U01CA152956
+- U01CA097415
+
+## Attribution
+If you use the Smoking History Generator to generate results in a publication, you must attribute and make an appropriate reference to the software in the publication. This reference is as follows: [TODO].
 ## Funding
 Funding for the CISNET Smoking History Generator and its Rcpp wrapper came from the following National Cancer Institute (NCI) grants.
 - Grant 1
@@ -168,4 +192,6 @@ Funding for the CISNET Smoking History Generator and its Rcpp wrapper came from 
 - Grant 3
 
 ## License
-This package is released under the [GPL-3]((https://choosealicense.com/licenses/gpl-3.0/)), as is the [Smoking History Generator](https://github.com/NCI-CISNET/shg-cli) C++ source code.
+You may not use the Software or Datasets for commercial purposes without prior written consent from the CISNET Lung Working Group and without entering into a separate license agreement regarding such commercial use. Contact: Rafael Meza Rodriguez [rmeza@bccrc.ca](mailto:rmeza@bccrc.ca) and Jamie Tam [jamie.tam@yale.edu](mailto:jamie.tam@yale.edu).
+
+The **software** is released under the [GPL-3](https://choosealicense.com/licenses/gpl-3.0/). The **input datasets** (found in /data) are released under the [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) license.
