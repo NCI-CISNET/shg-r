@@ -19,3 +19,4 @@ SmokingHistoryGenerator_0.0.1.tar.gz
 /tests/outputs
 *.gz
 /.venv
+/R-sandbox
