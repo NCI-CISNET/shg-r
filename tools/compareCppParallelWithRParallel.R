@@ -9,6 +9,7 @@ library(dplyr)  # For bind_rows to combine DataFrames
 
 N <- 10^6
 cores <- 10
+shg_cli_path <- "/path-to-shg-cli/"
 
 results1 <- benchmark(
   R_STREAM_SINGLE_SEQUENTIAL = {
@@ -69,13 +70,13 @@ results1 <- benchmark(
 results2 <- benchmark(
   CLI_SINGLE_SEQUENTIAL = {
     curdir <- getwd()
-    setwd("/Users/jclarke/Documents/GitHub/smoking-history-generator/")
+    setwd(shg_cli_path)
     system("./bin/lbc_smokehist_osx.exe test_input.txt")
     setwd(curdir)
   },
   CLI_MCLAPPLY_PARALLEL = {
     curdir <- getwd()
-    setwd("/Users/jclarke/Documents/GitHub/smoking-history-generator/")
+    setwd(shg_cli_path)
     result_list <- mclapply(1:10, function(x) {
       system("./bin/lbc_smokehist_osx.exe test_input_10_5.txt")
     }, mc.cores = 10)

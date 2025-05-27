@@ -1,6 +1,6 @@
 # This script is used to copy src files from shg-cli to shg-rcpp and update its DESCRIPTION file
 # with the most recent tag, commit hash and src hash.
-# Assumes that the shg-cli directory is present in the parent directory
+# Assumes that the shg-cli directory is present in the parent directory as a sibling of shg-rcpp.
 
 import subprocess
 import shutil
