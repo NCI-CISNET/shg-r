@@ -1,3 +1,5 @@
+shg_cli_path <- "/path-to-shg-cli/"
+
 #Sys.setenv(PKG_BUILD_EXTRA_FLAGS = "false")
 devtools::clean_dll()
 # Note: debug = TRUE results in "(debug build)" and -O0 -g etc. which overrides Makevars
@@ -18,7 +20,7 @@ setwd(wd)
 # SHG legacy version; results should be the same as above.
 # start_time <- Sys.time()
 # curdir <- getwd()
-# setwd("/Users/jclarke/Documents/GitHub/smoking-history-generator/")
+# setwd(shg_cli_path)
 # system("./bin/lbc_smokehist_osx_6.3.3.exe test_input.txt")
 # setwd(curdir)
 # end_time <- Sys.time()
@@ -87,7 +89,7 @@ print(end_time - start_time)
 # SHG legacy version; results should be the same as above.
 # start_time <- Sys.time()
 # curdir <- getwd()
-# setwd("/Users/jclarke/Documents/GitHub/smoking-history-generator/")
+# setwd(shg_cli_path)
 # system("./bin/lbc_smokehist_osx_6.3.3.exe test_input.txt")
 # setwd(curdir)
 # end_time <- Sys.time()
@@ -100,7 +102,7 @@ print(end_time - start_time)
 # column_names <- colnames(MT_SIM)
 
 # # Parse the text file and extract the data
-# file_path <- "/Users/jclarke/Documents/GitHub/smoking-history-generator/test_output.out"
+file_path <- file.path(shg_cli_path, "test_output.out")
 # parsed_data <- parse_run_data(file_path, column_names)
 # #testthat::expect_equal(parsed_data, MT_SIM_TRUNC)
 
