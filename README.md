@@ -70,7 +70,7 @@ MT_SIM <- shg$runSimFromFixedValues(N, 0, 0, 1940)
 Please see the [developer readme](dev-readme.md) for instructions on how to compile the package from source.
 
 ### Custom data input files
-Please see the [data readme](dev-readme.md) for instructions on how to use custom input datasets.
+Please see the [data readme](data-readme.md) for instructions on how to use custom input datasets.
 
 ### Legacy mode
 The Smoking History Generator R wrapper has a legacy mode that allows you to run the generator using input files rather than properties. This is useful if you want to use the same input files as the CLI version of the Smoking History Generator. The legacy mode is accessed through the `LegacyRunWebVersion()` method of the `SHGInterface` class. You can read more about the legacy mode in the [legacy readme](legacy-readme.md).
