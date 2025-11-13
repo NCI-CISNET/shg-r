@@ -293,8 +293,12 @@ bool SHGInterface::isValidDataFrame(Rcpp::DataFrame& dfPopulation) {
    }
 
    for (int i = 0; i < repeat; i++) {
-      if (birthCohortVec[i] < 1900 || birthCohortVec[i] > 2100) {
-         Rcpp::stop("Invalid value of '" + to_string(birthCohortVec[i]) + "' for birth_cohort at index " + to_string(i));
+      // NOTE: Removed hardcoded 1900 lower bound check (2025-02-XX) to allow earlier birth cohorts
+      // (e.g., 1864) that are supported by the underlying C++ code and data files.
+      // The C++ code validates against the actual data range via GetMinYearOfBirth().
+      // If needed, this check can be restored by uncommenting: birthCohortVec[i] < 1900 ||
+      if (birthCohortVec[i] > 2100) {
+         Rcpp::stop("Invalid value of '" + to_string(birthCohortVec[i]) + "' for birth_cohort at index " + to_string(i) + ". Birth cohort must be <= 2100.");
       }
    }
    // TODO: review the following; not sure this is the best practice to just return true unless we have an error
