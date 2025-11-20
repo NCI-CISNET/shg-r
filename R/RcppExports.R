@@ -16,6 +16,8 @@
 #' @field lifetable_filename Set or get the lifetable filename
 #' @field cpd_filename Set or get the cpd filename
 #' @field immediate_cessation_year Set or get Immediate Cessation Year; If 0, no immediate cessation
+#' @field mt_seeds Set or get MersenneTwister seeds. Must be a numeric vector of exactly 4 values (one for each stream: initiation, cessation, life table, individual). If not set, default seeds are used. Only used when rng_strategy is "MersenneTwister".
+#' @field rngstream_seed Set or get RngStream seed. Must be a numeric vector of exactly 6 values (a single seed vector that generates 4 substreams, one for each stream: initiation, cessation, life table, individual). If not set, default seed is used. Only used when rng_strategy is "RngStream".
 NULL
 
 #' @name runSimFromDataFrame
@@ -34,9 +36,18 @@ NULL
 #'     birth_cohort = rep(1930:1949, N / 20)
 #' )
 #' shg$rng_strategy <- "RngStream"
+#' # Optionally set a custom seed for RngStream (6 values)
+#' shg$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
 #' shg$number_of_segments <- 10 # if you have 10 cores
 #' shg$run_multi_threaded <- TRUE
 #' smoking_history <- shg$runSimFromDataFrame(pop)
+#' 
+#' # Example with MersenneTwister and custom seeds (4 values)
+#' shg2 <- new(SHGInterface)
+#' shg2$input_data_folder <- system.file("inputs/default", "", package="SmokingHistoryGenerator")
+#' shg2$rng_strategy <- "MersenneTwister"
+#' shg2$mt_seeds <- c(1898587603, 1468371936, 1551308340, 1590227640)
+#' smoking_history2 <- shg2$runSimFromFixedValues(1000, 0, 0, 1950)
 #' }
 NULL
 

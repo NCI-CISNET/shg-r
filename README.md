@@ -68,6 +68,11 @@ shg$rng_strategy <- "MersenneTwister"
 # Note: MersenneTwister is automatically restricted to 1 segment and non-parallel execution
 MT_SIM <- shg$runSimFromFixedValues(N, 0, 0, 1940)
 ```
+
+## Setting Random Number Generator Seeds
+
+For information on specifying custom seeds for reproducibility, see [RNG-SEEDS.md](RNG-SEEDS.md).
+
 ## Additional documentation
 
 ### Compiling from source

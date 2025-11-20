@@ -267,3 +267,224 @@ test_that("RngStream allows multiple segments and parallel execution", {
   expect_equal(shg_test$number_of_segments, 4)
   expect_equal(shg_test$run_multi_threaded, TRUE)
 })
+
+test_that("MersenneTwister: custom seeds produce different results and reverting to defaults restores original results", {
+  N <- 1000
+  shg_mt <- new(SHGInterface)
+  shg_mt$input_data_folder <- data_folder
+  shg_mt$rng_strategy <- "MersenneTwister"
+  shg_mt$number_of_segments <- 1
+  shg_mt$run_multi_threaded <- FALSE
+  
+  # Baseline: run with default seeds (no seeds set)
+  baseline <- shg_mt$runSimFromFixedValues(N, 0, 0, 1940)
+  baseline_stats <- get_stats_from_df(baseline)
+  
+  # Run with custom seeds
+  shg_mt$mt_seeds <- c(1111111111, 2222222222, 3333333333, 4444444444)
+  custom_seed_run <- shg_mt$runSimFromFixedValues(N, 0, 0, 1940)
+  custom_stats <- get_stats_from_df(custom_seed_run)
+  
+  # Verify custom seeds produce different results
+  expect_false(isTRUE(all.equal(baseline_stats, custom_stats)))
+  
+  # Run with different custom seeds
+  shg_mt$mt_seeds <- c(9999999999, 8888888888, 7777777777, 6666666666)
+  different_seed_run <- shg_mt$runSimFromFixedValues(N, 0, 0, 1940)
+  different_stats <- get_stats_from_df(different_seed_run)
+  
+  # Verify different seeds produce different results
+  expect_false(isTRUE(all.equal(custom_stats, different_stats)))
+  
+  # Revert to defaults by manually setting default seeds
+  # Default MT seeds: 1898587603, 1468371936, 1551308340, 1590227640
+  shg_mt$mt_seeds <- c(1898587603, 1468371936, 1551308340, 1590227640)
+  
+  reset_run <- shg_mt$runSimFromFixedValues(N, 0, 0, 1940)
+  reset_stats <- get_stats_from_df(reset_run)
+  
+  # Verify reverting to defaults produces same results as baseline
+  expect_equal(baseline_stats$mean_initiation, reset_stats$mean_initiation)
+  expect_equal(baseline_stats$mean_cessation, reset_stats$mean_cessation)
+  expect_equal(baseline_stats$age_at_death, reset_stats$age_at_death)
+})
+
+test_that("RngStream: custom seed produces different results and reverting to defaults restores original results", {
+  N <- 1000
+  shg_rs <- new(SHGInterface)
+  shg_rs$input_data_folder <- data_folder
+  shg_rs$rng_strategy <- "RngStream"
+  shg_rs$number_of_segments <- 1
+  shg_rs$run_multi_threaded <- FALSE
+  
+  # Baseline: run with default seed (no seed set)
+  baseline <- shg_rs$runSimFromFixedValues(N, 0, 0, 1940)
+  baseline_stats <- get_stats_from_df(baseline)
+  
+  # Run with custom seed
+  shg_rs$rngstream_seed <- c(11111, 22222, 33333, 44444, 55555, 66666)
+  custom_seed_run <- shg_rs$runSimFromFixedValues(N, 0, 0, 1940)
+  custom_stats <- get_stats_from_df(custom_seed_run)
+  
+  # Verify custom seed produces different results
+  expect_false(isTRUE(all.equal(baseline_stats, custom_stats)))
+  
+  # Run with different custom seed
+  shg_rs$rngstream_seed <- c(99999, 88888, 77777, 66666, 55555, 44444)
+  different_seed_run <- shg_rs$runSimFromFixedValues(N, 0, 0, 1940)
+  different_stats <- get_stats_from_df(different_seed_run)
+  
+  # Verify different seed produces different results
+  expect_false(isTRUE(all.equal(custom_stats, different_stats)))
+  
+  # Revert to defaults by manually setting default seed
+  # Default RngStream seed: c(12345, 12345, 12345, 12345, 12345, 12345)
+  shg_rs$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
+  
+  reset_run <- shg_rs$runSimFromFixedValues(N, 0, 0, 1940)
+  reset_stats <- get_stats_from_df(reset_run)
+  
+  # Verify reverting to defaults produces same results as baseline
+  expect_equal(baseline_stats$mean_initiation, reset_stats$mean_initiation)
+  expect_equal(baseline_stats$mean_cessation, reset_stats$mean_cessation)
+  expect_equal(baseline_stats$age_at_death, reset_stats$age_at_death)
+})
+
+test_that("get_current_seeds() returns correct seeds based on RNG strategy", {
+  shg_mt <- new(SHGInterface)
+  shg_mt$rng_strategy <- "MersenneTwister"
+  shg_mt$mt_seeds <- c(1111111111, 2222222222, 3333333333, 4444444444)
+  
+  # Should return MT seeds when MT strategy is selected
+  current_seeds <- shg_mt$get_current_seeds()
+  expect_equal(length(current_seeds), 4)
+  expect_equal(current_seeds, c(1111111111, 2222222222, 3333333333, 4444444444))
+  
+  shg_rs <- new(SHGInterface)
+  shg_rs$rng_strategy <- "RngStream"
+  shg_rs$rngstream_seed <- c(11111, 22222, 33333, 44444, 55555, 66666)
+  
+  # Should return RngStream seed when RngStream strategy is selected
+  current_seeds_rs <- shg_rs$get_current_seeds()
+  expect_equal(length(current_seeds_rs), 6)
+  expect_equal(current_seeds_rs, c(11111, 22222, 33333, 44444, 55555, 66666))
+})
+
+test_that("reset_seeds_to_defaults() resets seeds to default values", {
+  N <- 1000
+  shg_mt <- new(SHGInterface)
+  shg_mt$input_data_folder <- data_folder
+  shg_mt$rng_strategy <- "MersenneTwister"
+  shg_mt$number_of_segments <- 1
+  shg_mt$run_multi_threaded <- FALSE
+  
+  # Set custom seeds
+  shg_mt$mt_seeds <- c(1111111111, 2222222222, 3333333333, 4444444444)
+  custom_run <- shg_mt$runSimFromFixedValues(N, 0, 0, 1940)
+  custom_stats <- get_stats_from_df(custom_run)
+  
+  # Reset to defaults using the method
+  shg_mt$reset_seeds_to_defaults()
+  
+  # Verify seeds were reset
+  current_seeds <- shg_mt$get_current_seeds()
+  expect_equal(current_seeds, c(1898587603, 1468371936, 1551308340, 1590227640))
+  
+  # Verify reset produces same results as baseline
+  baseline <- shg_mt$runSimFromFixedValues(N, 0, 0, 1940)
+  baseline_stats <- get_stats_from_df(baseline)
+  
+  # Create a fresh instance for comparison
+  shg_baseline <- new(SHGInterface)
+  shg_baseline$input_data_folder <- data_folder
+  shg_baseline$rng_strategy <- "MersenneTwister"
+  shg_baseline$number_of_segments <- 1
+  shg_baseline$run_multi_threaded <- FALSE
+  # Don't set seeds, so defaults will be used
+  baseline_fresh <- shg_baseline$runSimFromFixedValues(N, 0, 0, 1940)
+  baseline_fresh_stats <- get_stats_from_df(baseline_fresh)
+  
+  expect_equal(baseline_stats$mean_initiation, baseline_fresh_stats$mean_initiation)
+  expect_equal(baseline_stats$mean_cessation, baseline_fresh_stats$mean_cessation)
+  expect_equal(baseline_stats$age_at_death, baseline_fresh_stats$age_at_death)
+  
+  # Test RngStream reset
+  shg_rs <- new(SHGInterface)
+  shg_rs$input_data_folder <- data_folder
+  shg_rs$rng_strategy <- "RngStream"
+  shg_rs$number_of_segments <- 1
+  shg_rs$run_multi_threaded <- FALSE
+  
+  # Set custom seed
+  shg_rs$rngstream_seed <- c(11111, 22222, 33333, 44444, 55555, 66666)
+  
+  # Reset to defaults using the method
+  shg_rs$reset_seeds_to_defaults()
+  
+  # Verify seeds were reset
+  current_seeds_rs <- shg_rs$get_current_seeds()
+  expect_equal(current_seeds_rs, c(12345, 12345, 12345, 12345, 12345, 12345))
+})
+
+test_that("get_rng_state_fingerprint() verifies seeds actually affect RNG internal state", {
+  shg_mt1 <- new(SHGInterface)
+  shg_mt1$input_data_folder <- data_folder
+  shg_mt1$rng_strategy <- "MersenneTwister"
+  shg_mt1$mt_seeds <- c(1111111111, 2222222222, 3333333333, 4444444444)
+  
+  # Get fingerprint with custom seeds
+  fingerprint1 <- shg_mt1$get_rng_state_fingerprint()
+  expect_equal(length(fingerprint1), 12)  # MT returns 12 values (3 from each of 4 streams)
+  
+  # Set different seeds
+  shg_mt1$mt_seeds <- c(9999999999, 8888888888, 7777777777, 6666666666)
+  fingerprint2 <- shg_mt1$get_rng_state_fingerprint()
+  
+  # Verify different seeds produce different fingerprints
+  expect_false(isTRUE(all.equal(fingerprint1, fingerprint2)))
+  
+  # Reset to defaults
+  shg_mt1$reset_seeds_to_defaults()
+  fingerprint_default <- shg_mt1$get_rng_state_fingerprint()
+  
+  # Verify default seeds produce different fingerprint than custom seeds
+  expect_false(isTRUE(all.equal(fingerprint1, fingerprint_default)))
+  expect_false(isTRUE(all.equal(fingerprint2, fingerprint_default)))
+  
+  # Test RngStream
+  shg_rs1 <- new(SHGInterface)
+  shg_rs1$input_data_folder <- data_folder
+  shg_rs1$rng_strategy <- "RngStream"
+  shg_rs1$rngstream_seed <- c(11111, 22222, 33333, 44444, 55555, 66666)
+  
+  # Get fingerprint with custom seed
+  fingerprint_rs1 <- shg_rs1$get_rng_state_fingerprint()
+  expect_equal(length(fingerprint_rs1), 24)  # RngStream returns 24 values (6 from each of 4 streams)
+  
+  # Set different seed
+  shg_rs1$rngstream_seed <- c(99999, 88888, 77777, 66666, 55555, 44444)
+  fingerprint_rs2 <- shg_rs1$get_rng_state_fingerprint()
+  
+  # Verify different seeds produce different fingerprints
+  expect_false(isTRUE(all.equal(fingerprint_rs1, fingerprint_rs2)))
+  
+  # Reset to defaults
+  shg_rs1$reset_seeds_to_defaults()
+  fingerprint_rs_default <- shg_rs1$get_rng_state_fingerprint()
+  
+  # Verify default seed produces different fingerprint than custom seeds
+  expect_false(isTRUE(all.equal(fingerprint_rs1, fingerprint_rs_default)))
+  expect_false(isTRUE(all.equal(fingerprint_rs2, fingerprint_rs_default)))
+  
+  # Verify that same seeds produce same fingerprints (for RngStream, which returns actual state)
+  shg_rs2 <- new(SHGInterface)
+  shg_rs2$input_data_folder <- data_folder
+  shg_rs2$rng_strategy <- "RngStream"
+  shg_rs2$rngstream_seed <- c(11111, 22222, 33333, 44444, 55555, 66666)
+  fingerprint_rs2_same <- shg_rs2$get_rng_state_fingerprint()
+  
+  # RngStream should produce identical fingerprints for same seed
+  expect_equal(fingerprint_rs1, fingerprint_rs2_same)
+})
+
+# TODO: Compare Legacy tests with runSimFromFixedValues(): requires parsing of results

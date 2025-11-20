@@ -37,6 +37,7 @@ public:
     virtual void resetStrategy() = 0;  // resets all RNGs to their initial state
     virtual void writeRNGState() = 0;  // writes the current state of the RNGs to the console
     virtual void incrementSubstreams() = 0;
+    virtual std::vector<double> getRNGStateFingerprint() = 0;  // returns a fingerprint of the RNG state for comparison
     void incrementSubstreams(int n) {
         // Helper method to increment the 4 substream sets n times
         for (int i = 0; i < n; i++) {
@@ -119,6 +120,27 @@ public:
     }
     void writeRNGState() override {
         // TODO return MT state
+    }
+    std::vector<double> getRNGStateFingerprint() override {
+        // For MersenneTwister, generate a few random numbers from each stream as a fingerprint
+        // This verifies the internal state is different for different seeds
+        std::vector<double> fingerprint;
+        fingerprint.reserve(12);  // 3 numbers from each of 4 streams
+        
+        // Get 3 random numbers from each stream
+        for (int i = 0; i < 3; i++) {
+            fingerprint.push_back(gpInitiationRNG->genrand_real1());
+        }
+        for (int i = 0; i < 3; i++) {
+            fingerprint.push_back(gpCessationRNG->genrand_real1());
+        }
+        for (int i = 0; i < 3; i++) {
+            fingerprint.push_back(gpLifeTableRNG->genrand_real1());
+        }
+        for (int i = 0; i < 3; i++) {
+            fingerprint.push_back(gpIndividualRNG->genrand_real1());
+        }
+        return fingerprint;
     }
 
 private:
@@ -233,6 +255,32 @@ public:
         #else
             std::cout << "writeRNGState() not yet implemented for CLI" << std::endl;
         #endif
+    }
+    std::vector<double> getRNGStateFingerprint() override {
+        // For RngStream, get the actual internal state from each stream
+        std::vector<double> fingerprint;
+        fingerprint.reserve(24);  // 6 state values from each of 4 streams
+        
+        unsigned long state[6];
+        
+        // Get state from each stream
+        gpInitiationRNG->GetState(state);
+        for (int i = 0; i < 6; i++) {
+            fingerprint.push_back(static_cast<double>(state[i]));
+        }
+        gpCessationRNG->GetState(state);
+        for (int i = 0; i < 6; i++) {
+            fingerprint.push_back(static_cast<double>(state[i]));
+        }
+        gpLifeTableRNG->GetState(state);
+        for (int i = 0; i < 6; i++) {
+            fingerprint.push_back(static_cast<double>(state[i]));
+        }
+        gpIndividualRNG->GetState(state);
+        for (int i = 0; i < 6; i++) {
+            fingerprint.push_back(static_cast<double>(state[i]));
+        }
+        return fingerprint;
     }
 
 private:

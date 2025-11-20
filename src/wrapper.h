@@ -58,6 +58,10 @@ public:
     int number_of_segments = 1;
     bool run_multi_threaded = false;
     string rng_strategy = "RngStream";
+    
+    // Seed storage for RNG strategies
+    vector<unsigned long> mt_seeds;  // 4 seeds for MersenneTwister (initiation, cessation, life table, individual)
+    vector<unsigned long> rngstream_seed;  // 6-element seed array for RngStream
 
     // Getters and Setters
     int get_number_of_segments() {return number_of_segments;};
@@ -86,6 +90,16 @@ public:
 
     int get_immediate_cessation_year() {return immediate_cessation_year;};
     void set_immediate_cessation_year(int n) {immediate_cessation_year = n;};
+
+    Rcpp::NumericVector get_mt_seeds();
+    void set_mt_seeds(Rcpp::NumericVector seeds);
+
+    Rcpp::NumericVector get_rngstream_seed();
+    void set_rngstream_seed(Rcpp::NumericVector seed);
+
+    Rcpp::NumericVector get_current_seeds();
+    void reset_seeds_to_defaults();
+    Rcpp::NumericVector get_rng_state_fingerprint();
 
     void runSimSegment(int repeat, 
                        vector<short>& wRaces,
