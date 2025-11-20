@@ -115,7 +115,8 @@ public:
     void LegacyRunWebVersion(const char *sInputFileName);
 
     // Configuration management
-    Rcpp::List getConfig(bool debug = false);
+    Rcpp::List getConfig(bool debug);
+    Rcpp::List getConfig();  // Wrapper without debug parameter (defaults to false)
     void useConfig(Rcpp::List config);
 
 };

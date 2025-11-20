@@ -88,7 +88,7 @@ NULL
 #' @name getConfig
 #' @title Get SHG Configuration
 #' @description Returns the current configuration of the SHG instance as an R list. Can include debug information when debug=TRUE.
-#' @param debug Logical. If TRUE, includes additional debug information such as RNG state fingerprint, package version, system info, and memory usage.
+#' @param debug Logical. If TRUE, includes additional debug information such as RNG state fingerprint, package version, system info, and memory usage. If not provided, defaults to FALSE.
 #' @return A list containing the current configuration including: config_version, rng_strategy, number_of_segments, run_multi_threaded, seeds, input file paths, immediate_cessation_year, and timestamp. If debug=TRUE, also includes rng_state_fingerprint, package_version, package_source, r_version, platform, and memory_usage.
 #' @examples
 #' \dontrun{

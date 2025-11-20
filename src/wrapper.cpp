@@ -613,7 +613,7 @@ void SHGInterface::LegacyRunWebVersion(const char *sInputFileName)
 //' @name getConfig
 //' @title Get SHG Configuration
 //' @description Returns the current configuration of the SHG instance as an R list. Can include debug information when debug=TRUE.
-//' @param debug Logical. If TRUE, includes additional debug information such as RNG state fingerprint, package version, system info, and memory usage.
+//' @param debug Logical. If TRUE, includes additional debug information such as RNG state fingerprint, package version, system info, and memory usage. If not provided, defaults to FALSE.
 //' @return A list containing the current configuration including: config_version, rng_strategy, number_of_segments, run_multi_threaded, seeds, input file paths, immediate_cessation_year, and timestamp. If debug=TRUE, also includes rng_state_fingerprint, package_version, package_source, r_version, platform, and memory_usage.
 //' @examples
 //' \dontrun{
@@ -720,6 +720,11 @@ Rcpp::List SHGInterface::getConfig(bool debug) {
    }
    
    return config;
+}
+
+// Wrapper method without debug parameter (defaults to false)
+Rcpp::List SHGInterface::getConfig() {
+   return getConfig(false);
 }
 
 //' Configure SHG instance from config object
@@ -849,7 +854,8 @@ RCPP_MODULE(SmokingSimulator) {
        .method("runSimFromFixedValues", &SHGInterface::runSimFromFixedValues, "Generates a data frame of simulated smoking histories for n individuals")
        .method("runSimFromDataFrame", &SHGInterface::runSimFromDataFrame, "Generates a data frame of simulated smoking histories for n individuals")
        .method("LegacyRunWebVersion", &SHGInterface::LegacyRunWebVersion, "Runs a simulation from a configuration file to produce results for a website (legacy)")
-       .method("getConfig", &SHGInterface::getConfig, "Get current SHG configuration as a list. Set debug=TRUE to include additional debug information.")
+       .method("getConfig", (Rcpp::List (SHGInterface::*)()) &SHGInterface::getConfig, "Get current SHG configuration as a list (without debug info).")
+       .method("getConfig", (Rcpp::List (SHGInterface::*)(bool)) &SHGInterface::getConfig, "Get current SHG configuration as a list. Set debug=TRUE to include additional debug information.")
        .method("useConfig", &SHGInterface::useConfig, "Configure SHG instance from a config object (typically from getConfig())")
        .property("number_of_segments", &SHGInterface::get_number_of_segments, &SHGInterface::set_number_of_segments,"Number of segments to use for single or multi-threaded simulation")
        .property("run_multi_threaded", &SHGInterface::get_run_multi_threaded, &SHGInterface::set_run_multi_threaded, "True if the simulation should be run asynchonously; False otherwise")
