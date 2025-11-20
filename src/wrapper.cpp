@@ -366,7 +366,10 @@ void SHGInterface::runSimSegment(int repeat,
             if (i + sPersonsInitAge < 100)
             {
                sPersonsCPDbyAge = dPersonsCPDbyAge[i];
-               cpd += to_string(i + sPersonsInitAge) + " (" + to_string(static_cast<int>(sPersonsCPDbyAge)) + "), ";
+               if (!cpd.empty()) {
+                  cpd += ", ";
+               }
+               cpd += to_string(i + sPersonsInitAge) + " (" + to_string(static_cast<int>(sPersonsCPDbyAge)) + ")";
             }
          }
       }
