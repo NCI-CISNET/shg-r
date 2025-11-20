@@ -83,11 +83,11 @@ void SHGInterface::set_rng_strategy(string strategy) {
    // If switching to MersenneTwister, enforce restrictions
    if (strategy == "MersenneTwister") {
       if (number_of_segments > 1) {
-         Rcpp::warning("MersenneTwister RNG cannot maintain IID properties with multiple segments. Resetting number_of_segments to 1.");
+         Rcpp::warning("Resetting number_of_segments to 1 for MersenneTwister RNG.");
          number_of_segments = 1;
       }
       if (run_multi_threaded) {
-         Rcpp::warning("MersenneTwister RNG cannot maintain IID properties with parallel execution. Resetting run_multi_threaded to FALSE.");
+         Rcpp::warning("Resetting run_multi_threaded to FALSE for MersenneTwister RNG.");
          run_multi_threaded = false;
       }
    }
