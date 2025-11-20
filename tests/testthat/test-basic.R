@@ -202,3 +202,68 @@ test_that("Invalid output path fails with proper error message", {
 })
 
 # TODO: Compare Legacy tests with runSimFromFixedValues(): requires parsing of results
+
+# Tests for MersenneTwister restrictions
+test_that("MersenneTwister cannot be used with multiple segments", {
+  shg_test <- new(SHGInterface)
+  shg_test$rng_strategy <- "MersenneTwister"
+  expect_error(shg_test$number_of_segments <- 2, "MersenneTwister RNG cannot maintain IID properties with multiple segments")
+})
+
+test_that("MersenneTwister cannot be used with parallel execution", {
+  shg_test <- new(SHGInterface)
+  shg_test$rng_strategy <- "MersenneTwister"
+  expect_error(shg_test$run_multi_threaded <- TRUE, "MersenneTwister RNG cannot maintain IID properties with parallel execution")
+})
+
+test_that("Switching to MersenneTwister resets segments and parallel to valid values", {
+  shg_test <- new(SHGInterface)
+  shg_test$rng_strategy <- "RngStream"
+  shg_test$number_of_segments <- 4
+  shg_test$run_multi_threaded <- TRUE
+  
+  expect_warning(
+    expect_warning(
+      shg_test$rng_strategy <- "MersenneTwister",
+      "Resetting number_of_segments to 1"
+    ),
+    "Resetting run_multi_threaded to FALSE"
+  )
+  expect_equal(shg_test$number_of_segments, 1)
+  expect_equal(shg_test$run_multi_threaded, FALSE)
+})
+
+test_that("Parallel execution requires multiple segments", {
+  shg_test <- new(SHGInterface)
+  shg_test$number_of_segments <- 1
+  expect_error(shg_test$run_multi_threaded <- TRUE, "run_multi_threaded cannot be TRUE when number_of_segments is 1")
+})
+
+test_that("MersenneTwister with multiple segments is reset to 1 segment", {
+  shg_test <- new(SHGInterface)
+  shg_test$input_data_folder <- data_folder
+  # Use RngStream then switch to MersenneTwister
+  shg_test$rng_strategy <- "RngStream"
+  shg_test$number_of_segments <- 2
+  expect_warning(shg_test$rng_strategy <- "MersenneTwister", "Resetting number_of_segments to 1")
+  expect_equal(shg_test$number_of_segments, 1)
+  
+  # Should work fine with 1 segment
+  pop <- list(
+    race = rep(0, 100),
+    sex = rep(0, 100),
+    birth_cohort = rep(1940, 100)
+  )
+  result <- shg_test$runSimFromDataFrame(pop)
+  expect_equal(nrow(result), 100)
+})
+
+test_that("RngStream allows multiple segments and parallel execution", {
+  shg_test <- new(SHGInterface)
+  shg_test$rng_strategy <- "RngStream"
+  shg_test$number_of_segments <- 4
+  shg_test$run_multi_threaded <- TRUE
+  expect_equal(shg_test$rng_strategy, "RngStream")
+  expect_equal(shg_test$number_of_segments, 4)
+  expect_equal(shg_test$run_multi_threaded, TRUE)
+})

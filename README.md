@@ -52,7 +52,12 @@ shg$run_multi_threaded <- FALSE
 
 RNGSTREAM_SIM_POP <- shg$runSimFromDataFrame(pop)
 ```
-If you want to produce identical results as with previous versions of the SHG, you must select the Mersenne Twister strategy and be sure to set the number of segments to 1 and/or run_multi_threaded to FALSE.
+
+**Note on RNG strategies:**
+- **RngStream** (default): Recommended for all use cases, especially multi-segment and parallel simulations. Supports multiple segments and parallel execution while maintaining IID properties.
+- **MersenneTwister**: Legacy RNG for backward compatibility. **Restricted to single-segment, non-parallel execution** due to limitations in maintaining IID properties across segments. Attempting to use MersenneTwister with `number_of_segments > 1` or `run_multi_threaded = TRUE` will result in an error.
+
+If you want to produce identical results as with previous versions of the SHG, you must select the Mersenne Twister strategy:
 
 ```r
 library(SmokingHistoryGenerator)
@@ -60,8 +65,7 @@ shg <- new(SHGInterface)
 N <- 10^5 # Individuals to simulate (REPEAT)
 # If you want to produce identical results as previous versions of shg-cli you must set the following properties:
 shg$rng_strategy <- "MersenneTwister"
-shg$number_of_segments <- 1
-shg$run_multi_threaded <- FALSE
+# Note: MersenneTwister is automatically restricted to 1 segment and non-parallel execution
 MT_SIM <- shg$runSimFromFixedValues(N, 0, 0, 1940)
 ```
 ## Additional documentation

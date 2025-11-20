@@ -60,9 +60,9 @@ using namespace std;
 //' @aliases SHGInterface
 //' @export
 //' @description The SHG Interface class provides an Rcpp interface to the Smoking History Generator (SHG)
-//' @field number_of_segments Number of segments to use for single or multi-threaded simulation (default is 1)
-//' @field run_multi_threaded True if the simulation should be run asynchonously; False otherwise (default is False)
-//' @field rng_strategy 'RngStream' for MRG32k3a (default) or 'MersenneTwister' for Mersenne Twister RNG. 'RngStream' is recommended for reproducibility especially with multi-threaded simulations.
+//' @field number_of_segments Number of segments to use for single or multi-threaded simulation (default is 1). Note: MersenneTwister RNG is restricted to 1 segment. Use RngStream for multiple segments.
+//' @field run_multi_threaded True if the simulation should be run asynchonously; False otherwise (default is False). Note: MersenneTwister RNG is restricted to non-parallel execution. Use RngStream for parallel execution. Also, parallel execution requires number_of_segments > 1.
+//' @field rng_strategy 'RngStream' for MRG32k3a (default) or 'MersenneTwister' for Mersenne Twister RNG. 'RngStream' is recommended for reproducibility especially with multi-threaded simulations. Note: MersenneTwister RNG is restricted to single-segment, non-parallel execution due to limitations in maintaining IID properties across segments.
 //' @field input_data_folder Set or get the base folder for input data files
 //' @field initiation_filename Set or get the initiation filename
 //' @field cessation_filename Set or get the cessation filename
@@ -73,6 +73,50 @@ using namespace std;
 SHGInterface::SHGInterface() {
    // For now there is no initialize needed;
    // The Smoking_Simulators are created on the fly
+}
+
+void SHGInterface::set_rng_strategy(string strategy) {
+   if (strategy != "MersenneTwister" && strategy != "RngStream") {
+      Rcpp::stop("Invalid RNG strategy. Must be 'RngStream' or 'MersenneTwister'");
+   }
+   
+   // If switching to MersenneTwister, enforce restrictions
+   if (strategy == "MersenneTwister") {
+      if (number_of_segments > 1) {
+         Rcpp::warning("MersenneTwister RNG cannot maintain IID properties with multiple segments. Resetting number_of_segments to 1.");
+         number_of_segments = 1;
+      }
+      if (run_multi_threaded) {
+         Rcpp::warning("MersenneTwister RNG cannot maintain IID properties with parallel execution. Resetting run_multi_threaded to FALSE.");
+         run_multi_threaded = false;
+      }
+   }
+   
+   rng_strategy = strategy;
+}
+
+void SHGInterface::set_number_of_segments(int n) {
+   if (n < 1) {
+      Rcpp::stop("number_of_segments must be >= 1");
+   }
+   
+   if (rng_strategy == "MersenneTwister" && n > 1) {
+      Rcpp::stop("MersenneTwister RNG cannot maintain IID properties with multiple segments. MersenneTwister is restricted to 1 segment. Use RngStream for multiple segments.");
+   }
+   
+   number_of_segments = n;
+}
+
+void SHGInterface::set_run_multi_threaded(bool b) {
+   if (rng_strategy == "MersenneTwister" && b) {
+      Rcpp::stop("MersenneTwister RNG cannot maintain IID properties with parallel execution. MersenneTwister is restricted to non-parallel execution. Use RngStream for parallel execution.");
+   }
+   
+   if (number_of_segments == 1 && b) {
+      Rcpp::stop("run_multi_threaded cannot be TRUE when number_of_segments is 1. Parallel execution requires multiple segments.");
+   }
+   
+   run_multi_threaded = b;
 }
 
 Smoking_Simulator* SHGInterface::loadSimulator()
@@ -130,7 +174,21 @@ Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) 
    if (!SHGInterface::isValidDataFrame(dfPopulation)) {
       Rcpp::stop("Invalid data frame");
    }
-   // TODO validate input values including ones set in the constructor, properties, etc.
+   
+   // Validate RNG strategy restrictions
+   if (rng_strategy == "MersenneTwister") {
+      if (number_of_segments > 1) {
+         Rcpp::stop("MersenneTwister RNG cannot maintain IID properties with multiple segments. MersenneTwister is restricted to 1 segment. Use RngStream for multiple segments.");
+      }
+      if (run_multi_threaded) {
+         Rcpp::stop("MersenneTwister RNG cannot maintain IID properties with parallel execution. MersenneTwister is restricted to non-parallel execution. Use RngStream for parallel execution.");
+      }
+   }
+   
+   if (run_multi_threaded && number_of_segments == 1) {
+      Rcpp::stop("run_multi_threaded cannot be TRUE when number_of_segments is 1. Parallel execution requires multiple segments.");
+   }
+   
    int repeat = dfPopulation.nrows();
    int n = number_of_segments; // Number of parallel simulations
    int repeat_per_sim = repeat / n;
