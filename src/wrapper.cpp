@@ -69,10 +69,115 @@ using namespace std;
 //' @field lifetable_filename Set or get the lifetable filename
 //' @field cpd_filename Set or get the cpd filename
 //' @field immediate_cessation_year Set or get Immediate Cessation Year; If 0, no immediate cessation
+//' @field mt_seeds Set or get MersenneTwister seeds. Must be a numeric vector of exactly 4 values (one for each stream: initiation, cessation, life table, individual). If not set, default seeds are used. Only used when rng_strategy is "MersenneTwister".
+//' @field rngstream_seed Set or get RngStream seed. Must be a numeric vector of exactly 6 values (a single seed vector that generates 4 substreams, one for each stream: initiation, cessation, life table, individual). If not set, default seed is used. Only used when rng_strategy is "RngStream".
 
 SHGInterface::SHGInterface() {
    // For now there is no initialize needed;
    // The Smoking_Simulators are created on the fly
+}
+
+Rcpp::NumericVector SHGInterface::get_mt_seeds() {
+   Rcpp::NumericVector result(mt_seeds.size());
+   for (size_t i = 0; i < mt_seeds.size(); i++) {
+      result[i] = static_cast<double>(mt_seeds[i]);
+   }
+   return result;
+}
+
+void SHGInterface::set_mt_seeds(Rcpp::NumericVector seeds) {
+   if (seeds.size() != 4) {
+      Rcpp::stop("MersenneTwister requires exactly 4 seeds (one for each stream: initiation, cessation, life table, individual). Provided: " + to_string(seeds.size()));
+   }
+   mt_seeds.clear();
+   mt_seeds.reserve(4);
+   for (int i = 0; i < 4; i++) {
+      mt_seeds.push_back(static_cast<unsigned long>(seeds[i]));
+   }
+}
+
+Rcpp::NumericVector SHGInterface::get_rngstream_seed() {
+   Rcpp::NumericVector result(rngstream_seed.size());
+   for (size_t i = 0; i < rngstream_seed.size(); i++) {
+      result[i] = static_cast<double>(rngstream_seed[i]);
+   }
+   return result;
+}
+
+void SHGInterface::set_rngstream_seed(Rcpp::NumericVector seed) {
+   if (seed.size() != 6) {
+      Rcpp::stop("RngStream requires a seed vector with exactly 6 elements) Provided: " + to_string(seed.size()));
+   }
+   rngstream_seed.clear();
+   rngstream_seed.reserve(6);
+   for (int i = 0; i < 6; i++) {
+      rngstream_seed.push_back(static_cast<unsigned long>(seed[i]));
+   }
+}
+
+Rcpp::NumericVector SHGInterface::get_current_seeds() {
+   if (rng_strategy == "MersenneTwister") {
+      return get_mt_seeds();
+   } else if (rng_strategy == "RngStream") {
+      return get_rngstream_seed();
+   } else {
+      Rcpp::stop("Invalid RNG strategy. Cannot retrieve seeds for strategy: " + rng_strategy);
+   }
+}
+
+void SHGInterface::reset_seeds_to_defaults() {
+   if (rng_strategy == "MersenneTwister") {
+      // Default MT seeds: 1898587603, 1468371936, 1551308340, 1590227640
+      Rcpp::NumericVector default_seeds = Rcpp::NumericVector::create(1898587603, 1468371936, 1551308340, 1590227640);
+      set_mt_seeds(default_seeds);
+   } else if (rng_strategy == "RngStream") {
+      // Default RngStream seed: c(12345, 12345, 12345, 12345, 12345, 12345)
+      Rcpp::NumericVector default_seed = Rcpp::NumericVector::create(12345, 12345, 12345, 12345, 12345, 12345);
+      set_rngstream_seed(default_seed);
+   } else {
+      Rcpp::stop("Invalid RNG strategy. Cannot reset seeds for strategy: " + rng_strategy);
+   }
+}
+
+Rcpp::NumericVector SHGInterface::get_rng_state_fingerprint() {
+   // Create a temporary simulator with current seeds to get the RNG state fingerprint
+   Smoking_Simulator* qSimulator = loadSimulator();
+   
+   // Set RNG strategy with user-specified seeds or defaults (same logic as runSimSegment)
+   if (rng_strategy == "MersenneTwister") {
+      if (mt_seeds.size() == 4) {
+         qSimulator->setRNGStrategy(new MersenneTwisterRNG(mt_seeds[0], mt_seeds[1], mt_seeds[2], mt_seeds[3]));
+      } else {
+         qSimulator->setRNGStrategy(new MersenneTwisterRNG(1898587603, 1468371936, 1551308340, 1590227640));
+      }
+   }
+   else if (rng_strategy == "RngStream") {
+      if (rngstream_seed.size() == 6) {
+         unsigned long seed_array[6];
+         for (int i = 0; i < 6; i++) {
+            seed_array[i] = rngstream_seed[i];
+         }
+         qSimulator->setRNGStrategy(new RngStreamRNG(seed_array));
+      } else {
+         qSimulator->setRNGStrategy(new RngStreamRNG());
+      }
+   }
+   else {
+      delete qSimulator;
+      Rcpp::stop("Invalid RNG strategy. Cannot get fingerprint for strategy: " + rng_strategy);
+   }
+   
+   // Get the fingerprint from the RNG strategy
+   std::vector<double> fingerprint = qSimulator->getRNGStateFingerprint();
+   
+   // Convert to Rcpp::NumericVector
+   Rcpp::NumericVector result(fingerprint.size());
+   for (size_t i = 0; i < fingerprint.size(); i++) {
+      result[i] = fingerprint[i];
+   }
+   
+   delete qSimulator;
+   return result;
 }
 
 Smoking_Simulator* SHGInterface::loadSimulator()
@@ -120,9 +225,18 @@ Smoking_Simulator* SHGInterface::loadSimulator()
 //'     birth_cohort = rep(1930:1949, N / 20)
 //' )
 //' shg$rng_strategy <- "RngStream"
+//' # Optionally set a custom seed for RngStream (6 values)
+//' shg$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
 //' shg$number_of_segments <- 10 # if you have 10 cores
 //' shg$run_multi_threaded <- TRUE
 //' smoking_history <- shg$runSimFromDataFrame(pop)
+//' 
+//' # Example with MersenneTwister and custom seeds (4 values)
+//' shg2 <- new(SHGInterface)
+//' shg2$input_data_folder <- system.file("inputs/default", "", package="SmokingHistoryGenerator")
+//' shg2$rng_strategy <- "MersenneTwister"
+//' shg2$mt_seeds <- c(1898587603, 1468371936, 1551308340, 1590227640)
+//' smoking_history2 <- shg2$runSimFromFixedValues(1000, 0, 0, 1950)
 //' }
 
 Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) {
@@ -327,11 +441,28 @@ void SHGInterface::runSimSegment(int repeat,
    // Otherwise, we get errors probably to do with memory sharing; could investigate further
    Smoking_Simulator* qSimulator = loadSimulator();
 
-   // TODO: allow user to specify the seed from R
-   if (rng_strategy == "MersenneTwister")
-      qSimulator->setRNGStrategy(new MersenneTwisterRNG(1898587603, 1468371936, 1551308340, 1590227640));
-   else if (rng_strategy == "RngStream")
-      qSimulator->setRNGStrategy(new RngStreamRNG());
+   // Set RNG strategy with user-specified seeds or defaults
+   if (rng_strategy == "MersenneTwister") {
+      // Use user-specified seeds if provided, otherwise use defaults
+      if (mt_seeds.size() == 4) {
+         qSimulator->setRNGStrategy(new MersenneTwisterRNG(mt_seeds[0], mt_seeds[1], mt_seeds[2], mt_seeds[3]));
+      } else {
+         // Default MT seeds (same as before)
+         qSimulator->setRNGStrategy(new MersenneTwisterRNG(1898587603, 1468371936, 1551308340, 1590227640));
+      }
+   }
+   else if (rng_strategy == "RngStream") {
+      // Use user-specified seed if provided, otherwise use default constructor
+      if (rngstream_seed.size() == 6) {
+         unsigned long seed_array[6];
+         for (int i = 0; i < 6; i++) {
+            seed_array[i] = rngstream_seed[i];
+         }
+         qSimulator->setRNGStrategy(new RngStreamRNG(seed_array));
+      } else {
+         qSimulator->setRNGStrategy(new RngStreamRNG());
+      }
+   }
    else
       Rcpp::stop("Invalid RNG strategy or strategy not yet implemented");
 
@@ -432,7 +563,12 @@ RCPP_MODULE(SmokingSimulator) {
        .property("initiation_filename", &SHGInterface::get_initiation_filename, &SHGInterface::set_initiation_filename, "Set or get the initiation filename")
        .property("cessation_filename", &SHGInterface::get_cessation_filename, &SHGInterface::set_cessation_filename, "Set or get the cessation filename")
        .property("lifetable_filename", &SHGInterface::get_lifetable_filename, &SHGInterface::set_lifetable_filename, "Set or get the lifetable filename")
-       .property("cpd_filename", &SHGInterface::get_cpd_filename, &SHGInterface::set_cpd_filename, "Set or get the cpd filename");
-      // TODO: allow user to specify the seed from R; also antithetical variates; also increment substreams
+       .property("cpd_filename", &SHGInterface::get_cpd_filename, &SHGInterface::set_cpd_filename, "Set or get the cpd filename")
+       .property("mt_seeds", &SHGInterface::get_mt_seeds, &SHGInterface::set_mt_seeds, "Set or get MersenneTwister seeds. Must be a numeric vector of exactly 4 values (one for each stream: initiation, cessation, life table, individual). If not set, default seeds are used.")
+       .property("rngstream_seed", &SHGInterface::get_rngstream_seed, &SHGInterface::set_rngstream_seed, "Set or get RngStream seed. Must be a numeric vector of exactly 6 values (a single seed array that generates 4 substreams, one for each stream: initiation, cessation, life table, individual). If not set, default seed is used.")
+       .method("get_current_seeds", &SHGInterface::get_current_seeds, "Get the current seed(s) for the selected RNG strategy. Returns mt_seeds if rng_strategy is 'MersenneTwister', or rngstream_seed if rng_strategy is 'RngStream'. Returns empty vector if seeds have not been explicitly set (defaults will be used).")
+       .method("reset_seeds_to_defaults", &SHGInterface::reset_seeds_to_defaults, "Reset the seed(s) to their default values for the currently selected RNG strategy. For MersenneTwister, sets mt_seeds to default values. For RngStream, sets rngstream_seed to default values.")
+       .method("get_rng_state_fingerprint", &SHGInterface::get_rng_state_fingerprint, "Get a fingerprint of the RNG internal state. For RngStream, returns the actual internal state (24 values). For MersenneTwister, returns random numbers generated from each stream (12 values). Different seeds will produce different fingerprints, verifying that seeds are actually being used.");
+      // TODO: also antithetical variates; also increment substreams
    }
 

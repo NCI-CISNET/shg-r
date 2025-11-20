@@ -195,6 +195,9 @@ class Smoking_Simulator {
       void writeRNGState() {
          gpRngStrategy->writeRNGState();
       };
+      std::vector<double> getRNGStateFingerprint() {
+         return gpRngStrategy->getRNGStateFingerprint();
+      };
 
 };
 // Implemented in main.cpp

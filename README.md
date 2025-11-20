@@ -64,6 +64,11 @@ shg$number_of_segments <- 1
 shg$run_multi_threaded <- FALSE
 MT_SIM <- shg$runSimFromFixedValues(N, 0, 0, 1940)
 ```
+
+## Setting Random Number Generator Seeds
+
+For information on specifying custom seeds for reproducibility, see [RNG-SEEDS.md](RNG-SEEDS.md).
+
 ## Additional documentation
 
 ### Compiling from source
