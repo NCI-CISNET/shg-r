@@ -638,17 +638,8 @@ Rcpp::List SHGInterface::getConfig(bool debug) {
    config["number_of_segments"] = number_of_segments;
    config["run_multi_threaded"] = run_multi_threaded;
    
-   // Get seeds - check if get_current_seeds exists (it might not on this branch)
-   // For now, return empty vector if method doesn't exist
-   Rcpp::NumericVector seeds;
-   try {
-      // Try to call get_current_seeds if it exists
-      // Since it doesn't exist on this branch, we'll return empty vector
-      // In production, this would call: seeds = get_current_seeds();
-      seeds = Rcpp::NumericVector::create();
-   } catch(...) {
-      seeds = Rcpp::NumericVector::create();
-   }
+   // Get seeds using get_current_seeds()
+   Rcpp::NumericVector seeds = get_current_seeds();
    config["seeds"] = seeds;
    
    // Input file configuration
@@ -669,15 +660,7 @@ Rcpp::List SHGInterface::getConfig(bool debug) {
    // Debug information
    if (debug) {
       // RNG state fingerprint
-      Rcpp::NumericVector rng_fingerprint;
-      try {
-         // Try to call get_rng_state_fingerprint if it exists
-         // Since it doesn't exist on this branch, we'll return empty vector
-         // In production, this would call: rng_fingerprint = get_rng_state_fingerprint();
-         rng_fingerprint = Rcpp::NumericVector::create();
-      } catch(...) {
-         rng_fingerprint = Rcpp::NumericVector::create();
-      }
+      Rcpp::NumericVector rng_fingerprint = get_rng_state_fingerprint();
       config["rng_state_fingerprint"] = rng_fingerprint;
       
       // Package version
@@ -778,23 +761,20 @@ void SHGInterface::useConfig(Rcpp::List config) {
       set_rng_strategy(Rcpp::as<std::string>(config["rng_strategy"]));
    }
    
-   // Set seeds if provided (but only if seed methods exist)
-   if (config.containsElementNamed("seeds")) {
-      Rcpp::NumericVector seeds = config["seeds"];
-      if (seeds.size() > 0) {
-         try {
-            if (rng_strategy == "MersenneTwister" && seeds.size() == 4) {
-               // Would call: set_mt_seeds(seeds);
-               // For now, skip since method doesn't exist on this branch
-            } else if (rng_strategy == "RngStream" && seeds.size() == 6) {
-               // Would call: set_rngstream_seed(seeds);
-               // For now, skip since method doesn't exist on this branch
-            }
-         } catch(...) {
-            Rcpp::warning("Could not set seeds. Seed methods may not be available.");
-         }
-      }
-   }
+    // Set seeds if provided
+    if (config.containsElementNamed("seeds")) {
+       Rcpp::NumericVector seeds = config["seeds"];
+       if (seeds.size() > 0) {
+          if (rng_strategy == "MersenneTwister" && seeds.size() == 4) {
+             set_mt_seeds(seeds);
+          } else if (rng_strategy == "RngStream" && seeds.size() == 6) {
+             set_rngstream_seed(seeds);
+          } else if (seeds.size() > 0) {
+             Rcpp::Function warning("warning");
+             warning("Seeds provided but size doesn't match RNG strategy requirements. MersenneTwister requires 4 seeds, RngStream requires 6 seeds.", Rcpp::Named("call.") = false);
+          }
+       }
+    }
    
    if (config.containsElementNamed("number_of_segments")) {
       set_number_of_segments(Rcpp::as<int>(config["number_of_segments"]));
