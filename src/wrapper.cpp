@@ -61,7 +61,7 @@ using namespace std;
 //' @export
 //' @description The SHG Interface class provides an Rcpp interface to the Smoking History Generator (SHG)
 //' @field number_of_segments Number of segments to use for single or multi-threaded simulation (default is 1). Note: MersenneTwister RNG is restricted to 1 segment. Use RngStream for multiple segments.
-//' @field run_multi_threaded True if the simulation should be run asynchonously; False otherwise (default is False). Note: MersenneTwister RNG is restricted to non-parallel execution. Use RngStream for parallel execution. Also, parallel execution requires number_of_segments > 1.
+//' @field run_multi_threaded True if the simulation should be run asynchronously; False otherwise (default is False). Note: MersenneTwister RNG is restricted to non-parallel execution. Use RngStream for parallel execution. Also, parallel execution requires number_of_segments > 1.
 //' @field rng_strategy 'RngStream' for MRG32k3a (default) or 'MersenneTwister' for Mersenne Twister RNG. 'RngStream' is recommended for reproducibility especially with multi-threaded simulations. Note: MersenneTwister RNG is restricted to single-segment, non-parallel execution due to limitations in maintaining IID properties across segments.
 //' @field input_data_folder Set or get the base folder for input data files
 //' @field initiation_filename Set or get the initiation filename
