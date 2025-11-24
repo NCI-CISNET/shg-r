@@ -65,13 +65,13 @@ public:
 
     // Getters and Setters
     int get_number_of_segments() {return number_of_segments;};
-    void set_number_of_segments(int n) {number_of_segments = n;};
+    void set_number_of_segments(int n);
 
     bool get_run_multi_threaded() {return run_multi_threaded;};
-    void set_run_multi_threaded(bool b) {run_multi_threaded = b;};
+    void set_run_multi_threaded(bool b);
 
     string get_rng_strategy() {return rng_strategy;};
-    void set_rng_strategy(string strategy) {rng_strategy = strategy;};
+    void set_rng_strategy(string strategy);
 
     string get_input_data_folder() {return input_data_folder;};
     void set_input_data_folder(string folder) {input_data_folder = folder;};
