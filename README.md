@@ -73,10 +73,17 @@ MT_SIM <- shg$runSimFromFixedValues(N, 0, 0, 1940)
 
 For information on specifying custom seeds for reproducibility, see [RNG-SEEDS.md](RNG-SEEDS.md).
 
+## Configuration Management
+
+The SHG package provides functions to capture and restore configuration settings, making it easy to reproduce simulations and share configurations. For detailed documentation and examples, see [CONFIG-MANAGEMENT.md](CONFIG-MANAGEMENT.md).
+
 ## Additional documentation
 
 ### Compiling from source
 Please see the [developer readme](dev-readme.md) for instructions on how to compile the package from source.
+
+### Configuration management
+Please see [CONFIG-MANAGEMENT.md](CONFIG-MANAGEMENT.md) for instructions on how to save, restore, and share SHG configurations.
 
 ### Custom data input files
 Please see the [data readme](data-readme.md) for instructions on how to use custom input datasets.
