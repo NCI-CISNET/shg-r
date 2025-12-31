@@ -31,7 +31,7 @@ setwd(wd)
 N <- 100
 start_time <- Sys.time()
 shg$number_of_segments <- 10
-shg$run_multi_threaded <- FALSE
+shg$num_threads <- 1
 shg$rng_strategy <- "RngStream"
 #shg$rng_strategy <- "MersenneTwister"
 RNGSTREAM_SIM <- shg$runSimFromFixedValues(N, 0, 0, 1940)
@@ -42,7 +42,7 @@ print(end_time - start_time)
 N <- 10^6
 start_time <- Sys.time()
 shg$number_of_segments <- 10
-shg$run_multi_threaded <- TRUE
+shg$num_threads <- -1
 shg$rng_strategy <- "RngStream"
 shg$immediate_cessation_year <- 2010
 
@@ -58,7 +58,7 @@ print(end_time - start_time)
 N <- 10^6
 start_time <- Sys.time()
 shg$number_of_segments <- 10
-shg$run_multi_threaded <- TRUE
+shg$num_threads <- -1
 shg$rng_strategy <- "MersenneTwister"
 MT_SIM <- shg$runSimFromFixedValues(N, 0, 0, 1950)
 end_time <- Sys.time()
@@ -73,7 +73,7 @@ pop <- list(
 )
 shg$rng_strategy <- "RngStream"
 shg$number_of_segments <- 10
-shg$run_multi_threaded <- TRUE
+shg$num_threads <- -1
 
 test <- shg$runSimFromDataFrame(pop)
 

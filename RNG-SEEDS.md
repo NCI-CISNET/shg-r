@@ -23,7 +23,7 @@ pop <- list(
     birth_cohort = rep(1930:1949, N / 20)
 )
 shg$number_of_segments <- 10
-shg$run_multi_threaded <- TRUE
+shg$num_threads <- -1  # -1 = auto (all cores), 1 = single-threaded
 smoking_history <- shg$runSimFromDataFrame(pop)
 ```
 

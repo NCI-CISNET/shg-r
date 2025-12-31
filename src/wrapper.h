@@ -54,10 +54,13 @@ public:
 
     bool fileExists(const char* filename);
     Smoking_Simulator* loadSimulator();
+    void setupRNGStrategy(Smoking_Simulator* qSimulator);  // Helper to avoid DRY
 
-    int number_of_segments = 1;
-    bool run_multi_threaded = false;
+    int number_of_segments = -1;  // -1 = auto-calculate when multi-threaded
+    int num_threads = -1;         // -1 = auto (all cores), 1 = single-threaded, N = N threads
     string rng_strategy = "RngStream";
+    string cpd_format = "sparse"; // "none" (fastest), "sparse" (default), "legacy" (backwards compat)
+    string output_file = "";      // Empty = return DataFrame; set path = write to disk like CLI
     
     // Seed storage for RNG strategies
     vector<unsigned long> mt_seeds;  // 4 seeds for MersenneTwister (initiation, cessation, life table, individual)
@@ -67,11 +70,17 @@ public:
     int get_number_of_segments() {return number_of_segments;};
     void set_number_of_segments(int n);
 
-    bool get_run_multi_threaded() {return run_multi_threaded;};
-    void set_run_multi_threaded(bool b);
+    int get_num_threads() {return num_threads;};
+    void set_num_threads(int n);
 
     string get_rng_strategy() {return rng_strategy;};
     void set_rng_strategy(string strategy);
+
+    string get_cpd_format() {return cpd_format;};
+    void set_cpd_format(string format);
+    
+    string get_output_file() {return output_file;};
+    void set_output_file(string path) {output_file = path;};
 
     string get_input_data_folder() {return input_data_folder;};
     void set_input_data_folder(string folder) {input_data_folder = folder;};
@@ -109,7 +118,22 @@ public:
                        vector<short>& cessationAge,
                        vector<short>& ageAtDeath,
                        vector<string>& cpdString,
-                       int offset);
+                       int offset,
+                       SmokingSimulatorSharedData* pSharedData);
+
+
+    // File output mode - writes directly to disk like CLI (DRY: reuses WriteAsData)
+    void runSimSegmentToFile(int repeat,
+                             vector<short>& wRaces,
+                             vector<short>& wSexes,
+                             vector<short>& wYearBirths,
+                             int offset,
+                             const string& tempFilePath,
+                             SmokingSimulatorSharedData* pSharedData,
+                             int segmentNumber);
+    void assembleSegmentFiles(const vector<string>& tempFiles, const string& outputFile,
+                               int repeat, int race, int sex, int yob,
+                               int effectiveSegments, bool bMultiThreaded, bool bAutoSegments);
 
     void LegacyRunWebVersion(const char *sInputFileName);
 

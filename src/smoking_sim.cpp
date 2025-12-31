@@ -2224,6 +2224,104 @@ void PrintMessage(const char* message) {
       Rcpp::Rcout << message;
    #else
       fprintf(stdout, "%s", message);
-      //fflush(stdout); // Ensure unbuffered output
    #endif
+}
+
+// ============================================================
+// XML Header Writing Functions (shared between CLI and R)
+// ============================================================
+
+// Writes out tagged information about the program to pOutStream
+void WriteRunInfoTag(FILE* pOutStream, const char* sVersion, const char* sInitiationSeed,
+                     const char* sCessSeed, const char* sOCDSeed, const char* sMiscSeed,
+                     const char* sImmediateCessYear, const char* sInitFile, const char* sCessFile,
+                     const char* sOCDProbFile, const char* sQuintilesFile, const char* sCPDDataFile,
+                     const char* sOutputFile, const char* sErrorFile, const char* sRNGStrategy, 
+                     const char* sRngStreamSeed, const char* sInputFileName,
+                     int numSegments, int numThreads, bool multiThreaded, bool autoSegments) {
+   if (pOutStream == NULL)
+      throw SimException("WriteRunInfoTag()::ERROR","Output stream is not initialized.\n");
+
+   WriteToFile(pOutStream,"<RUNINFO>\n");
+   WriteToFile(pOutStream,"<VERSION>%s</VERSION>\n", sVersion);
+   WriteToFile(pOutStream,"<RNGSTRATEGY>%s</RNGSTRATEGY>\n", sRNGStrategy);
+   WriteToFile(pOutStream,"<SEEDS>\n");
+   if (strcmp(sRNGStrategy, "MersenneTwister") == 0) {
+      WriteToFile(pOutStream,"<INIT_PRNG_SEED>%s</INIT_PRNG_SEED>\n", sInitiationSeed);
+      WriteToFile(pOutStream,"<CESS_PRNG_SEED>%s</CESS_PRNG_SEED>\n", sCessSeed);
+      WriteToFile(pOutStream,"<OCD_PRNG_SEED>%s</OCD_PRNG_SEED>\n", sOCDSeed);
+      WriteToFile(pOutStream,"<MISC_PRNG_SEED>%s</MISC_PRNG_SEED>\n", sMiscSeed);
+   } else {
+      WriteToFile(pOutStream,"<RNGSTREAM_SEED>%s</RNGSTREAM_SEED>\n", sRngStreamSeed);
+   }
+   WriteToFile(pOutStream,"</SEEDS>\n");
+   // Parallel processing configuration (for reproducibility)
+   WriteToFile(pOutStream,"<PARALLEL>\n");
+   WriteToFile(pOutStream,"<NUM_SEGMENTS>%d</NUM_SEGMENTS>\n", numSegments);
+   WriteToFile(pOutStream,"<NUM_THREADS>%d</NUM_THREADS>\n", numThreads > 0 ? numThreads : 1);
+   WriteToFile(pOutStream,"<MULTI_THREADED>%s</MULTI_THREADED>\n", multiThreaded ? "true" : "false");
+   WriteToFile(pOutStream,"<AUTO_SEGMENTS>%s</AUTO_SEGMENTS>\n", autoSegments ? "true" : "false");
+   WriteToFile(pOutStream,"</PARALLEL>\n");
+   WriteToFile(pOutStream,"<DATAFILES>\n");
+   WriteToFile(pOutStream,"<INPUT_FILE>%s</INPUT_FILE>\n", sInputFileName);
+   WriteToFile(pOutStream,"<INITIATION>%s</INITIATION>\n", sInitFile);
+   WriteToFile(pOutStream,"<CESSATION>%s</CESSATION>\n", sCessFile);
+   WriteToFile(pOutStream,"<OCD>%s</OCD>\n", sOCDProbFile);
+   WriteToFile(pOutStream,"<CIG_PER_DAY>%s</CIG_PER_DAY>\n</DATAFILES>\n", sCPDDataFile);
+   WriteToFile(pOutStream,"<OUTFILES>\n<OUTPUT>%s</OUTPUT>\n", sOutputFile);
+   WriteToFile(pOutStream,"<ERRORS>%s</ERRORS>\n</OUTFILES>\n", sErrorFile);
+   WriteToFile(pOutStream,"<OPTIONS>\n<CESSATION_YR>%s</CESSATION_YR>\n", sImmediateCessYear);
+   WriteToFile(pOutStream,"</OPTIONS>\n</RUNINFO>\n");
+}
+
+// Writes out tagged information about the current run to pOutStream
+void WriteInputTag(FILE* pOutStream, const char* sRace, const char* sSex, 
+                   const char* sYearOfBirth, const char* sNumReps, bool withHoldTags) {
+   int iSex, iRace;
+
+   try {
+      if (pOutStream == NULL) {
+         throw SimException("ERROR","Output stream is not initialized.\n");
+      }
+
+      iSex = atoi(sSex);
+      iRace = atoi(sRace);
+
+      if (!withHoldTags) {
+         WriteToFile(pOutStream, "<INPUTS>\n");
+
+         if (iRace >= 0 && iRace < Smoking_Simulator::NUM_RACES) {
+            WriteToFile(pOutStream, "<RACE>%s</RACE>\n", sRACE_LABELS[iRace]);
+         } else {
+            WriteToFile(pOutStream, "<RACE>\n%d\n</RACE>\n", iRace);
+         }
+
+         if (iSex >= 0 && iSex < Smoking_Simulator::NUM_SEXES) {
+            WriteToFile(pOutStream,"<SEX>%s</SEX>\n", sSEX_LABELS[iSex]);
+         } else {
+            WriteToFile(pOutStream,"<SEX>\n%d\n</SEX>\n", iSex);
+         }
+
+         WriteToFile(pOutStream,"<YOB>%s</YOB>\n",sYearOfBirth);
+         if (sNumReps != NULL && (strcmp(sNumReps,"\0") != 0)) {
+            WriteToFile(pOutStream,"<REPEAT>%s</REPEAT>\n", sNumReps);
+         }
+         WriteToFile(pOutStream,"</INPUTS>\n");
+      }
+   } catch (SimException ex) {
+      ex.AddCallPath("WriteInputTag(FILE*,char*...)");
+      throw ex;
+   }
+}
+
+void WriteSimulationOpenTag(FILE* pOutStream, bool withHoldTags) {
+   if (!withHoldTags) {
+      WriteToFile(pOutStream, "<SIMULATION>\n");
+   }
+}
+
+void WriteSimulationCloseTag(FILE* pOutStream, bool withHoldTags) {
+   if (!withHoldTags) {
+      WriteToFile(pOutStream, "</RUN>\n</SIMULATION>\n");
+   }
 }

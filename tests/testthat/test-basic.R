@@ -79,7 +79,7 @@ get_stats_from_df <- function(df) {
 shg <- new(SHGInterface)
 shg$rng_strategy <- "MersenneTwister"
 shg$number_of_segments <- 1
-shg$run_multi_threaded <- FALSE
+shg$num_threads <- 1  # single-threaded for MersenneTwister
 N <- 10^4 # Individuals to simulate (REPEAT)
 
 # TODO: maybe a better way to reference the input data folder in the package?
@@ -210,33 +210,34 @@ test_that("MersenneTwister cannot be used with multiple segments", {
   expect_error(shg_test$number_of_segments <- 2, "MersenneTwister RNG cannot maintain IID properties with multiple segments")
 })
 
-test_that("MersenneTwister cannot be used with parallel execution", {
+test_that("MersenneTwister cannot be used with multi-threading", {
   shg_test <- new(SHGInterface)
   shg_test$rng_strategy <- "MersenneTwister"
-  expect_error(shg_test$run_multi_threaded <- TRUE, "MersenneTwister RNG cannot maintain IID properties with parallel execution")
+  expect_error(shg_test$num_threads <- -1, "MersenneTwister RNG requires single-threaded execution")
+  expect_error(shg_test$num_threads <- 4, "MersenneTwister RNG requires single-threaded execution")
 })
 
-test_that("Switching to MersenneTwister resets segments and parallel to valid values", {
+test_that("Switching to MersenneTwister resets segments and threads to valid values", {
   shg_test <- new(SHGInterface)
   shg_test$rng_strategy <- "RngStream"
   shg_test$number_of_segments <- 4
-  shg_test$run_multi_threaded <- TRUE
+  shg_test$num_threads <- -1  # auto multi-threaded
   
   expect_warning(
     expect_warning(
       shg_test$rng_strategy <- "MersenneTwister",
       "Resetting number_of_segments to 1"
     ),
-    "Resetting run_multi_threaded to FALSE"
+    "Resetting num_threads to 1"
   )
   expect_equal(shg_test$number_of_segments, 1)
-  expect_equal(shg_test$run_multi_threaded, FALSE)
+  expect_equal(shg_test$num_threads, 1)
 })
 
-test_that("Parallel execution requires multiple segments", {
+test_that("Multi-threading with single segment warns but allows", {
   shg_test <- new(SHGInterface)
   shg_test$number_of_segments <- 1
-  expect_error(shg_test$run_multi_threaded <- TRUE, "run_multi_threaded cannot be TRUE when number_of_segments is 1")
+  expect_warning(shg_test$num_threads <- -1, "num_threads > 1 or -1 \\(auto\\) has no effect when number_of_segments is 1")
 })
 
 test_that("MersenneTwister with multiple segments is reset to 1 segment", {
@@ -258,14 +259,14 @@ test_that("MersenneTwister with multiple segments is reset to 1 segment", {
   expect_equal(nrow(result), 100)
 })
 
-test_that("RngStream allows multiple segments and parallel execution", {
+test_that("RngStream allows multiple segments and multi-threading", {
   shg_test <- new(SHGInterface)
   shg_test$rng_strategy <- "RngStream"
   shg_test$number_of_segments <- 4
-  shg_test$run_multi_threaded <- TRUE
+  shg_test$num_threads <- -1  # auto multi-threaded
   expect_equal(shg_test$rng_strategy, "RngStream")
   expect_equal(shg_test$number_of_segments, 4)
-  expect_equal(shg_test$run_multi_threaded, TRUE)
+  expect_equal(shg_test$num_threads, -1)
 })
 
 test_that("MersenneTwister: custom seeds produce different results and reverting to defaults restores original results", {
@@ -274,7 +275,7 @@ test_that("MersenneTwister: custom seeds produce different results and reverting
   shg_mt$input_data_folder <- data_folder
   shg_mt$rng_strategy <- "MersenneTwister"
   shg_mt$number_of_segments <- 1
-  shg_mt$run_multi_threaded <- FALSE
+  shg_mt$num_threads <- 1  # single-threaded for MT
   
   # Baseline: run with default seeds (no seeds set)
   baseline <- shg_mt$runSimFromFixedValues(N, 0, 0, 1940)
@@ -315,7 +316,7 @@ test_that("RngStream: custom seed produces different results and reverting to de
   shg_rs$input_data_folder <- data_folder
   shg_rs$rng_strategy <- "RngStream"
   shg_rs$number_of_segments <- 1
-  shg_rs$run_multi_threaded <- FALSE
+  shg_rs$num_threads <- 1  # single-threaded
   
   # Baseline: run with default seed (no seed set)
   baseline <- shg_rs$runSimFromFixedValues(N, 0, 0, 1940)
@@ -376,7 +377,7 @@ test_that("reset_seeds_to_defaults() resets seeds to default values", {
   shg_mt$input_data_folder <- data_folder
   shg_mt$rng_strategy <- "MersenneTwister"
   shg_mt$number_of_segments <- 1
-  shg_mt$run_multi_threaded <- FALSE
+  shg_mt$num_threads <- 1  # single-threaded
   
   # Set custom seeds
   shg_mt$mt_seeds <- c(1111111111, 2222222222, 3333333333, 4444444444)
@@ -399,7 +400,7 @@ test_that("reset_seeds_to_defaults() resets seeds to default values", {
   shg_baseline$input_data_folder <- data_folder
   shg_baseline$rng_strategy <- "MersenneTwister"
   shg_baseline$number_of_segments <- 1
-  shg_baseline$run_multi_threaded <- FALSE
+  shg_baseline$num_threads <- 1  # single-threaded
   # Don't set seeds, so defaults will be used
   baseline_fresh <- shg_baseline$runSimFromFixedValues(N, 0, 0, 1940)
   baseline_fresh_stats <- get_stats_from_df(baseline_fresh)
@@ -413,7 +414,7 @@ test_that("reset_seeds_to_defaults() resets seeds to default values", {
   shg_rs$input_data_folder <- data_folder
   shg_rs$rng_strategy <- "RngStream"
   shg_rs$number_of_segments <- 1
-  shg_rs$run_multi_threaded <- FALSE
+  shg_rs$num_threads <- 1  # single-threaded
   
   # Set custom seed
   shg_rs$rngstream_seed <- c(11111, 22222, 33333, 44444, 55555, 66666)
@@ -488,3 +489,226 @@ test_that("get_rng_state_fingerprint() verifies seeds actually affect RNG intern
 })
 
 # TODO: Compare Legacy tests with runSimFromFixedValues(): requires parsing of results
+
+# ============================================================
+# CPD Format Tests
+# ============================================================
+
+test_that("cpd_format = none produces no CPD column", {
+  shg <- new(SHGInterface)
+  shg$input_data_folder <- data_folder
+  shg$cpd_format <- "none"
+  shg$rng_strategy <- "RngStream"
+  shg$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
+  shg$number_of_segments <- 1
+  shg$num_threads <- 1
+  
+  N <- 100
+  df <- data.frame(race=rep(0L, N), sex=rep(0L, N), birth_cohort=rep(1950L, N))
+  result <- shg$runSimFromDataFrame(df)
+  
+  expect_equal(nrow(result), N)
+  expect_true("smoking_initiation_age" %in% names(result))
+  expect_false("cigarettes_per_day" %in% names(result))
+})
+
+test_that("cpd_format = sparse produces compact CPD", {
+  shg <- new(SHGInterface)
+  shg$input_data_folder <- data_folder
+  shg$cpd_format <- "sparse"
+  shg$rng_strategy <- "RngStream"
+  shg$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
+  shg$number_of_segments <- 1
+  shg$num_threads <- 1
+  
+  N <- 100
+  df <- data.frame(race=rep(0L, N), sex=rep(0L, N), birth_cohort=rep(1950L, N))
+  result <- shg$runSimFromDataFrame(df)
+  
+  expect_true("cigarettes_per_day" %in% names(result))
+  # Sparse format should NOT have parentheses (no age info)
+  smoker_idx <- which(result$smoking_initiation_age != -999)[1]
+  if (!is.na(smoker_idx)) {
+    cpd <- result$cigarettes_per_day[smoker_idx]
+    expect_false(grepl("\\(", cpd), info = "Sparse format should not contain parentheses")
+  }
+})
+
+test_that("cpd_format = legacy produces age-cpd format", {
+  shg <- new(SHGInterface)
+  shg$input_data_folder <- data_folder
+  shg$cpd_format <- "legacy"
+  shg$rng_strategy <- "RngStream"
+  shg$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
+  shg$number_of_segments <- 1
+  shg$num_threads <- 1
+  
+  N <- 100
+  df <- data.frame(race=rep(0L, N), sex=rep(0L, N), birth_cohort=rep(1950L, N))
+  result <- shg$runSimFromDataFrame(df)
+  
+  expect_true("cigarettes_per_day" %in% names(result))
+  # Legacy format should have parentheses (with age info)
+  smoker_idx <- which(result$smoking_initiation_age != -999)[1]
+  if (!is.na(smoker_idx)) {
+    cpd <- result$cigarettes_per_day[smoker_idx]
+    expect_true(grepl("\\(", cpd), info = "Full format should contain parentheses")
+  }
+})
+
+test_that("cpd_format validation rejects invalid values", {
+  shg <- new(SHGInterface)
+  expect_error(shg$cpd_format <- "invalid", "cpd_format must be")
+})
+
+test_that("sparse and legacy produce equivalent CPD values", {
+  N <- 100
+  df <- data.frame(race=rep(0L, N), sex=rep(0L, N), birth_cohort=rep(1950L, N))
+  
+  # Sparse format
+  shg_sparse <- new(SHGInterface)
+  shg_sparse$input_data_folder <- data_folder
+  shg_sparse$cpd_format <- "sparse"
+  shg_sparse$rng_strategy <- "RngStream"
+  shg_sparse$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
+  shg_sparse$number_of_segments <- 1
+  shg_sparse$num_threads <- 1
+  result_sparse <- shg_sparse$runSimFromDataFrame(df)
+  
+  # Legacy format (same seed)
+  shg_legacy <- new(SHGInterface)
+  shg_legacy$input_data_folder <- data_folder
+  shg_legacy$cpd_format <- "legacy"
+  shg_legacy$rng_strategy <- "RngStream"
+  shg_legacy$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
+  shg_legacy$number_of_segments <- 1
+  shg_legacy$num_threads <- 1
+  result_legacy <- shg_legacy$runSimFromDataFrame(df)
+  
+  # Non-CPD columns should match exactly
+  expect_equal(result_sparse$smoking_initiation_age, result_legacy$smoking_initiation_age)
+  expect_equal(result_sparse$smoking_cessation_age, result_legacy$smoking_cessation_age)
+  expect_equal(result_sparse$age_at_death, result_legacy$age_at_death)
+  
+  # Extract CPD values from both formats and compare
+  for (i in 1:min(10, N)) {
+    if (result_sparse$smoking_initiation_age[i] != -999) {
+      sparse_vals <- as.numeric(strsplit(result_sparse$cigarettes_per_day[i], ", ")[[1]])
+      legacy_vals <- as.numeric(gsub(".*\\(([0-9.]+)\\)", "\\1", 
+                                     strsplit(result_legacy$cigarettes_per_day[i], ", ")[[1]]))
+      expect_equal(sparse_vals, legacy_vals, info = paste("Individual", i))
+    }
+  }
+})
+
+
+# ============================================================
+# File Output Mode Tests
+# ============================================================
+
+test_that("output_file writes results to disk", {
+  output_path <- tempfile(fileext = ".csv")
+  
+  shg <- new(SHGInterface)
+  shg$input_data_folder <- data_folder
+  shg$rng_strategy <- "RngStream"
+  shg$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
+  shg$number_of_segments <- 2
+  shg$num_threads <- 2
+  shg$output_file <- output_path
+  
+  N <- 1000
+  df <- data.frame(race=rep(0L, N), sex=rep(0L, N), birth_cohort=rep(1950L, N))
+  result <- shg$runSimFromDataFrame(df)
+  
+  # Should return info DataFrame
+  expect_true(grepl("file", result$info, ignore.case = TRUE))
+  expect_equal(result$rows, N)
+  
+  # File should exist 
+  expect_true(file.exists(output_path))
+  lines <- readLines(output_path)
+  
+  # Find data section (between <RUN> and </RUN>)
+  run_start <- which(grepl("^<RUN>$", lines))
+  run_end <- which(grepl("^</RUN>", lines))
+  expect_true(length(run_start) > 0 && length(run_end) > 0, "File should have <RUN> tags")
+  data_lines <- lines[(run_start[1]+1):(run_end[1]-1)]
+  expect_equal(length(data_lines), N)  # N data lines
+  
+  # Header should have expected XML structure
+  expect_true(any(grepl("<VERSION>", lines)))
+  
+  unlink(output_path)
+})
+
+test_that("output_file parallel execution works", {
+  output_path <- tempfile(fileext = ".csv")
+  
+  shg <- new(SHGInterface)
+  shg$input_data_folder <- data_folder
+  shg$rng_strategy <- "RngStream"
+  shg$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
+  shg$number_of_segments <- 10
+  shg$num_threads <- -1  # auto
+  shg$output_file <- output_path
+  
+  N <- 10000
+  df <- data.frame(race=rep(0L, N), sex=rep(0L, N), birth_cohort=rep(1950L, N))
+  result <- shg$runSimFromDataFrame(df)
+  
+  # File should have all rows (between <RUN> and </RUN> tags)
+  lines <- readLines(output_path)
+  run_start <- which(grepl("^<RUN>$", lines))
+  run_end <- which(grepl("^</RUN>", lines))
+  expect_true(length(run_start) > 0 && length(run_end) > 0)
+  data_lines <- lines[(run_start[1]+1):(run_end[1]-1)]
+  expect_equal(length(data_lines), N)
+  
+  unlink(output_path)
+})
+
+test_that("output_file produces same init/cess/ocd as memory mode", {
+  output_path <- tempfile(fileext = ".csv")
+  
+  N <- 500
+  df <- data.frame(race=rep(0L, N), sex=rep(0L, N), birth_cohort=rep(1950L, N))
+  
+  # Memory mode
+  shg_mem <- new(SHGInterface)
+  shg_mem$input_data_folder <- data_folder
+  shg_mem$rng_strategy <- "RngStream"
+  shg_mem$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
+  shg_mem$cpd_format <- "legacy"
+  shg_mem$number_of_segments <- 1
+  shg_mem$num_threads <- 1
+  result_mem <- shg_mem$runSimFromDataFrame(df)
+  
+  # File mode (same seed)
+  shg_file <- new(SHGInterface)
+  shg_file$input_data_folder <- data_folder
+  shg_file$rng_strategy <- "RngStream"
+  shg_file$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
+  shg_file$number_of_segments <- 1
+  shg_file$num_threads <- 1
+  shg_file$output_file <- output_path
+  shg_file$runSimFromDataFrame(df)
+  
+  # Parse file and compare (skip XML header, find <RUN> tag to get data lines)
+  lines <- readLines(output_path)
+  run_start <- which(grepl("^<RUN>$", lines))
+  run_end <- which(grepl("^</RUN>", lines))
+  if (length(run_start) > 0 && length(run_end) > 0) {
+    data_lines <- lines[(run_start[1]+1):(run_end[1]-1)]
+  } else {
+    # Fallback for old format (simple header)
+    data_lines <- lines[-1]
+  }
+  file_init_ages <- sapply(data_lines, function(line) {
+    as.integer(strsplit(line, ";")[[1]][4])
+  })
+  
+  expect_equal(unname(file_init_ages), result_mem$smoking_initiation_age)
+  
+  unlink(output_path)
+})

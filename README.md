@@ -47,15 +47,15 @@ pop <- list(
 
 # The following are default configuration values; change as needed
 shg$rng_strategy <- "RngStream"
-shg$number_of_segments <- 1
-shg$run_multi_threaded <- FALSE
+shg$number_of_segments <- -1  # -1 = auto, or set explicit value for reproducibility
+shg$num_threads <- -1         # -1 = auto (all cores), 1 = single-threaded
 
 RNGSTREAM_SIM_POP <- shg$runSimFromDataFrame(pop)
 ```
 
 **Note on RNG strategies:**
-- **RngStream** (default): Recommended for all use cases, especially multi-segment and parallel simulations. Supports multiple segments and parallel execution while maintaining IID properties.
-- **MersenneTwister**: Legacy RNG for backward compatibility. **Restricted to single-segment, non-parallel execution** due to limitations in maintaining IID properties across segments. Attempting to use MersenneTwister with `number_of_segments > 1` or `run_multi_threaded = TRUE` will result in an error.
+- **RngStream** (default): Recommended for all use cases, especially multi-segment and parallel simulations. Supports multiple segments and multi-threading while maintaining IID properties.
+- **MersenneTwister**: Legacy RNG for backward compatibility. **Restricted to single-segment, single-threaded execution** due to limitations in maintaining IID properties across segments. Attempting to use MersenneTwister with `number_of_segments > 1` or `num_threads != 1` will result in an error.
 
 If you want to produce identical results as with previous versions of the SHG, you must select the Mersenne Twister strategy:
 
@@ -68,6 +68,37 @@ shg$rng_strategy <- "MersenneTwister"
 # Note: MersenneTwister is automatically restricted to 1 segment and non-parallel execution
 MT_SIM <- shg$runSimFromFixedValues(N, 0, 0, 1940)
 ```
+
+## CPD Output Format
+
+The `cpd_format` property controls how cigarettes-per-day data is returned:
+
+```r
+shg$cpd_format <- "sparse"  # Default - fastest with CPD: "20, 20, 10, 3"
+shg$cpd_format <- "none"    # Fastest - no CPD column returned
+shg$cpd_format <- "legacy"  # Backwards compatible: "17 (20), 18 (20), 19 (10)"
+```
+
+**Performance comparison (1M individuals, 12 cores):**
+| Format | Time | Notes |
+|--------|------|-------|
+| `none` | ~1.1s | No CPD data |
+| `sparse` | ~1.3s | Default, recommended |
+| `legacy` | ~1.5s | For backwards compatibility |
+
+**Note:** The `sparse` format stores only CPD values. The age can be computed as `init_age + index` since values are sequential from initiation age.
+
+## File Output Mode
+
+For CLI-like performance, you can write results directly to disk instead of returning a DataFrame:
+
+```r
+shg$output_file <- "/path/to/output.csv"
+result <- shg$runSimFromDataFrame(df)
+# Result is a small info DataFrame; actual data is in the file
+```
+
+File output matches CLI's data format (semicolon-separated) and achieves similar performance (~1.3s for 1M individuals).
 
 ## Setting Random Number Generator Seeds
 

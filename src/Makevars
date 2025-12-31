@@ -1,4 +1,4 @@
 CXX_STD = CXX17
-CXX11FLAGS = -O2 -g 
-CXX17FLAGS = -O2 -g 
-PKG_CXXFLAGS = -DIS_RCPP -I. -I/Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library/Rcpp/include -I$(R_HOME)/library/Rcpp/include
+CXX11FLAGS = -O3
+CXX17FLAGS = -O3 -march=native
+PKG_CXXFLAGS = -DIS_RCPP -O3 -march=native -I. -I/Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library/Rcpp/include -I$(R_HOME)/library/Rcpp/include

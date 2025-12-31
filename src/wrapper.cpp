@@ -38,6 +38,7 @@
 #include <algorithm>  // Algorithms like sort, find, etc.
 #include <future>     // Asynchronous operations
 #include <thread>     // Thread support
+#include <chrono>     // Timing
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -45,10 +46,43 @@
 #include "wrapper.h"
 #include "smoking_sim.h"
 #include "sim_exception.h"
+#include "version.h"
 #include <Rcpp.h>
 
 using namespace std;
-      
+
+// Fast integer to string conversion (10-20x faster than std::to_string)
+// Writes digits forward to avoid reverse, returns pointer past end
+inline char* fast_itoa(int val, char* buf) {
+   if (val < 0) {
+      *buf++ = '-';
+      val = -val;
+   }
+   // Handle 0-99 directly (most common case for ages and CPD)
+   if (val < 10) {
+      *buf++ = '0' + val;
+   } else if (val < 100) {
+      *buf++ = '0' + val / 10;
+      *buf++ = '0' + val % 10;
+   } else {
+      // General case: write digits, then reverse
+      char* start = buf;
+      do {
+         *buf++ = '0' + val % 10;
+         val /= 10;
+      } while (val > 0);
+      std::reverse(start, buf);
+   }
+   return buf;
+}
+
+// Append integer to string using fast conversion
+inline void append_int(std::string& s, int val) {
+   char buf[16];
+   char* end = fast_itoa(val, buf);
+   s.append(buf, end - buf);
+}
+
 // We need to create a wrapper class rather than reference Smoking_Simulator directly
 // because (among other constraints) RCPP does not support classes with constructors
 // that take more than 6 arguments
@@ -60,8 +94,8 @@ using namespace std;
 //' @aliases SHGInterface
 //' @export
 //' @description The SHG Interface class provides an Rcpp interface to the Smoking History Generator (SHG)
-//' @field number_of_segments Number of segments to use for single or multi-threaded simulation (default is 1). Note: MersenneTwister RNG is restricted to 1 segment. Use RngStream for multiple segments.
-//' @field run_multi_threaded True if the simulation should be run asynchronously; False otherwise (default is False). Note: MersenneTwister RNG is restricted to non-parallel execution. Use RngStream for parallel execution. Also, parallel execution requires number_of_segments > 1.
+//' @field number_of_segments Number of segments to use for simulation. Use -1 for auto-calculation (default), 1 for single segment, or N > 1 for explicit segment count. Auto-calculation uses: min(cores * 10, repeat / 1000). Note: MersenneTwister RNG is restricted to 1 segment.
+//' @field num_threads Thread count: -1 = auto (all cores, multi-threaded), 1 = single-threaded, N = use N threads. Default: -1. Note: MersenneTwister RNG requires num_threads = 1.
 //' @field rng_strategy 'RngStream' for MRG32k3a (default) or 'MersenneTwister' for Mersenne Twister RNG. 'RngStream' is recommended for reproducibility especially with multi-threaded simulations. Note: MersenneTwister RNG is restricted to single-segment, non-parallel execution due to limitations in maintaining IID properties across segments.
 //' @field input_data_folder Set or get the base folder for input data files
 //' @field initiation_filename Set or get the initiation filename
@@ -89,10 +123,10 @@ void SHGInterface::set_rng_strategy(string strategy) {
          warning("Resetting number_of_segments to 1 for MersenneTwister RNG.", Rcpp::Named("call.") = false);
          number_of_segments = 1;
       }
-      if (run_multi_threaded) {
+      if (num_threads != 1) {
          Rcpp::Function warning("warning");
-         warning("Resetting run_multi_threaded to FALSE for MersenneTwister RNG.", Rcpp::Named("call.") = false);
-         run_multi_threaded = false;
+         warning("Resetting num_threads to 1 for MersenneTwister RNG (single-threaded only).", Rcpp::Named("call.") = false);
+         num_threads = 1;
       }
    }
    
@@ -100,8 +134,8 @@ void SHGInterface::set_rng_strategy(string strategy) {
 }
 
 void SHGInterface::set_number_of_segments(int n) {
-   if (n < 1) {
-      Rcpp::stop("number_of_segments must be >= 1");
+   if (n < -1 || n == 0) {
+      Rcpp::stop("number_of_segments must be -1 (auto) or >= 1");
    }
    
    if (rng_strategy == "MersenneTwister" && n > 1) {
@@ -111,16 +145,31 @@ void SHGInterface::set_number_of_segments(int n) {
    number_of_segments = n;
 }
 
-void SHGInterface::set_run_multi_threaded(bool b) {
-   if (rng_strategy == "MersenneTwister" && b) {
-      Rcpp::stop("MersenneTwister RNG cannot maintain IID properties with parallel execution. MersenneTwister is restricted to non-parallel execution. Use RngStream for parallel execution.");
+void SHGInterface::set_num_threads(int n) {
+   if (n < -1 || n == 0) {
+      Rcpp::stop("num_threads must be -1 (auto), 1 (single-threaded), or > 1");
    }
    
-   if (number_of_segments == 1 && b) {
-      Rcpp::stop("run_multi_threaded cannot be TRUE when number_of_segments is 1. Parallel execution requires multiple segments.");
+   // MersenneTwister requires single-threaded
+   if (rng_strategy == "MersenneTwister" && n != 1) {
+      Rcpp::stop("MersenneTwister RNG requires single-threaded execution (num_threads = 1). Use RngStream for multi-threading.");
    }
    
-   run_multi_threaded = b;
+   // Warn if num_threads > 1 but number_of_segments == 1 (no parallelism possible)
+   if (n != 1 && number_of_segments == 1) {
+      Rcpp::Function warning("warning");
+      warning("num_threads > 1 or -1 (auto) has no effect when number_of_segments is 1. Consider number_of_segments = -1 (auto).", Rcpp::Named("call.") = false);
+   }
+   
+   num_threads = n;
+}
+
+void SHGInterface::set_cpd_format(string format) {
+   // "legacy" is the old "full" format for backwards compatibility
+   if (format != "none" && format != "sparse" && format != "legacy") {
+      Rcpp::stop("cpd_format must be 'none', 'sparse', or 'legacy'. Provided: " + format);
+   }
+   cpd_format = format;
 }
 
 Rcpp::NumericVector SHGInterface::get_mt_seeds() {
@@ -273,8 +322,8 @@ Smoking_Simulator* SHGInterface::loadSimulator()
 //' shg$rng_strategy <- "RngStream"
 //' # Optionally set a custom seed for RngStream (6 values)
 //' shg$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
-//' shg$number_of_segments <- 10 # if you have 10 cores
-//' shg$run_multi_threaded <- TRUE
+//' shg$number_of_segments <- -1 # auto-calculate (default), or set explicit value for reproducibility
+//' shg$num_threads <- -1  # -1 = auto (all cores), 1 = single-threaded
 //' smoking_history <- shg$runSimFromDataFrame(pop)
 //' 
 //' # Example with MersenneTwister and custom seeds (4 values)
@@ -291,38 +340,146 @@ Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) 
       Rcpp::stop("Invalid data frame");
    }
    
+   int repeat = dfPopulation.nrows();
+   
+   // Determine if multi-threaded: num_threads == -1 (auto) or > 1
+   bool bMultiThreaded = (num_threads != 1);
+   
+   // Auto-calculate segments if -1 (auto) and using RngStream with multi-threading
+   int effectiveSegments = number_of_segments;
+   if (number_of_segments == -1) {
+      if (rng_strategy == "RngStream" && bMultiThreaded) {
+         // Auto-calculate: min(cores * 10, repeat / 1000)
+         int numCores = (num_threads == -1) ? std::thread::hardware_concurrency() : num_threads;
+         if (numCores < 1) numCores = 1;
+         const int MIN_INDIVIDUALS_PER_SEGMENT = 1000;
+         const int SEGMENT_MULTIPLIER = 10;
+         int maxSegmentsFromCores = numCores * SEGMENT_MULTIPLIER;
+         int maxSegmentsFromRepeat = repeat / MIN_INDIVIDUALS_PER_SEGMENT;
+         if (maxSegmentsFromRepeat < 1) maxSegmentsFromRepeat = 1;
+         effectiveSegments = std::min(maxSegmentsFromCores, maxSegmentsFromRepeat);
+         if (effectiveSegments < 1) effectiveSegments = 1;
+         Rcpp::Rcout << "  [INFO] Auto-calculated number_of_segments=" << effectiveSegments 
+                     << " (cores=" << numCores << ", repeat=" << repeat << ")\n";
+         Rcpp::Rcout << "  [INFO] For exact reproduction, set: shg$number_of_segments <- " << effectiveSegments << "\n";
+      } else {
+         effectiveSegments = 1;  // Default to 1 if single-threaded or MersenneTwister
+      }
+   }
+   
    // Validate RNG strategy restrictions
    if (rng_strategy == "MersenneTwister") {
-      if (number_of_segments > 1) {
+      if (effectiveSegments > 1) {
          Rcpp::stop("MersenneTwister RNG cannot maintain IID properties with multiple segments. MersenneTwister is restricted to 1 segment. Use RngStream for multiple segments.");
       }
-      if (run_multi_threaded) {
-         Rcpp::stop("MersenneTwister RNG cannot maintain IID properties with parallel execution. MersenneTwister is restricted to non-parallel execution. Use RngStream for parallel execution.");
+      if (bMultiThreaded) {
+         Rcpp::stop("MersenneTwister RNG requires single-threaded execution (num_threads = 1). Use RngStream for multi-threading.");
       }
    }
    
-   if (run_multi_threaded && number_of_segments == 1) {
-      Rcpp::stop("run_multi_threaded cannot be TRUE when number_of_segments is 1. Parallel execution requires multiple segments.");
-   }
-   
-   int repeat = dfPopulation.nrows();
-   int n = number_of_segments; // Number of parallel simulations
+   int n = effectiveSegments; // Number of parallel simulations
    int repeat_per_sim = repeat / n;
    int remainder = repeat % n; // Calculate the remainder
 
    vector<short> 
       wRaces = Rcpp::as<vector<short>>(dfPopulation["race"]),
       wSexes = Rcpp::as<vector<short>>(dfPopulation["sex"]),
-      wYearBirths = Rcpp::as<vector<short>>(dfPopulation["birth_cohort"]),
-      initiationAge(repeat),
-      cessationAge(repeat),
-      ageAtDeath(repeat);
-   vector<string> cpdString(repeat);
+      wYearBirths = Rcpp::as<vector<short>>(dfPopulation["birth_cohort"]);
 
-   // Vectors to store futures; declare even if we might not use it below
+   // Create shared data once for all segments (major performance optimization)
+   string initFile = input_data_folder + "/" + initiation_filename;
+   string cessFile = input_data_folder + "/" + cessation_filename;
+   string lifeFile = input_data_folder + "/" + lifetable_filename;
+   string cpdFile = input_data_folder + "/" + cpd_filename;
+   SmokingSimulatorSharedData* pSharedData = Smoking_Simulator::CreateSharedData(
+      initFile.c_str(), cessFile.c_str(), lifeFile.c_str(), cpdFile.c_str());
+
+   // ============================================================
+   // FILE OUTPUT MODE: Write directly to disk like CLI
+   // ============================================================
+   if (!output_file.empty()) {
+      Rcpp::Rcout << "[INFO] Writing results to file: " << output_file << "\n";
+      
+      // Create temp file paths
+      vector<string> tempFiles;
+      string outputDir = std::filesystem::path(output_file).parent_path().string();
+      if (outputDir.empty()) outputDir = ".";
+      
+      for (int seg = 0; seg < n; seg++) {
+         string tempPath = outputDir + "/shg_segment_" + to_string(seg) + ".tmp";
+         tempFiles.push_back(tempPath);
+      }
+      
+      // Launch segments
+      vector<future<void>> futures;
+      
+      for (int seg = 0; seg < n; seg++) {
+         int offset = seg * repeat_per_sim;
+         int current_repeat = repeat_per_sim + (seg == n - 1 ? remainder : 0);
+         
+         if (bMultiThreaded) {
+            futures.push_back(async(launch::async, &SHGInterface::runSimSegmentToFile, this,
+                                    current_repeat,
+                                    ref(wRaces),
+                                    ref(wSexes),
+                                    ref(wYearBirths),
+                                    offset,
+                                    tempFiles[seg],
+                                    pSharedData,
+                                    seg));
+         } else {
+            runSimSegmentToFile(current_repeat,
+                               ref(wRaces),
+                               ref(wSexes),
+                               ref(wYearBirths),
+                               offset,
+                               tempFiles[seg],
+                               pSharedData,
+                               seg);
+         }
+      }
+      
+      if (bMultiThreaded) {
+         for (auto& fut : futures) {
+            fut.get();
+         }
+      }
+      
+      // Assemble temp files into final output with XML header (matching CLI format)
+      // Use first individual's values for the header (mixed populations use "0" as placeholder)
+      int headerRace = wRaces.size() > 0 ? wRaces[0] : 0;
+      int headerSex = wSexes.size() > 0 ? wSexes[0] : 0;
+      int headerYob = wYearBirths.size() > 0 ? wYearBirths[0] : 0;
+      bool bAutoSegments = (number_of_segments == -1);
+      assembleSegmentFiles(tempFiles, output_file, repeat, headerRace, headerSex, headerYob,
+                           n, bMultiThreaded, bAutoSegments);
+      
+      delete pSharedData;
+      
+      Rcpp::Rcout << "[INFO] Results written to: " << output_file << "\n";
+      
+      // Return minimal DataFrame with info
+      return Rcpp::DataFrame::create(
+         Rcpp::Named("info") = Rcpp::CharacterVector::create("Results written to file: " + output_file),
+         Rcpp::Named("rows") = Rcpp::IntegerVector::create(repeat)
+      );
+   }
+   
+   // ============================================================
+   // MEMORY MODE: Return DataFrame (default)
+   // ============================================================
+   vector<short> initiationAge(repeat), cessationAge(repeat), ageAtDeath(repeat);
+   
+   // CPD storage - string formats
+   vector<string> cpdString;
+   if (cpd_format != "none") {
+      cpdString.resize(repeat);
+   }
+
+   // Vectors to store futures
    vector<future<void>> futures;
    
-   // Launch n simulations in parallel (or sequentially if run_multi_threaded is false)
+   // Launch n simulations in parallel (or sequentially if single-threaded)
    for (int i = 0; i < n; ++i) {
       int offset = i * repeat_per_sim;
       int current_repeat_per_sim = repeat_per_sim;
@@ -332,8 +489,7 @@ Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) 
          current_repeat_per_sim += remainder;
       }
 
-      if (run_multi_threaded) {
-         // Run asynchronously across multiple threads
+      if (bMultiThreaded) {
          futures.push_back(async(launch::async, &SHGInterface::runSimSegment, this,
                                      current_repeat_per_sim,
                                      ref(wRaces),
@@ -343,10 +499,10 @@ Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) 
                                      ref(cessationAge),
                                      ref(ageAtDeath),
                                      ref(cpdString),
-                                     offset));
+                                     offset,
+                                     pSharedData));
       }
       else {
-         // Run sequentially using same segments
          SHGInterface::runSimSegment(current_repeat_per_sim,
                      ref(wRaces),
                      ref(wSexes),
@@ -355,34 +511,55 @@ Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) 
                      ref(cessationAge),
                      ref(ageAtDeath),
                      ref(cpdString),
-                     offset);
+                     offset,
+                     pSharedData);
       }
     }
     // Wait for all simulations to complete
-    if (run_multi_threaded) {
+    if (bMultiThreaded) {
       for (auto& fut : futures) {
         fut.get();
       }
     }
 
-   // Convert to Rcpp::DataFrame
-   Rcpp::IntegerVector wRaceVec(wRaces.begin(), wRaces.end());
-   Rcpp::IntegerVector wSexVec(wSexes.begin(), wSexes.end());
-   Rcpp::IntegerVector wYearBirthVec(wYearBirths.begin(), wYearBirths.end());
+   // Clean up shared data
+   delete pSharedData;
+
+   // Convert to Rcpp::DataFrame - conditionally include CPD
    Rcpp::IntegerVector initiationAgeVec(initiationAge.begin(), initiationAge.end());
    Rcpp::IntegerVector cessationAgeVec(cessationAge.begin(), cessationAge.end());
    Rcpp::IntegerVector ageAtDeathVec(ageAtDeath.begin(), ageAtDeath.end());
-   Rcpp::CharacterVector cpdStringVec(cpdString.begin(), cpdString.end());
 
-   Rcpp::DataFrame df = Rcpp::DataFrame::create(
-      Rcpp::Named("race") = wRaceVec,
-      Rcpp::Named("sex") = wSexVec,
-      Rcpp::Named("birth_cohort") = wYearBirthVec,
-      Rcpp::Named("smoking_initiation_age") = initiationAgeVec,
-      Rcpp::Named("smoking_cessation_age") = cessationAgeVec,
-      Rcpp::Named("age_at_death") = ageAtDeathVec,
-      Rcpp::Named("cigarettes_per_day") = cpdStringVec
-   );
+   Rcpp::DataFrame df;
+   if (cpd_format == "none") {
+      df = Rcpp::DataFrame::create(
+         Rcpp::Named("race") = dfPopulation["race"],
+         Rcpp::Named("sex") = dfPopulation["sex"],
+         Rcpp::Named("birth_cohort") = dfPopulation["birth_cohort"],
+         Rcpp::Named("smoking_initiation_age") = initiationAgeVec,
+         Rcpp::Named("smoking_cessation_age") = cessationAgeVec,
+         Rcpp::Named("age_at_death") = ageAtDeathVec
+      );
+   } else {
+      // String formats (sparse/full) - slower due to R string creation
+      SEXP cpdSEXP = PROTECT(Rf_allocVector(STRSXP, repeat));
+      for (int i = 0; i < repeat; i++) {
+         const std::string& s = cpdString[i];
+         SET_STRING_ELT(cpdSEXP, i, Rf_mkCharLen(s.c_str(), s.size()));
+      }
+      Rcpp::CharacterVector cpdStringVec(cpdSEXP);
+      UNPROTECT(1);
+      
+      df = Rcpp::DataFrame::create(
+         Rcpp::Named("race") = dfPopulation["race"],
+         Rcpp::Named("sex") = dfPopulation["sex"],
+         Rcpp::Named("birth_cohort") = dfPopulation["birth_cohort"],
+         Rcpp::Named("smoking_initiation_age") = initiationAgeVec,
+         Rcpp::Named("smoking_cessation_age") = cessationAgeVec,
+         Rcpp::Named("age_at_death") = ageAtDeathVec,
+         Rcpp::Named("cigarettes_per_day") = cpdStringVec
+      );
+   }
 
     return df;
 }
@@ -487,32 +664,30 @@ void SHGInterface::runSimSegment(int repeat,
                               vector<short>& cessationAge,
                               vector<short>& ageAtDeath,
                               vector<string>& cpdString,
-                              int offset) {
+                              int offset,
+                              SmokingSimulatorSharedData* pSharedData) {
 
-   // TODO we don't need an output file except to compare results with legacy code.
    FILE *pOutStream = NULL;
 
-   string cpd;
    short wYearsAsSmoker;
-   short sPersonsCPDbyAge;
    short sPersonsInitAge, sPersonsCessAge, sPersonsAgeAtDeath;
 
-   // For now we instantiate a different simulator for each segment rather than loading the input data and cloning
-   // Otherwise, we get errors probably to do with memory sharing; could investigate further
-   Smoking_Simulator* qSimulator = loadSimulator();
+   // Use shared data constructor (reuses pre-loaded data, no file I/O per segment)
+   short wOutputType = 1; // Not relevant for R
+   Smoking_Simulator* qSimulator = new Smoking_Simulator(pSharedData, wOutputType, immediate_cessation_year);
+   
+   // NOTE: Do NOT set gbSkipOversampling=true - it must match CLI for reproducibility
+   qSimulator->gbSkipValidation = true;     // Skip input validation (inputs pre-validated by R)
 
    // Set RNG strategy with user-specified seeds or defaults
    if (rng_strategy == "MersenneTwister") {
-      // Use user-specified seeds if provided, otherwise use defaults
       if (mt_seeds.size() == 4) {
          qSimulator->setRNGStrategy(new MersenneTwisterRNG(mt_seeds[0], mt_seeds[1], mt_seeds[2], mt_seeds[3]));
       } else {
-         // Default MT seeds (same as before)
          qSimulator->setRNGStrategy(new MersenneTwisterRNG(1898587603, 1468371936, 1551308340, 1590227640));
       }
    }
    else if (rng_strategy == "RngStream") {
-      // Use user-specified seed if provided, otherwise use default constructor
       if (rngstream_seed.size() == 6) {
          unsigned long seed_array[6];
          for (int i = 0; i < 6; i++) {
@@ -532,45 +707,188 @@ void SHGInterface::runSimSegment(int repeat,
    int segment_number = offset / repeat; // expected 0, 1, 2... for each segment
    qSimulator->incrementSubstreams(segment_number);
 
+   // Pre-check cpd_format to avoid per-iteration string comparison
+   bool needCpd = (cpd_format != "none");
+   bool useSparse = (cpd_format == "sparse");
+   
    for (int j = 0; j < repeat; j++)
    {
       int k = offset + j;
       qSimulator->RunSimulationSingle(wRaces[k], wSexes[k], wDateBirths[k], pOutStream);
 
-      double* dPersonsCPDbyAge = qSimulator->GetPersonsCPDbyAge();
       sPersonsInitAge = qSimulator->GetPersonsInitAge();
       sPersonsCessAge = qSimulator->GetPersonsCessAge();
       sPersonsAgeAtDeath = qSimulator->GetPersonsAgeAtDeath();
 
-      // Get the smoking intensity group for the person and the cigarettes smoked per day
-      // The intensity group as +1 its value so range of values is from 1 to 5.
-      // DRY violation -- this is also done in main.cpp but we don't copy those methods here.
-      cpd = "";
-      if (sPersonsInitAge != -999)
-      {
+      initiationAge[k] = sPersonsInitAge;
+      cessationAge[k] = sPersonsCessAge;
+      ageAtDeath[k] = sPersonsAgeAtDeath;
+
+      // Only process CPD if needed (cpd_format != "none")
+      if (needCpd && sPersonsInitAge != -999) {
+         double* dPersonsCPDbyAge = qSimulator->GetPersonsCPDbyAge();
          if (sPersonsCessAge == -999)
             wYearsAsSmoker = wSIM_CUTOFF_YEAR - (wDateBirths[k] + sPersonsInitAge) + 1;
          else
             wYearsAsSmoker = sPersonsCessAge - sPersonsInitAge + 1;
-         for (int i = 0; i < wYearsAsSmoker; i++)
-         {
-            if (i + sPersonsInitAge < 100)
-            {
-               sPersonsCPDbyAge = dPersonsCPDbyAge[i];
-               if (!cpd.empty()) {
-                  cpd += ", ";
+         
+         // Use thread-local char buffer for fast formatting (avoids heap allocations)
+         static thread_local char cpdBuf[2048];
+         char* ptr = cpdBuf;
+         
+         for (int i = 0; i < wYearsAsSmoker; i++) {
+            int age = i + sPersonsInitAge;
+            if (age < 100) {
+               int cpdVal = (int)dPersonsCPDbyAge[i];
+               if (ptr != cpdBuf) {
+                  *ptr++ = ',';
+                  *ptr++ = ' ';
                }
-               cpd += to_string(i + sPersonsInitAge) + " (" + to_string(static_cast<int>(sPersonsCPDbyAge)) + ")";
+               if (useSparse) {
+                  ptr = fast_itoa(cpdVal, ptr);
+               } else {
+                  // Full format: "age (cpd)"
+                  ptr = fast_itoa(age, ptr);
+                  *ptr++ = ' ';
+                  *ptr++ = '(';
+                  ptr = fast_itoa(cpdVal, ptr);
+                  *ptr++ = ')';
+               }
             }
          }
+         *ptr = '\0';
+         cpdString[k] = cpdBuf;
       }
-
-      initiationAge[k] = sPersonsInitAge;
-      cessationAge[k] = sPersonsCessAge;
-      ageAtDeath[k] = sPersonsAgeAtDeath;
-      cpdString[k] = Rcpp::String(cpd);
    }
    // fclose(pOutStream); # this caused a segfault in Ubuntu and is probably not needed because there is no output file for the Rcpp version
+}
+
+// File output mode: writes directly to disk like CLI, reusing WriteAsData (DRY)
+void SHGInterface::runSimSegmentToFile(int repeat,
+                                       vector<short>& wRaces,
+                                       vector<short>& wSexes,
+                                       vector<short>& wYearBirths,
+                                       int offset,
+                                       const string& tempFilePath,
+                                       SmokingSimulatorSharedData* pSharedData,
+                                       int segmentNumber) {
+   
+   FILE* pOutFile = fopen(tempFilePath.c_str(), "w");
+   if (!pOutFile) {
+      Rcpp::stop("Could not open temp file for writing: " + tempFilePath);
+   }
+   
+   // Set large buffer for better I/O performance
+   static thread_local char fileBuffer[4 * 1024 * 1024];  // 4MB buffer per thread
+   setvbuf(pOutFile, fileBuffer, _IOFBF, sizeof(fileBuffer));
+   
+   // Create simulator using shared data
+   short wOutputType = 1;
+   Smoking_Simulator* qSimulator = new Smoking_Simulator(pSharedData, wOutputType, immediate_cessation_year);
+   // NOTE: Do NOT set gbSkipOversampling=true - it must match CLI for reproducibility
+   qSimulator->gbSkipValidation = true;
+   
+   // Set RNG strategy
+   if (rng_strategy == "MersenneTwister") {
+      if (mt_seeds.size() == 4) {
+         qSimulator->setRNGStrategy(new MersenneTwisterRNG(mt_seeds[0], mt_seeds[1], mt_seeds[2], mt_seeds[3]));
+      } else {
+         qSimulator->setRNGStrategy(new MersenneTwisterRNG(1898587603, 1468371936, 1551308340, 1590227640));
+      }
+   } else if (rng_strategy == "RngStream") {
+      if (rngstream_seed.size() == 6) {
+         unsigned long seed_array[6];
+         for (int i = 0; i < 6; i++) {
+            seed_array[i] = rngstream_seed[i];
+         }
+         qSimulator->setRNGStrategy(new RngStreamRNG(seed_array));
+      } else {
+         qSimulator->setRNGStrategy(new RngStreamRNG());
+      }
+   }
+   
+   // Advance RNG substreams for this segment
+   qSimulator->incrementSubstreams(segmentNumber);
+   
+   // Run simulations and write each individual using CLI's WriteAsData (DRY)
+   for (int j = 0; j < repeat; j++) {
+      int k = offset + j;
+      qSimulator->RunSimulationSingle(wRaces[k], wSexes[k], wYearBirths[k], pOutFile);
+   }
+   
+   fclose(pOutFile);
+   delete qSimulator;
+}
+
+// Assemble temp segment files into final output with XML header (matching CLI format)
+void SHGInterface::assembleSegmentFiles(const vector<string>& tempFiles, const string& outputFile,
+                                        int repeat, int race, int sex, int yob,
+                                        int effectiveSegments, bool bMultiThreaded, bool bAutoSegments) {
+   FILE* pOutFile = fopen(outputFile.c_str(), "w");
+   if (!pOutFile) {
+      Rcpp::stop("Could not open output file for writing: " + outputFile);
+   }
+   
+   // Write XML metadata header (matching CLI format for DRY)
+   string initFile = input_data_folder + "/" + initiation_filename;
+   string cessFile = input_data_folder + "/" + cessation_filename;
+   string lifeFile = input_data_folder + "/" + lifetable_filename;
+   string cpdFile = input_data_folder + "/" + cpd_filename;
+   
+   // Build seed string
+   string seedStr = "";
+   if (rng_strategy == "RngStream") {
+      for (size_t i = 0; i < rngstream_seed.size() && i < 6; i++) {
+         if (i > 0) seedStr += ",";
+         seedStr += to_string(rngstream_seed[i]);
+      }
+   }
+   
+   // Build MT seeds as strings
+   string mtInit = mt_seeds.size() > 0 ? to_string(mt_seeds[0]) : "";
+   string mtCess = mt_seeds.size() > 1 ? to_string(mt_seeds[1]) : "";
+   string mtOcd = mt_seeds.size() > 2 ? to_string(mt_seeds[2]) : "";
+   string mtMisc = mt_seeds.size() > 3 ? to_string(mt_seeds[3]) : "";
+   string cessYearStr = to_string(immediate_cessation_year);
+   
+   // Write RunInfo (same format as CLI)
+   WriteRunInfoTag(pOutFile, SHG_CORE_VERSION, 
+                   mtInit.c_str(), mtCess.c_str(), mtOcd.c_str(), mtMisc.c_str(),
+                   cessYearStr.c_str(), initFile.c_str(), cessFile.c_str(), lifeFile.c_str(),
+                   "", cpdFile.c_str(), outputFile.c_str(), "",
+                   rng_strategy.c_str(), seedStr.c_str(), "R wrapper",
+                   effectiveSegments, num_threads, bMultiThreaded, bAutoSegments);
+   
+   // Write simulation open tags
+   WriteSimulationOpenTag(pOutFile, false);
+   
+   // Write input tag
+   string raceStr = to_string(race);
+   string sexStr = to_string(sex);
+   string yobStr = to_string(yob);
+   string repeatStr = to_string(repeat);
+   WriteInputTag(pOutFile, raceStr.c_str(), sexStr.c_str(), yobStr.c_str(), repeatStr.c_str(), false);
+   
+   WriteToFile(pOutFile, "<RUN>\n");
+   
+   // Copy segment data
+   char buffer[65536];
+   for (const auto& tempPath : tempFiles) {
+      FILE* pIn = fopen(tempPath.c_str(), "r");
+      if (pIn) {
+         size_t n;
+         while ((n = fread(buffer, 1, sizeof(buffer), pIn)) > 0) {
+            fwrite(buffer, 1, n, pOutFile);
+         }
+         fclose(pIn);
+         std::filesystem::remove(tempPath);
+      }
+   }
+   
+   // Write closing tags
+   WriteSimulationCloseTag(pOutFile, false);
+   
+   fclose(pOutFile);
 }
 
 bool SHGInterface::fileExists(const char* filename) {
@@ -615,9 +933,11 @@ RCPP_MODULE(SmokingSimulator) {
        .method("runSimFromFixedValues", &SHGInterface::runSimFromFixedValues, "Generates a data frame of simulated smoking histories for n individuals")
        .method("runSimFromDataFrame", &SHGInterface::runSimFromDataFrame, "Generates a data frame of simulated smoking histories for n individuals")
        .method("LegacyRunWebVersion", &SHGInterface::LegacyRunWebVersion, "Runs a simulation from a configuration file to produce results for a website (legacy)")
-       .property("number_of_segments", &SHGInterface::get_number_of_segments, &SHGInterface::set_number_of_segments,"Number of segments to use for single or multi-threaded simulation")
-       .property("run_multi_threaded", &SHGInterface::get_run_multi_threaded, &SHGInterface::set_run_multi_threaded, "True if the simulation should be run asynchonously; False otherwise")
+       .property("number_of_segments", &SHGInterface::get_number_of_segments, &SHGInterface::set_number_of_segments,"Number of segments to use for simulation. -1 = auto, 1 = single, N = N segments")
+       .property("num_threads", &SHGInterface::get_num_threads, &SHGInterface::set_num_threads, "Thread count: -1 = auto (all cores), 1 = single-threaded, N = N threads")
        .property("rng_strategy", &SHGInterface::get_rng_strategy, &SHGInterface::set_rng_strategy, "'RngStream' for MRG32k3a (default) or 'MersenneTwister' for Mersenne Twister")
+       .property("cpd_format", &SHGInterface::get_cpd_format, &SHGInterface::set_cpd_format, "CPD output format: 'none' (fastest), 'sparse' (default, values only), 'legacy' (age (value) pairs for backwards compatibility)")
+       .property("output_file", &SHGInterface::get_output_file, &SHGInterface::set_output_file, "Output file path. Empty = return DataFrame (default); set path = write CSV to disk like CLI")
        .property("input_data_folder", &SHGInterface::get_input_data_folder, &SHGInterface::set_input_data_folder, "Set or get the base folder for input data files. The individual file names are hardcoded for simplicity.")
        .property("immediate_cessation_year", &SHGInterface::get_immediate_cessation_year, &SHGInterface::set_immediate_cessation_year, "Set or get Immediate Cessation Year; If 0, no immediate cessation")
        .property("initiation_filename", &SHGInterface::get_initiation_filename, &SHGInterface::set_initiation_filename, "Set or get the initiation filename")
@@ -631,4 +951,5 @@ RCPP_MODULE(SmokingSimulator) {
        .method("get_rng_state_fingerprint", &SHGInterface::get_rng_state_fingerprint, "Get a fingerprint of the RNG internal state. For RngStream, returns the actual internal state (24 values). For MersenneTwister, returns random numbers generated from each stream (12 values). Different seeds will produce different fingerprints, verifying that seeds are actually being used.");
       // TODO: also antithetical variates; also increment substreams
    }
+
 

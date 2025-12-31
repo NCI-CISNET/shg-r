@@ -303,5 +303,21 @@ void PrintMessage(const char* message);
 void PrintMessageFormatted(const char* format, ...);
 void PrintError(const char* format, ...);
 
+// XML header writing functions (shared between CLI and R wrapper)
+// These write the metadata header that CLI produces, allowing R to generate identical output
+void WriteRunInfoTag(FILE* pOutStream, const char* sVersion, const char* sInitiationSeed,
+                     const char* sCessSeed, const char* sOCDSeed, const char* sMiscSeed,
+                     const char* sImmediateCessYear, const char* sInitFile, const char* sCessFile,
+                     const char* sOCDProbFile, const char* sQuintilesFile, const char* sCPDDataFile,
+                     const char* sOutputFile, const char* sErrorFile, const char* sRNGStrategy, 
+                     const char* sRngStreamSeed, const char* sInputFileName,
+                     int numSegments, int numThreads, bool multiThreaded, bool autoSegments);
+
+void WriteInputTag(FILE* pOutStream, const char* sRace, const char* sSex, 
+                   const char* sYearOfBirth, const char* sNumReps, bool withHoldTags);
+
+void WriteSimulationOpenTag(FILE* pOutStream, bool withHoldTags);
+void WriteSimulationCloseTag(FILE* pOutStream, bool withHoldTags);
+
 #endif
 
