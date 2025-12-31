@@ -32,6 +32,81 @@ extern const short wMIN_IMMEDIATE_CESSATION_YEAR;
 extern const char sSEX_LABELS[2][7];
 extern const char sRACE_LABELS[2][10];
 
+// Forward declaration
+class Smoking_Simulator;
+
+// Shared data structure for parallel processing
+// Allows multiple Smoking_Simulator instances to share the same loaded input data
+class SmokingSimulatorSharedData {
+   public:
+      // Probability Arrays (shared across instances)
+      double *gdInitiationProbs;
+      double *gdCessationProbs;
+      double *gdLifeTableProbs;
+      double *gdIntensityProbs;
+      long double *gdCigarettesPerDay;
+      
+      // Data limit variables (shared across instances)
+      short gwNumBirthCohorts;
+      short *gwYOBCohortStartYrs;
+      short *gwYOBCohortEndYrs;
+      short gwNumRaceValues;
+      short gwNumSexValues;
+      short gwMinInitiationAge;
+      short gwMinCessationAge;
+      short gwMaxInitiationAge;
+      short gwMaxCessationAge;
+      short gwMinLifeTableAge;
+      short gwMaxLifeTableAge;
+      short gwMinLifeTableYear;
+      short gwMaxLifeTableYear;
+      short gwNumIntensityGrps;
+      long gwIntensityMinAge;
+      long gwIntensityMaxAge;
+      long gwCpdMinAge;
+      long gwCpdMaxAge;
+      
+      // Offset values for Probability Arrays (shared across instances)
+      long gwInitProbRaceOffset;
+      long gwInitProbSexOffset;
+      long gwInitProbYOBOffset;
+      long gwCessProbRaceOffset;
+      long gwCessProbSexOffset;
+      long gwCessProbYOBOffset;
+      long glLifeTabAgeOffset;
+      long glLifeTabRaceOffset;
+      long glLifeTabSexOffset;
+      long glLifeTabYOBOffset;
+      long gwIntensityAgeOffset;
+      long gwIntensitySexOffset;
+      long gwIntensityRaceOffset;
+      long glCpdAgeOffset;
+      long glCpdRaceOffset;
+      long glCpdSexOffset;
+      long glCpdYOBOffset;
+      short gwNumSmokingGrps;
+      
+      // Reference counter for memory management
+      int refCount;
+      
+      SmokingSimulatorSharedData() : gdInitiationProbs(0), gdCessationProbs(0),
+                     gdLifeTableProbs(0), gdIntensityProbs(0), gdCigarettesPerDay(0),
+                     gwYOBCohortStartYrs(0), gwYOBCohortEndYrs(0), refCount(1) {}
+      
+      void addRef() { refCount++; }
+      void release() {
+         if (--refCount == 0) {
+            delete [] gdInitiationProbs;
+            delete [] gdCessationProbs;
+            delete [] gdLifeTableProbs;
+            delete [] gdIntensityProbs;
+            delete [] gdCigarettesPerDay;
+            delete [] gwYOBCohortStartYrs;
+            delete [] gwYOBCohortEndYrs;
+            delete this;
+         }
+      }
+};
 
 class Smoking_Simulator {
 
@@ -99,7 +174,8 @@ class Smoking_Simulator {
       short gwPersonsCessAge;      // Age of Smoking Cessation
       short gwPersonsAgeAtDeath;   // Age at death from COD other than lung cancer
       SmokingIntensity gwPersonsSmkIntensity; // The smoking intesity group for the person (smokers only)
-      double *gdPersonsCPDbyAge;   // Cigarettes smoked per day by age
+      double *gdPersonsCPDbyAge;   // Cigarettes smoked per day by age (points to gdPersonsCPDbyAgeStorage)
+      double gdPersonsCPDbyAgeStorage[100];  // Pre-allocated storage for CPD (max 100 years)
       double gdPersonsAvgCPD;      // Average num of Cigarettes smoked per day (used for COD in former smokers)
 
       // Offset values for Probability Arrays
@@ -127,6 +203,10 @@ class Smoking_Simulator {
 
       double      gdTempIntensityProb; // Persons intensity prob, remove from final
 
+      // Shared data management
+      SmokingSimulatorSharedData* gpSharedData;  // Pointer to shared data (if using shared data, otherwise NULL)
+      bool        gbOwnsData;    // True if this instance owns the data (should delete in Free())
+
       void Init();
       void Free();
       // void CalcCigarettesPerDay();
@@ -141,13 +221,23 @@ class Smoking_Simulator {
       void LoadOtherCODFile(const char* sLifeTableFileName);
       void LoadProbabilityData(const char* sDataFileName, DataType eFileType);
       void OversamplePRNGs();
+   
+   public:
+      bool gbSkipOversampling = false;  // Performance optimization: skip oversampling when not needed
+      bool gbSkipValidation = false;    // Performance optimization: skip input validation when inputs are pre-validated
+   
+   private:
 
    public:
+
       // Constructor for RunWebVersion (which initiates RNGs after instantiation)
       Smoking_Simulator(const char* sInitiationProbFile,  const char* sCessationProbFile,
                         const char* sLifeTableFile,       const char* sCpdIntensityProbFile,
                         const char* sCpdDataFile,         short wOutputType,
                         short wCessationYear);
+
+      // Constructor with shared data (for parallel processing)
+      Smoking_Simulator(SmokingSimulatorSharedData* pSharedData, short wOutputType, short wCessationYear);
 
       // Constructor
       Smoking_Simulator(const char* sInitiationProbFile, const char* sCessationProbFile,
@@ -198,6 +288,10 @@ class Smoking_Simulator {
       std::vector<double> getRNGStateFingerprint() {
          return gpRngStrategy->getRNGStateFingerprint();
       };
+
+      // Static function to create and load shared data
+      static SmokingSimulatorSharedData* CreateSharedData(const char* sInitiationProbFile, const char* sCessationProbFile,
+                                          const char* sLifeTableFile, const char* sCpdDataFile);
 
 };
 // Implemented in main.cpp

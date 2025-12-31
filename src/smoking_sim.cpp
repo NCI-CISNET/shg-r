@@ -24,6 +24,38 @@
 #include "rng_strategy.h"
 using namespace std;
 
+// Fast integer to string - returns length written
+inline int fast_itoa(int val, char* buf) {
+   char* start = buf;
+   bool neg = val < 0;
+   if (neg) { *buf++ = '-'; val = -val; }
+   if (val == 0) { *buf++ = '0'; }
+   else {
+      char tmp[12]; int i = 0;
+      while (val) { tmp[i++] = '0' + (val % 10); val /= 10; }
+      while (i--) *buf++ = tmp[i];
+   }
+   return (int)(buf - start);
+}
+
+// Fast double to string with 2 decimal places - returns length written
+inline int fast_dtoa2(double val, char* buf) {
+   int ival = (int)(val * 100 + 0.5);
+   int frac = ival % 100;
+   ival /= 100;
+   char* start = buf;
+   if (ival == 0) { *buf++ = '0'; }
+   else {
+      char tmp[12]; int i = 0;
+      while (ival) { tmp[i++] = '0' + (ival % 10); ival /= 10; }
+      while (i--) *buf++ = tmp[i];
+   }
+   *buf++ = '.';
+   *buf++ = '0' + (frac / 10);
+   *buf++ = '0' + (frac % 10);
+   return (int)(buf - start);
+}
+
 // Constructor for RunWebVersion call in main (removed the PRNG seeds as they are set in the RNG strategy)
 Smoking_Simulator::Smoking_Simulator(const char* sInitiationProbFile, const char* sCessationProbFile,
                                      const char* sLifeTableFile,      const char* sCpdIntensityProbFile,
@@ -96,9 +128,160 @@ Smoking_Simulator::Smoking_Simulator(const char* sInitiationProbFile, const char
     }
 }
 
+// Constructor with shared data (for parallel processing)
+Smoking_Simulator::Smoking_Simulator(SmokingSimulatorSharedData* pSharedData, short wOutputType, short wCessationYear) {
+   char sErrorMessage[300];
+   try {
+      Init();
+      
+      // Use shared data instead of loading our own
+      gpSharedData = pSharedData;
+      gpSharedData->addRef();  // Increment reference count
+      gbOwnsData = false;
+      
+      // Copy pointers from shared data to instance variables
+      gdInitiationProbs = gpSharedData->gdInitiationProbs;
+      gdCessationProbs = gpSharedData->gdCessationProbs;
+      gdLifeTableProbs = gpSharedData->gdLifeTableProbs;
+      gdIntensityProbs = gpSharedData->gdIntensityProbs;
+      gdCigarettesPerDay = gpSharedData->gdCigarettesPerDay;
+      gwYOBCohortStartYrs = gpSharedData->gwYOBCohortStartYrs;
+      gwYOBCohortEndYrs = gpSharedData->gwYOBCohortEndYrs;
+      
+      // Copy metadata from shared data
+      gwNumBirthCohorts = gpSharedData->gwNumBirthCohorts;
+      gwNumRaceValues = gpSharedData->gwNumRaceValues;
+      gwNumSexValues = gpSharedData->gwNumSexValues;
+      gwMinInitiationAge = gpSharedData->gwMinInitiationAge;
+      gwMinCessationAge = gpSharedData->gwMinCessationAge;
+      gwMaxInitiationAge = gpSharedData->gwMaxInitiationAge;
+      gwMaxCessationAge = gpSharedData->gwMaxCessationAge;
+      gwMinLifeTableAge = gpSharedData->gwMinLifeTableAge;
+      gwMaxLifeTableAge = gpSharedData->gwMaxLifeTableAge;
+      gwMinLifeTableYear = gpSharedData->gwMinLifeTableYear;
+      gwMaxLifeTableYear = gpSharedData->gwMaxLifeTableYear;
+      gwNumIntensityGrps = gpSharedData->gwNumIntensityGrps;
+      gwIntensityMinAge = gpSharedData->gwIntensityMinAge;
+      gwIntensityMaxAge = gpSharedData->gwIntensityMaxAge;
+      gwCpdMinAge = gpSharedData->gwCpdMinAge;
+      gwCpdMaxAge = gpSharedData->gwCpdMaxAge;
+      
+      // Copy offsets
+      gwInitProbRaceOffset = gpSharedData->gwInitProbRaceOffset;
+      gwInitProbSexOffset = gpSharedData->gwInitProbSexOffset;
+      gwInitProbYOBOffset = gpSharedData->gwInitProbYOBOffset;
+      gwCessProbRaceOffset = gpSharedData->gwCessProbRaceOffset;
+      gwCessProbSexOffset = gpSharedData->gwCessProbSexOffset;
+      gwCessProbYOBOffset = gpSharedData->gwCessProbYOBOffset;
+      glLifeTabAgeOffset = gpSharedData->glLifeTabAgeOffset;
+      glLifeTabRaceOffset = gpSharedData->glLifeTabRaceOffset;
+      glLifeTabSexOffset = gpSharedData->glLifeTabSexOffset;
+      glLifeTabYOBOffset = gpSharedData->glLifeTabYOBOffset;
+      gwIntensityAgeOffset = gpSharedData->gwIntensityAgeOffset;
+      gwIntensitySexOffset = gpSharedData->gwIntensitySexOffset;
+      gwIntensityRaceOffset = gpSharedData->gwIntensityRaceOffset;
+      glCpdAgeOffset = gpSharedData->glCpdAgeOffset;
+      glCpdRaceOffset = gpSharedData->glCpdRaceOffset;
+      glCpdSexOffset = gpSharedData->glCpdSexOffset;
+      glCpdYOBOffset = gpSharedData->glCpdYOBOffset;
+      gwNumSmokingGrps = gpSharedData->gwNumSmokingGrps;
+      
+      SetOutputType(wOutputType);
+      
+      // Immediate Cessation Values
+      if ((wCessationYear != 0) || (wCessationYear >= wMIN_IMMEDIATE_CESSATION_YEAR && wCessationYear <= wSIM_CUTOFF_YEAR)) {
+         gwImmediateCessYear = wCessationYear;
+         gbImmediateCessation = true;
+      } else if (wCessationYear != 0) {
+         snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid Value for Immediate Cessation Year.\n \
+            Valid values are 0 and the range %d to %d.\n", wMIN_IMMEDIATE_CESSATION_YEAR, wSIM_CUTOFF_YEAR);
+         throw SimException("Error", sErrorMessage);
+      }
+   } catch (SimException ex) {
+      ex.AddCallPath("Smoking_Simulator(SharedData*, short, short)");
+      Free();
+      throw ex;
+   }
+}
+
 // Destructor
 Smoking_Simulator::~Smoking_Simulator() {
    Free();
+}
+
+// Static function to create and load shared data for parallel processing
+// This loads the input files once and returns a SharedData structure that can be
+// used by multiple Smoking_Simulator instances
+SmokingSimulatorSharedData* Smoking_Simulator::CreateSharedData(
+      const char* sInitiationProbFile, const char* sCessationProbFile,
+      const char* sLifeTableFile, const char* sCpdDataFile) {
+   
+   // Create a temporary simulator to load the data using existing loading code
+   short wOutputType = OUT_DataOnly;
+   short wCessationYear = 0;
+   const char* sCpdIntensityFile = ""; // no longer used
+   
+   Smoking_Simulator* pTempSim = new Smoking_Simulator(
+      sInitiationProbFile, sCessationProbFile, sLifeTableFile, 
+      sCpdIntensityFile, sCpdDataFile, wOutputType, wCessationYear);
+   
+   // Create SharedData and transfer ownership of data arrays
+   SmokingSimulatorSharedData* pSharedData = new SmokingSimulatorSharedData();
+   
+   // Transfer data pointers
+   pSharedData->gdInitiationProbs = pTempSim->gdInitiationProbs;
+   pSharedData->gdCessationProbs = pTempSim->gdCessationProbs;
+   pSharedData->gdLifeTableProbs = pTempSim->gdLifeTableProbs;
+   pSharedData->gdIntensityProbs = pTempSim->gdIntensityProbs;
+   pSharedData->gdCigarettesPerDay = pTempSim->gdCigarettesPerDay;
+   pSharedData->gwYOBCohortStartYrs = pTempSim->gwYOBCohortStartYrs;
+   pSharedData->gwYOBCohortEndYrs = pTempSim->gwYOBCohortEndYrs;
+   
+   // Transfer metadata
+   pSharedData->gwNumBirthCohorts = pTempSim->gwNumBirthCohorts;
+   pSharedData->gwNumRaceValues = pTempSim->gwNumRaceValues;
+   pSharedData->gwNumSexValues = pTempSim->gwNumSexValues;
+   pSharedData->gwMinInitiationAge = pTempSim->gwMinInitiationAge;
+   pSharedData->gwMinCessationAge = pTempSim->gwMinCessationAge;
+   pSharedData->gwMaxInitiationAge = pTempSim->gwMaxInitiationAge;
+   pSharedData->gwMaxCessationAge = pTempSim->gwMaxCessationAge;
+   pSharedData->gwMinLifeTableAge = pTempSim->gwMinLifeTableAge;
+   pSharedData->gwMaxLifeTableAge = pTempSim->gwMaxLifeTableAge;
+   pSharedData->gwMinLifeTableYear = pTempSim->gwMinLifeTableYear;
+   pSharedData->gwMaxLifeTableYear = pTempSim->gwMaxLifeTableYear;
+   pSharedData->gwNumIntensityGrps = pTempSim->gwNumIntensityGrps;
+   pSharedData->gwIntensityMinAge = pTempSim->gwIntensityMinAge;
+   pSharedData->gwIntensityMaxAge = pTempSim->gwIntensityMaxAge;
+   pSharedData->gwCpdMinAge = pTempSim->gwCpdMinAge;
+   pSharedData->gwCpdMaxAge = pTempSim->gwCpdMaxAge;
+   
+   // Transfer offsets
+   pSharedData->gwInitProbRaceOffset = pTempSim->gwInitProbRaceOffset;
+   pSharedData->gwInitProbSexOffset = pTempSim->gwInitProbSexOffset;
+   pSharedData->gwInitProbYOBOffset = pTempSim->gwInitProbYOBOffset;
+   pSharedData->gwCessProbRaceOffset = pTempSim->gwCessProbRaceOffset;
+   pSharedData->gwCessProbSexOffset = pTempSim->gwCessProbSexOffset;
+   pSharedData->gwCessProbYOBOffset = pTempSim->gwCessProbYOBOffset;
+   pSharedData->glLifeTabAgeOffset = pTempSim->glLifeTabAgeOffset;
+   pSharedData->glLifeTabRaceOffset = pTempSim->glLifeTabRaceOffset;
+   pSharedData->glLifeTabSexOffset = pTempSim->glLifeTabSexOffset;
+   pSharedData->glLifeTabYOBOffset = pTempSim->glLifeTabYOBOffset;
+   pSharedData->gwIntensityAgeOffset = pTempSim->gwIntensityAgeOffset;
+   pSharedData->gwIntensitySexOffset = pTempSim->gwIntensitySexOffset;
+   pSharedData->gwIntensityRaceOffset = pTempSim->gwIntensityRaceOffset;
+   pSharedData->glCpdAgeOffset = pTempSim->glCpdAgeOffset;
+   pSharedData->glCpdRaceOffset = pTempSim->glCpdRaceOffset;
+   pSharedData->glCpdSexOffset = pTempSim->glCpdSexOffset;
+   pSharedData->glCpdYOBOffset = pTempSim->glCpdYOBOffset;
+   pSharedData->gwNumSmokingGrps = pTempSim->gwNumSmokingGrps;
+   
+   // Mark the temporary simulator as not owning the data so it won't free it
+   pTempSim->gbOwnsData = false;
+   
+   // Delete the temporary simulator (data arrays will NOT be freed due to gbOwnsData=false)
+   delete pTempSim;
+   
+   return pSharedData;
 }
 
 // Calculate the number of cigarettes smoked per day for people that initiate smoking.
@@ -326,14 +509,18 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
    nRows = nValues / nColumns;
 
 
-   std::vector<long>     cpdGroupOverLife(nRows);
-   std::vector<double>   filteredCPDGroups(nValues);
-            // filteredCPDGroupsCumSum[nValues],
-            // pSwitchCPDGroups[(nRows - 1) * nColumns],
-            // pSwitchCPDGroupsCumSum[(nRows - 1) * nColumns],
-   std::vector<double>    Tij(nColumns * nColumns);
-   std::vector<double>    r0(nColumns);
-   std::vector<double>    r1(nColumns);
+   // Use thread_local vectors to avoid per-call heap allocations
+   // They persist across calls and only reallocate when size increases
+   static thread_local std::vector<long>   cpdGroupOverLife;
+   static thread_local std::vector<double> filteredCPDGroups;
+   static thread_local std::vector<double> Tij;
+   static thread_local std::vector<double> r0;
+   static thread_local std::vector<double> r1;
+   cpdGroupOverLife.resize(nRows);
+   filteredCPDGroups.resize(nValues);
+   Tij.resize(nColumns * nColumns);
+   r0.resize(nColumns);
+   r1.resize(nColumns);
 
 
    try {
@@ -370,7 +557,8 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
       }
 
       double term1, term2;
-      std::vector<double> switchProbs(nColumns);
+      static thread_local std::vector<double> switchProbs;
+      switchProbs.resize(nColumns);
       double sum;
 
       for (i = 0; i < nRows ; i++) {
@@ -461,10 +649,10 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
          cpdGroupOverLife[i] = group;
       }
 
-      // Convert to cigarettees per day rather than category
-      // Record the new CPD by age vector as global
-      gdPersonsCPDbyAge = new double[wYearsAsSmoker];
-      for (i = 0; i < wYearsAsSmoker; i++) {
+      // Convert to cigarettes per day rather than category
+      // Record the new CPD by age vector using pre-allocated storage
+      gdPersonsCPDbyAge = gdPersonsCPDbyAgeStorage;
+      for (i = 0; i < wYearsAsSmoker && i < 100; i++) {
          gdPersonsCPDbyAge[i] = -10;
       }
       short m, endAge;
@@ -506,14 +694,23 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
 //Free the dynamically allocated memory
 void Smoking_Simulator::Free()
 {
-   delete [] gdInitiationProbs;    gdInitiationProbs    = 0;
-   delete [] gdCessationProbs;     gdCessationProbs     = 0;
-   delete [] gdLifeTableProbs;     gdLifeTableProbs     = 0;
-   delete [] gdIntensityProbs;     gdIntensityProbs     = 0;
-   delete [] gdCigarettesPerDay;   gdCigarettesPerDay   = 0;
-   delete [] gwYOBCohortStartYrs;  gwYOBCohortStartYrs  = 0;
-   delete [] gwYOBCohortEndYrs;    gwYOBCohortEndYrs    = 0;
-   delete [] gdPersonsCPDbyAge;    gdPersonsCPDbyAge    = 0;
+   // Only delete data arrays if we own them (not using shared data)
+   if (gbOwnsData) {
+      delete [] gdInitiationProbs;    gdInitiationProbs    = 0;
+      delete [] gdCessationProbs;     gdCessationProbs     = 0;
+      delete [] gdLifeTableProbs;     gdLifeTableProbs     = 0;
+      delete [] gdIntensityProbs;     gdIntensityProbs     = 0;
+      delete [] gdCigarettesPerDay;   gdCigarettesPerDay   = 0;
+      delete [] gwYOBCohortStartYrs;  gwYOBCohortStartYrs  = 0;
+      delete [] gwYOBCohortEndYrs;    gwYOBCohortEndYrs    = 0;
+   } else if (gpSharedData != 0) {
+      // Release reference to shared data
+      gpSharedData->release();
+      gpSharedData = 0;
+   }
+   
+   // Always delete per-instance data (but NOT gdPersonsCPDbyAge which uses static storage)
+   gdPersonsCPDbyAge = 0;  // Just null the pointer, don't delete (points to gdPersonsCPDbyAgeStorage)
    delete gpRngStrategy;           gpRngStrategy        = 0;
 }
 
@@ -676,6 +873,8 @@ void Smoking_Simulator::Init() {
    gwYOBCohortStartYrs  = 0;
    gwYOBCohortEndYrs    = 0;
    gdPersonsCPDbyAge    = 0;
+   gpSharedData         = 0;
+   gbOwnsData           = true;
 
    geOutputType         = OUT_DataOnly;
 
@@ -1587,25 +1786,27 @@ void Smoking_Simulator::RunSimulationSingle(short wRace, short wSex, short wYear
 
    try {
 
-      // Validate Input
-      if ((wYearBirth < GetMinYearOfBirth()) || (wYearBirth > 2100)) { // GetMaxYearOfBirth())) {
-         snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid Year of Birth: %d, supplied to Smoking History Simulator.", wYearBirth);
-         throw SimException("Error", sErrorMessage, SimException::NON_FATAL);
-      }
+      // Validate Input (can be skipped for performance when inputs are pre-validated)
+      if (!gbSkipValidation) {
+         if ((wYearBirth < GetMinYearOfBirth()) || (wYearBirth > 2100)) {
+            snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid Year of Birth: %d, supplied to Smoking History Simulator.", wYearBirth);
+            throw SimException("Error", sErrorMessage, SimException::NON_FATAL);
+         }
 
-      if ( (wSex < 0) || (wSex >= gwNumSexValues) ) {
-         snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid Sex Value: %d, supplied to Smoking History Simulator.", wSex);
-         throw SimException("Error", sErrorMessage, SimException::NON_FATAL);
-      }
+         if ( (wSex < 0) || (wSex >= gwNumSexValues) ) {
+            snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid Sex Value: %d, supplied to Smoking History Simulator.", wSex);
+            throw SimException("Error", sErrorMessage, SimException::NON_FATAL);
+         }
 
-      if ( (wRace < 0) || (wRace >= gwNumRaceValues) ) {
-         snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid Race Value: %d, supplied to Smoking History Simulator.", wRace);
-         throw SimException("Error", sErrorMessage, SimException::NON_FATAL);
-      }
+         if ( (wRace < 0) || (wRace >= gwNumRaceValues) ) {
+            snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid Race Value: %d, supplied to Smoking History Simulator.", wRace);
+            throw SimException("Error", sErrorMessage, SimException::NON_FATAL);
+         }
 
-      if ( (wRace == 1) && (wSex == 1) ) {
-         snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid Race/Sex Combination: %d/%d, supplied to Smoking History Simulator.", wRace, wSex);
-         throw SimException("Error", sErrorMessage, SimException::NON_FATAL);
+         if ( (wRace == 1) && (wSex == 1) ) {
+            snprintf(sErrorMessage, sizeof(sErrorMessage), "Invalid Race/Sex Combination: %d/%d, supplied to Smoking History Simulator.", wRace, wSex);
+            throw SimException("Error", sErrorMessage, SimException::NON_FATAL);
+         }
       }
 
       gwPersonsRace         = wRace;
@@ -1730,8 +1931,10 @@ void Smoking_Simulator::RunSimulationSingle(short wRace, short wSex, short wYear
          WriteToStream(pOutStream);
 
       // Oversample the PRNGs (only does the PRNG that generates Randoms for the individual)
-      // More oversampling can be added if desired.
-      OversamplePRNGs();
+      // Can be skipped for performance when reproducibility across different code paths isn't needed
+      if (!gbSkipOversampling) {
+         OversamplePRNGs();
+      }
 
    } catch (SimException ex) {
       ex.AddCallPath("RunSimulation(short,short,short)");
@@ -1934,28 +2137,42 @@ void  Smoking_Simulator::WriteAsXML(FILE *pOutStream) {
 
 // Write the results to pOutStream in a data style format
 void Smoking_Simulator::WriteAsData(FILE *pOutStream) {
-   short wYearsAsSmoker, i;
    if (pOutStream == 0) {
       throw SimException("WriteAsData(FILE *)", "Supplied output File is not open for writing.");
    }
 
-   WriteToFile(pOutStream, "%d;%d;%d;%d;%d;%d;", gwPersonsRace, gwPersonsSex, gwPersonsYOB, \
-                       gwPersonsInitAge, gwPersonsCessAge, gwPersonsAgeAtDeath);
+   // Use a single buffer for all output - dramatically reduces fprintf calls
+   static thread_local char buffer[16384];  // 16KB buffer per thread
+   char* ptr = buffer;
+   
+   // Write basic fields using fast_itoa
+   ptr += fast_itoa(gwPersonsRace, ptr); *ptr++ = ';';
+   ptr += fast_itoa(gwPersonsSex, ptr); *ptr++ = ';';
+   ptr += fast_itoa(gwPersonsYOB, ptr); *ptr++ = ';';
+   ptr += fast_itoa(gwPersonsInitAge, ptr); *ptr++ = ';';
+   ptr += fast_itoa(gwPersonsCessAge, ptr); *ptr++ = ';';
+   ptr += fast_itoa(gwPersonsAgeAtDeath, ptr); *ptr++ = ';';
 
-   // Print out the smoking intensity group for the person and the cigarettes smoked per day
-   // Print the intensity group as +1 its value so range of values is from 1 to 5.
+   // Print CPD data if smoker
    if (gwPersonsInitAge != -999) {
+      short wYearsAsSmoker;
       if (gwPersonsCessAge == -999)
          wYearsAsSmoker = wSIM_CUTOFF_YEAR - (gwPersonsYOB + gwPersonsInitAge) + 1;
       else
          wYearsAsSmoker = gwPersonsCessAge - gwPersonsInitAge + 1;
-      for (i = 0; i < wYearsAsSmoker; i++) {
-         if (i + gwPersonsInitAge < 100)
-            WriteToFile(pOutStream, "%d;%.2f;", i + gwPersonsInitAge, gdPersonsCPDbyAge[i]);
+      for (short i = 0; i < wYearsAsSmoker; i++) {
+         if (i + gwPersonsInitAge < 100) {
+            ptr += fast_itoa(i + gwPersonsInitAge, ptr); *ptr++ = ';';
+            ptr += fast_dtoa2(gdPersonsCPDbyAge[i], ptr); *ptr++ = ';';
+         }
       }
    }
 
-   WriteToFile(pOutStream, "\n");
+   *ptr++ = '\n';
+   *ptr = '\0';
+   
+   // Single write for entire record
+   fputs(buffer, pOutStream);
 }
 
 // RCPP does not allow sim_fprintf to be used, so this function is used to replace it
