@@ -19,6 +19,7 @@
 #include <Rcpp.h>
 #else
 #include <iostream>
+#include <vector>
 #endif
 
 // RNG Strategy Interface

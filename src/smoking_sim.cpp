@@ -506,6 +506,11 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
 
    long     nValues = glCpdYOBOffset;
    nColumns = gwNumSmokingGrps;
+   
+   // Safety check: prevent divide-by-zero if data wasn't loaded properly
+   if (nColumns <= 0) {
+      throw SimException("Error", "Invalid gwNumSmokingGrps value (must be > 0). CPD data may not have loaded correctly.");
+   }
    nRows = nValues / nColumns;
 
 
@@ -579,6 +584,10 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
                   group += 1;
                }
             }
+            // Ensure group stays within bounds (can't exceed nColumns-1)
+            if (group >= nColumns) {
+               group = nColumns - 1;
+            }
 
          } else if (i > gwPersonsInitAge) {        // if already a smoker
 
@@ -621,7 +630,12 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
                // TODO: the group, group * nColumns + j is a bit confusing and maybe incorrect
                // warning: left operand of comma operator has no effect (maybe should remove group?)
                // switchProbs[j] = Tij[group, group * nColumns + j] / r0[group];
-               switchProbs[j] = Tij[group * nColumns + j] / r0[group];
+               // Safety check: prevent divide-by-zero
+               if (r0[group] == 0.0) {
+                  switchProbs[j] = 0.0;
+               } else {
+                  switchProbs[j] = Tij[group * nColumns + j] / r0[group];
+               }
             }
 
             // double sumProbs;
@@ -643,6 +657,10 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
             for (j = 0; j < nColumns; j++) {
                if (roll > switchProbs[j])
                   group += 1;
+            }
+            // Ensure group stays within bounds (can't exceed nColumns-1)
+            if (group >= nColumns) {
+               group = nColumns - 1;
             }
          } 
 
