@@ -92,6 +92,10 @@ class SmokingSimulatorSharedData {
       long glCpdYOBOffset;
       short gwNumSmokingGrps;
       
+      // CPD loading statistics (Rcpp-specific for diagnostics)
+      long glCpdRowsLoaded;
+      long glCpdRowsSkipped;
+      
       // Reference counter for memory management (atomic for thread safety)
       std::atomic<int> refCount;
       
@@ -112,9 +116,10 @@ class SmokingSimulatorSharedData {
                      gwCessProbRaceOffset(0), gwCessProbSexOffset(0), gwCessProbYOBOffset(0),
                      glLifeTabAgeOffset(0), glLifeTabRaceOffset(0), glLifeTabSexOffset(0), glLifeTabYOBOffset(0),
                      gwIntensityAgeOffset(0), gwIntensitySexOffset(0), gwIntensityRaceOffset(0),
-                     glCpdAgeOffset(0), glCpdRaceOffset(0), glCpdSexOffset(0), glCpdYOBOffset(0),
-                     gwNumSmokingGrps(0),
-                     refCount(1) {}
+                    glCpdAgeOffset(0), glCpdRaceOffset(0), glCpdSexOffset(0), glCpdYOBOffset(0),
+                    gwNumSmokingGrps(0),
+                    glCpdRowsLoaded(0), glCpdRowsSkipped(0),
+                    refCount(1) {}
       
       void addRef() { refCount.fetch_add(1, std::memory_order_relaxed); }
       void release() {
