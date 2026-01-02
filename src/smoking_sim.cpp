@@ -254,8 +254,6 @@ SmokingSimulatorSharedData* Smoking_Simulator::CreateSharedData(
    pSharedData->gwIntensityMaxAge = pTempSim->gwIntensityMaxAge;
    pSharedData->gwCpdMinAge = pTempSim->gwCpdMinAge;
    pSharedData->gwCpdMaxAge = pTempSim->gwCpdMaxAge;
-   pSharedData->glCpdRowsLoaded = pTempSim->glCpdRowsLoaded;
-   pSharedData->glCpdRowsSkipped = pTempSim->glCpdRowsSkipped;
    
    // Transfer offsets
    pSharedData->gwInitProbRaceOffset = pTempSim->gwInitProbRaceOffset;
@@ -900,35 +898,10 @@ void Smoking_Simulator::Init() {
 
    gbImmediateCessation = false;
    gwImmediateCessYear  = 0;
-   
-   // Data loading statistics
-   glCpdRowsSkipped     = 0;
-   glCpdRowsLoaded      = 0;
 }
 
 void Smoking_Simulator::setRNGStrategy(RNG_Strategy* rngStrategy) {
    gpRngStrategy = rngStrategy;
-}
-
-// Print summary of loaded data dimensions (useful for debugging and user info)
-void Smoking_Simulator::PrintDataShapeSummary() {
-   SHG_STDERR("\n=== SHG Data Shape Summary ===\n");
-   SHG_STDERR("  Races: %d, Sexes: %d\n", gwNumRaceValues, gwNumSexValues);
-   SHG_STDERR("  Birth Cohorts: %d\n", gwNumBirthCohorts);
-   if (gwNumBirthCohorts > 0) {
-      SHG_STDERR("    First cohort: %d-%d\n", gwYOBCohortStartYrs[0], gwYOBCohortEndYrs[0]);
-      SHG_STDERR("    Last cohort:  %d-%d\n", 
-              gwYOBCohortStartYrs[gwNumBirthCohorts-1], gwYOBCohortEndYrs[gwNumBirthCohorts-1]);
-   }
-   SHG_STDERR("  Initiation ages: %d-%d\n", gwMinInitiationAge, gwMaxInitiationAge);
-   SHG_STDERR("  Cessation ages:  %d-%d\n", gwMinCessationAge, gwMaxCessationAge);
-   SHG_STDERR("  CPD ages: %ld-%ld, Intensity groups: %d\n", gwCpdMinAge, gwCpdMaxAge, gwNumIntensityGrps);
-   if (glCpdRowsSkipped > 0) {
-      SHG_STDERR("  CPD rows loaded: %ld, skipped: %ld (cohort mismatch)\n", glCpdRowsLoaded, glCpdRowsSkipped);
-   } else {
-      SHG_STDERR("  CPD rows loaded: %ld\n", glCpdRowsLoaded);
-   }
-   SHG_STDERR("==============================\n\n");
 }
 
 // dataMutex prevents multiple threads from accessing the data at the same time during the loading of input files
@@ -1068,9 +1041,6 @@ std::lock_guard<std::mutex> lock(dataMutex);
       // - verify the values are valid (including checking the cohorts)   
       // - add the CPD value to the appropriate array location
       lNumLinesRead = 0;
-      glCpdRowsSkipped = 0;
-      glCpdRowsLoaded = 0;
-      bool bCohortMismatchWarned = false;  // Only warn once about cohort mismatches
 
       while (fgets(sInputLine, 3000, pCpdFile) != NULL) {
 
@@ -1085,20 +1055,11 @@ std::lock_guard<std::mutex> lock(dataMutex);
 
          wCurrCohort        = GetYOBCohortGroup(wCohortStartValue);
 
-         // Check for cohort mismatch - skip row with warning instead of error
-         // This allows CPD files with different cohort ranges than initiation file
-         // Missing data is treated as -1 (no data available for that cohort/age)
-         if (wCurrCohort < 0 || wCurrCohort >= gwNumBirthCohorts ||
-             wCohortStartValue != gwYOBCohortStartYrs[wCurrCohort] ||
+         if (wCohortStartValue != gwYOBCohortStartYrs[wCurrCohort] ||
              wCohortEndValue != gwYOBCohortEndYrs[wCurrCohort]) {
-            glCpdRowsSkipped++;
-            if (!bCohortMismatchWarned) {
-               SHG_STDERR("WARNING: CPD file contains cohort range %ld-%ld not matching initiation file cohorts.\n", 
-                       wCohortStartValue, wCohortEndValue);
-               SHG_STDERR("         Rows with mismatched cohorts will be skipped (treated as no data).\n");
-               bCohortMismatchWarned = true;
-            }
-            continue;  // Skip this row
+            snprintf(sErrorMessage, sizeof(sErrorMessage), "The cohort range %ld - %ld in the Cigarettes per day file does not match the cohort \
+               range set by the initiation file.\n", wCohortStartValue, wCohortEndValue);
+            throw SimException("Error", sErrorMessage);
          }
 
          // Validate values read in
@@ -1112,6 +1073,10 @@ std::lock_guard<std::mutex> lock(dataMutex);
 
          // Probabilities are read in by smoking intesity group
          // Value assignment within the array is based on the offset formula
+         // WriteToFile(stdout, "%d\n", lNumLinesRead);
+         // if (lNumLinesRead == 1101)
+            // int r = 9;
+
          for (i = 0; i < gwNumIntensityGrps; i++) {
             pTokenPtr = strtok(NULL, ",");
             if (strcmp(pTokenPtr, ".") != 0) {
@@ -1125,18 +1090,9 @@ std::lock_guard<std::mutex> lock(dataMutex);
                gdCigarettesPerDay[lCurrArrayLocation] = dCigarettesPerDay;
             }
          }
-         glCpdRowsLoaded++;
       }
 
-      // Report summary if rows were skipped
-      if (glCpdRowsSkipped > 0) {
-         SHG_STDERR("         CPD file: %ld rows loaded, %ld rows skipped (cohort mismatch).\n", 
-                 glCpdRowsLoaded, glCpdRowsSkipped);
-      }
-
-      // Relaxed validation: allow fewer lines than expected (missing cohorts are treated as no data)
-      // Only error if MORE lines than expected (indicates file format issue)
-      if (lNumLinesRead > lMaxLinesExpected + glCpdRowsSkipped) {
+      if (lNumLinesRead > lMaxLinesExpected) {
          snprintf(sErrorMessage, sizeof(sErrorMessage), "Too many lines read from file %s.\n%ld were read but %ld were expected based on sex, race, birth cohort and \
             age values specified in first line of file.", sCpdFile, lNumLinesRead, lMaxLinesExpected);
          throw SimException("Error", sErrorMessage);
