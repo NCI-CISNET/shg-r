@@ -109,6 +109,27 @@ public:
     Rcpp::NumericVector get_current_seeds();
     void reset_seeds_to_defaults();
     Rcpp::NumericVector get_rng_state_fingerprint();
+    
+    // Data shape info (populated after data is loaded)
+    Rcpp::List get_data_shape();
+    
+    // Data shape storage (updated when simulator loads data)
+    int last_num_races = 0;
+    int last_num_sexes = 0;
+    int last_num_cohorts = 0;
+    int last_min_init_age = 0;
+    int last_max_init_age = 0;
+    int last_min_cess_age = 0;
+    int last_max_cess_age = 0;
+    long last_cpd_min_age = 0;
+    long last_cpd_max_age = 0;
+    int last_num_intensity_grps = 0;
+    long last_cpd_rows_loaded = 0;
+    long last_cpd_rows_skipped = 0;
+    int last_first_cohort_start = 0;
+    int last_first_cohort_end = 0;
+    int last_last_cohort_start = 0;
+    int last_last_cohort_end = 0;
 
     void runSimSegment(int repeat, 
                        vector<short>& wRaces,

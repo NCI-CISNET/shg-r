@@ -316,6 +316,43 @@ Smoking_Simulator* SHGInterface::loadSimulator()
                                        sCPDDataFile, wOutputType,
                                        wCessationYear);
 };
+
+//' @name get_data_shape
+//' @title get_data_shape method
+//' @description Returns a list containing information about the shape/dimensions of the loaded input data.
+//'              This is populated after a simulation is run and shows the structure of the parameter files.
+//' @return A list with data shape information including races, sexes, cohorts, age ranges, and CPD statistics.
+Rcpp::List SHGInterface::get_data_shape() {
+   return Rcpp::List::create(
+      Rcpp::Named("num_races") = last_num_races,
+      Rcpp::Named("num_sexes") = last_num_sexes,
+      Rcpp::Named("num_cohorts") = last_num_cohorts,
+      Rcpp::Named("first_cohort") = Rcpp::IntegerVector::create(
+         Rcpp::Named("start") = last_first_cohort_start,
+         Rcpp::Named("end") = last_first_cohort_end
+      ),
+      Rcpp::Named("last_cohort") = Rcpp::IntegerVector::create(
+         Rcpp::Named("start") = last_last_cohort_start,
+         Rcpp::Named("end") = last_last_cohort_end
+      ),
+      Rcpp::Named("initiation_ages") = Rcpp::IntegerVector::create(
+         Rcpp::Named("min") = last_min_init_age,
+         Rcpp::Named("max") = last_max_init_age
+      ),
+      Rcpp::Named("cessation_ages") = Rcpp::IntegerVector::create(
+         Rcpp::Named("min") = last_min_cess_age,
+         Rcpp::Named("max") = last_max_cess_age
+      ),
+      Rcpp::Named("cpd_ages") = Rcpp::IntegerVector::create(
+         Rcpp::Named("min") = (int)last_cpd_min_age,
+         Rcpp::Named("max") = (int)last_cpd_max_age
+      ),
+      Rcpp::Named("num_intensity_groups") = last_num_intensity_grps,
+      Rcpp::Named("cpd_rows_loaded") = (int)last_cpd_rows_loaded,
+      Rcpp::Named("cpd_rows_skipped") = (int)last_cpd_rows_skipped
+   );
+}
+
 //' @name runSimFromDataFrame
 //' @title runSimFromDataFrame method
 //' @description runSimFromDataFrame offers a way to configure and run a simulation from an existing R dataframe. It returns a dataframe of simulated smoking histories with the same number of rows and order as the input dataframe.
@@ -405,6 +442,32 @@ Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) 
    string cpdFile = input_data_folder + "/" + cpd_filename;
    SmokingSimulatorSharedData* pSharedData = Smoking_Simulator::CreateSharedData(
       initFile.c_str(), cessFile.c_str(), lifeFile.c_str(), cpdFile.c_str());
+
+   // Store data shape info for later access via get_data_shape()
+   last_num_races = pSharedData->gwNumRaceValues;
+   last_num_sexes = pSharedData->gwNumSexValues;
+   last_num_cohorts = pSharedData->gwNumBirthCohorts;
+   last_min_init_age = pSharedData->gwMinInitiationAge;
+   last_max_init_age = pSharedData->gwMaxInitiationAge;
+   last_min_cess_age = pSharedData->gwMinCessationAge;
+   last_max_cess_age = pSharedData->gwMaxCessationAge;
+   last_cpd_min_age = pSharedData->gwCpdMinAge;
+   last_cpd_max_age = pSharedData->gwCpdMaxAge;
+   last_num_intensity_grps = pSharedData->gwNumIntensityGrps;
+   last_cpd_rows_loaded = pSharedData->glCpdRowsLoaded;
+   last_cpd_rows_skipped = pSharedData->glCpdRowsSkipped;
+   if (last_num_cohorts > 0) {
+      last_first_cohort_start = pSharedData->gwYOBCohortStartYrs[0];
+      last_first_cohort_end = pSharedData->gwYOBCohortEndYrs[0];
+      last_last_cohort_start = pSharedData->gwYOBCohortStartYrs[last_num_cohorts - 1];
+      last_last_cohort_end = pSharedData->gwYOBCohortEndYrs[last_num_cohorts - 1];
+   }
+   
+   // Report CPD row warnings if any
+   if (last_cpd_rows_skipped > 0) {
+      Rcpp::warning("CPD file: %ld rows skipped due to cohort mismatch (treated as no data)", 
+                    last_cpd_rows_skipped);
+   }
 
    // ============================================================
    // FILE OUTPUT MODE: Write directly to disk like CLI
@@ -964,7 +1027,8 @@ RCPP_MODULE(SmokingSimulator) {
        .property("rngstream_seed", &SHGInterface::get_rngstream_seed, &SHGInterface::set_rngstream_seed, "Set or get RngStream seed. Must be a numeric vector of exactly 6 values (a single seed array that generates 4 substreams, one for each stream: initiation, cessation, life table, individual). If not set, default seed is used.")
        .method("get_current_seeds", &SHGInterface::get_current_seeds, "Get the current seed(s) for the selected RNG strategy. Returns mt_seeds if rng_strategy is 'MersenneTwister', or rngstream_seed if rng_strategy is 'RngStream'. Returns empty vector if seeds have not been explicitly set (defaults will be used).")
        .method("reset_seeds_to_defaults", &SHGInterface::reset_seeds_to_defaults, "Reset the seed(s) to their default values for the currently selected RNG strategy. For MersenneTwister, sets mt_seeds to default values. For RngStream, sets rngstream_seed to default values.")
-       .method("get_rng_state_fingerprint", &SHGInterface::get_rng_state_fingerprint, "Get a fingerprint of the RNG internal state. For RngStream, returns the actual internal state (24 values). For MersenneTwister, returns random numbers generated from each stream (12 values). Different seeds will produce different fingerprints, verifying that seeds are actually being used.");
+       .method("get_rng_state_fingerprint", &SHGInterface::get_rng_state_fingerprint, "Get a fingerprint of the RNG internal state. For RngStream, returns the actual internal state (24 values). For MersenneTwister, returns random numbers generated from each stream (12 values). Different seeds will produce different fingerprints, verifying that seeds are actually being used.")
+       .method("get_data_shape", &SHGInterface::get_data_shape, "Get information about the shape/dimensions of the loaded input data. Returns a list with num_races, num_sexes, num_cohorts, age ranges, and CPD loading statistics.");
       // TODO: also antithetical variates; also increment substreams
    }
 
