@@ -24,11 +24,20 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <mutex>
 #include "RngStream.h"
 #ifdef IS_RCPP
 #include <Rcpp.h>
 #endif
 using namespace std;
+
+// Thread-safe mutex accessor using Meyer's singleton pattern
+// This guarantees thread-safe initialization on first use (C++11 standard)
+// Protects access to static nextSeed during RngStream construction
+static std::mutex& getNextSeedMutex() {
+    static std::mutex nextSeedMutex;
+    return nextSeedMutex;
+}
 
 namespace
 {
@@ -342,12 +351,17 @@ RngStream::RngStream (const char *s) : name (s)
    bits if machine follows IEEE 754 standard) if incPrec = true. nextSeed
    will be the seed of the next declared RngStream. */
 
-   for (int i = 0; i < 6; ++i) {
-      Bg[i] = Cg[i] = Ig[i] = nextSeed[i];
-   }
+   // Thread-safe access to static nextSeed - prevents race conditions
+   // when multiple threads create RngStream objects simultaneously
+   {
+      std::lock_guard<std::mutex> lock(getNextSeedMutex());
+      for (int i = 0; i < 6; ++i) {
+         Bg[i] = Cg[i] = Ig[i] = nextSeed[i];
+      }
 
-   MatVecModM (A1p127, nextSeed, nextSeed, m1);
-   MatVecModM (A2p127, &nextSeed[3], &nextSeed[3], m2);
+      MatVecModM (A1p127, nextSeed, nextSeed, m1);
+      MatVecModM (A2p127, &nextSeed[3], &nextSeed[3], m2);
+   }
 }
 
 
@@ -387,7 +401,9 @@ void RngStream::ResetNextSubstream ()
 bool RngStream::SetPackageSeed (const unsigned long seed[6])
 {
    if (CheckSeed (seed))
-      return false;                   // FAILURE     
+      return false;                   // FAILURE
+   // Thread-safe access to static nextSeed
+   std::lock_guard<std::mutex> lock(getNextSeedMutex());
    for (int i = 0; i < 6; ++i)
       nextSeed[i] = seed[i];
    return true;                       // SUCCESS

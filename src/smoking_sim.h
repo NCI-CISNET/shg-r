@@ -16,6 +16,7 @@
 #include <string.h>
 #include <iostream>
 #include <mutex>
+#include <atomic>
 #include <vector>
 
 #ifdef IS_RCPP
@@ -67,6 +68,10 @@ class SmokingSimulatorSharedData {
       long gwCpdMinAge;
       long gwCpdMaxAge;
       
+      // CPD loading statistics
+      long glCpdRowsLoaded;
+      long glCpdRowsSkipped;
+      
       // Offset values for Probability Arrays (shared across instances)
       long gwInitProbRaceOffset;
       long gwInitProbSexOffset;
@@ -87,8 +92,8 @@ class SmokingSimulatorSharedData {
       long glCpdYOBOffset;
       short gwNumSmokingGrps;
       
-      // Reference counter for memory management
-      int refCount;
+      // Reference counter for memory management (atomic for thread safety)
+      std::atomic<int> refCount;
       
       SmokingSimulatorSharedData() : 
                      gdInitiationProbs(0), gdCessationProbs(0),
@@ -102,6 +107,7 @@ class SmokingSimulatorSharedData {
                      gwMinLifeTableYear(0), gwMaxLifeTableYear(0),
                      gwNumIntensityGrps(0), gwIntensityMinAge(0), gwIntensityMaxAge(0),
                      gwCpdMinAge(0), gwCpdMaxAge(0),
+                     glCpdRowsLoaded(0), glCpdRowsSkipped(0),
                      // Initialize all offset values
                      gwInitProbRaceOffset(0), gwInitProbSexOffset(0), gwInitProbYOBOffset(0),
                      gwCessProbRaceOffset(0), gwCessProbSexOffset(0), gwCessProbYOBOffset(0),
@@ -111,9 +117,9 @@ class SmokingSimulatorSharedData {
                      gwNumSmokingGrps(0),
                      refCount(1) {}
       
-      void addRef() { refCount++; }
+      void addRef() { refCount.fetch_add(1, std::memory_order_relaxed); }
       void release() {
-         if (--refCount == 0) {
+         if (refCount.fetch_sub(1, std::memory_order_acq_rel) == 1) {
             delete [] gdInitiationProbs;
             delete [] gdCessationProbs;
             delete [] gdLifeTableProbs;
@@ -245,6 +251,9 @@ class Smoking_Simulator {
       bool gbSkipValidation = false;    // Performance optimization: skip input validation when inputs are pre-validated
    
    private:
+      // Data loading statistics (for warnings/info)
+      long glCpdRowsSkipped;            // Count of CPD rows skipped due to cohort mismatch
+      long glCpdRowsLoaded;             // Count of CPD rows successfully loaded
 
    public:
 
@@ -310,6 +319,29 @@ class Smoking_Simulator {
       // Static function to create and load shared data
       static SmokingSimulatorSharedData* CreateSharedData(const char* sInitiationProbFile, const char* sCessationProbFile,
                                           const char* sLifeTableFile, const char* sCpdDataFile);
+
+      // Data shape getters (for info/debugging)
+      short GetNumBirthCohorts() { return gwNumBirthCohorts; }
+      short GetMinInitiationAge() { return gwMinInitiationAge; }
+      short GetMaxInitiationAge() { return gwMaxInitiationAge; }
+      short GetMinCessationAge() { return gwMinCessationAge; }
+      short GetMaxCessationAge() { return gwMaxCessationAge; }
+      long GetCpdMinAge() { return gwCpdMinAge; }
+      long GetCpdMaxAge() { return gwCpdMaxAge; }
+      short GetNumIntensityGrps() { return gwNumIntensityGrps; }
+      long GetCpdRowsSkipped() { return glCpdRowsSkipped; }
+      long GetCpdRowsLoaded() { return glCpdRowsLoaded; }
+      
+      // Get cohort year range for a given cohort index
+      short GetCohortStartYear(short cohortIndex) { 
+         return (cohortIndex >= 0 && cohortIndex < gwNumBirthCohorts) ? gwYOBCohortStartYrs[cohortIndex] : -1; 
+      }
+      short GetCohortEndYear(short cohortIndex) { 
+         return (cohortIndex >= 0 && cohortIndex < gwNumBirthCohorts) ? gwYOBCohortEndYrs[cohortIndex] : -1; 
+      }
+      
+      // Print data shape summary to stderr
+      void PrintDataShapeSummary();
 
 };
 // Implemented in main.cpp
