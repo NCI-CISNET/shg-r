@@ -18,4 +18,13 @@
 ^tools/update-shg-rcpp.py$
 ^\.lintr$
 ^CITATION\.cff$
-^\.venv/.*$
+^\.venv$
+^\.venv/
+^AGENTS\.md$
+^RNG-SEEDS\.md$
+^UPDATE-PACKAGE\.md$
+^data-readme\.md$
+^dev-readme\.md$
+^legacy-readme\.md$
+^SmokingHistoryGenerator\.Rcheck$
+^SmokingHistoryGenerator_.*\.tar\.gz$

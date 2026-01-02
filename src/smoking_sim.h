@@ -21,6 +21,10 @@
 
 #ifdef IS_RCPP
 #include <Rcpp.h>
+// CRAN-compliant: use REprintf instead of fprintf(stderr, ...)
+#define SHG_STDERR(...) REprintf(__VA_ARGS__)
+#else
+#define SHG_STDERR(...) fprintf(stderr, __VA_ARGS__)
 #endif
 
 // Constants used in Excess Risk Former Smokers' formula

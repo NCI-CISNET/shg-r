@@ -7,7 +7,7 @@
 This is a description.
 }
 \section{Extends}{
-Class \code{"\linkS4class{C++Object}"}, directly.
+Class \code{"\link[Rcpp:C++Object-class]{C++Object}"}, directly.
 
 All reference classes extend and inherit methods from \code{"\linkS4class{envRefClass}"}.
 
@@ -31,5 +31,3 @@ See also Sample
 showClass("Rcpp_SHGInterface")
 }
 \keyword{classes}
-\section{Methods}{
-}

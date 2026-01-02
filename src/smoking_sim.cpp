@@ -912,23 +912,23 @@ void Smoking_Simulator::setRNGStrategy(RNG_Strategy* rngStrategy) {
 
 // Print summary of loaded data dimensions (useful for debugging and user info)
 void Smoking_Simulator::PrintDataShapeSummary() {
-   fprintf(stderr, "\n=== SHG Data Shape Summary ===\n");
-   fprintf(stderr, "  Races: %d, Sexes: %d\n", gwNumRaceValues, gwNumSexValues);
-   fprintf(stderr, "  Birth Cohorts: %d\n", gwNumBirthCohorts);
+   SHG_STDERR("\n=== SHG Data Shape Summary ===\n");
+   SHG_STDERR("  Races: %d, Sexes: %d\n", gwNumRaceValues, gwNumSexValues);
+   SHG_STDERR("  Birth Cohorts: %d\n", gwNumBirthCohorts);
    if (gwNumBirthCohorts > 0) {
-      fprintf(stderr, "    First cohort: %d-%d\n", gwYOBCohortStartYrs[0], gwYOBCohortEndYrs[0]);
-      fprintf(stderr, "    Last cohort:  %d-%d\n", 
+      SHG_STDERR("    First cohort: %d-%d\n", gwYOBCohortStartYrs[0], gwYOBCohortEndYrs[0]);
+      SHG_STDERR("    Last cohort:  %d-%d\n", 
               gwYOBCohortStartYrs[gwNumBirthCohorts-1], gwYOBCohortEndYrs[gwNumBirthCohorts-1]);
    }
-   fprintf(stderr, "  Initiation ages: %d-%d\n", gwMinInitiationAge, gwMaxInitiationAge);
-   fprintf(stderr, "  Cessation ages:  %d-%d\n", gwMinCessationAge, gwMaxCessationAge);
-   fprintf(stderr, "  CPD ages: %ld-%ld, Intensity groups: %d\n", gwCpdMinAge, gwCpdMaxAge, gwNumIntensityGrps);
+   SHG_STDERR("  Initiation ages: %d-%d\n", gwMinInitiationAge, gwMaxInitiationAge);
+   SHG_STDERR("  Cessation ages:  %d-%d\n", gwMinCessationAge, gwMaxCessationAge);
+   SHG_STDERR("  CPD ages: %ld-%ld, Intensity groups: %d\n", gwCpdMinAge, gwCpdMaxAge, gwNumIntensityGrps);
    if (glCpdRowsSkipped > 0) {
-      fprintf(stderr, "  CPD rows loaded: %ld, skipped: %ld (cohort mismatch)\n", glCpdRowsLoaded, glCpdRowsSkipped);
+      SHG_STDERR("  CPD rows loaded: %ld, skipped: %ld (cohort mismatch)\n", glCpdRowsLoaded, glCpdRowsSkipped);
    } else {
-      fprintf(stderr, "  CPD rows loaded: %ld\n", glCpdRowsLoaded);
+      SHG_STDERR("  CPD rows loaded: %ld\n", glCpdRowsLoaded);
    }
-   fprintf(stderr, "==============================\n\n");
+   SHG_STDERR("==============================\n\n");
 }
 
 // dataMutex prevents multiple threads from accessing the data at the same time during the loading of input files
@@ -1093,9 +1093,9 @@ std::lock_guard<std::mutex> lock(dataMutex);
              wCohortEndValue != gwYOBCohortEndYrs[wCurrCohort]) {
             glCpdRowsSkipped++;
             if (!bCohortMismatchWarned) {
-               fprintf(stderr, "WARNING: CPD file contains cohort range %ld-%ld not matching initiation file cohorts.\n", 
+               SHG_STDERR("WARNING: CPD file contains cohort range %ld-%ld not matching initiation file cohorts.\n", 
                        wCohortStartValue, wCohortEndValue);
-               fprintf(stderr, "         Rows with mismatched cohorts will be skipped (treated as no data).\n");
+               SHG_STDERR("         Rows with mismatched cohorts will be skipped (treated as no data).\n");
                bCohortMismatchWarned = true;
             }
             continue;  // Skip this row
@@ -1130,7 +1130,7 @@ std::lock_guard<std::mutex> lock(dataMutex);
 
       // Report summary if rows were skipped
       if (glCpdRowsSkipped > 0) {
-         fprintf(stderr, "         CPD file: %ld rows loaded, %ld rows skipped (cohort mismatch).\n", 
+         SHG_STDERR("         CPD file: %ld rows loaded, %ld rows skipped (cohort mismatch).\n", 
                  glCpdRowsLoaded, glCpdRowsSkipped);
       }
 
@@ -2256,11 +2256,8 @@ void PrintError(const char* format, ...) {
    va_list args;
    va_start(args, format);
    #ifdef IS_RCPP
-      // TODO: Review
-      // Maybe we should only Rcpp::Rcout and allow the program to control the stop.
-      // Or Consider Rcerr << vfmt::vformat(format, args);
-      // Rcpp::warning(fmt::vformat(format, args));
-      REprintf(format, args);
+      // Use REvprintf for variadic arguments (CRAN compliant)
+      REvprintf(format, args);
    #else
       vfprintf(stderr, format, args);
    #endif

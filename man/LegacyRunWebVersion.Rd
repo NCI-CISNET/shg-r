@@ -11,12 +11,18 @@ This method offers a way to configure and run a simulation from an input configu
 }
 \examples{
 \dontrun{
-# Warning: This way of running a simulation ignores the Rcpp interface properties and relies soley 
-# on parameters set in the input configuration file. See main.cpp's RunWebVersion for more detail.
+# Warning: This way of running a simulation ignores the Rcpp interface
+# properties and relies solely on parameters set in the input configuration
+# file. See main.cpp's RunWebVersion for more detail.
 library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
-shg$input_data_folder <- system.file("inputs/default", "", package="SmokingHistoryGenerator")
-example_input_filepath <- system.file("inputs/examples/", "test_input_example_MersenneTwister.txt", package="SmokingHistoryGenerator")
+shg$input_data_folder <- system.file(
+  "inputs/default", "", package = "SmokingHistoryGenerator"
+)
+example_input_filepath <- system.file(
+  "inputs/examples/", "test_input_example_MersenneTwister.txt",
+  package = "SmokingHistoryGenerator"
+)
 shg$LegacyRunWebVersion(example_input_filepath)
 }
 }

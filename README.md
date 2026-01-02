@@ -109,6 +109,15 @@ For information on specifying custom seeds for reproducibility, see [RNG-SEEDS.m
 ### Compiling from source
 Please see the [developer readme](dev-readme.md) for instructions on how to compile the package from source.
 
+### Performance optimization
+The package is compiled with `-O3` optimization by default. For additional performance gains on your specific machine, you can enable CPU-specific optimizations by adding the following to your `~/.R/Makevars` file:
+
+```makefile
+CXX17FLAGS += -march=native
+```
+
+This enables CPU-specific instructions (AVX2, AVX-512, etc.) which can improve performance by 5-20% for numerical code. Note that binaries compiled with `-march=native` are not portable to other machines with different CPUs.
+
 ### Custom data input files
 Please see the [data readme](data-readme.md) for instructions on how to use custom input datasets.
 
