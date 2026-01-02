@@ -203,6 +203,126 @@ test_that("Invalid output path fails with proper error message", {
 
 # TODO: Compare Legacy tests with runSimFromFixedValues(): requires parsing of results
 
+# Tests for configuration management
+test_that("getConfig() returns correct structure with config_version", {
+  shg_test <- new(SHGInterface)
+  config <- shg_test$getConfig(debug = FALSE)
+  
+  expect_true(is.list(config))
+  expect_equal(config$config_version, "1.0")
+  expect_true("rng_strategy" %in% names(config))
+  expect_true("number_of_segments" %in% names(config))
+  expect_true("run_multi_threaded" %in% names(config))
+  expect_true("seeds" %in% names(config))
+  expect_true("input_data_folder" %in% names(config))
+  expect_true("timestamp" %in% names(config))
+})
+
+test_that("getConfig(debug=TRUE) includes debug info", {
+  shg_test <- new(SHGInterface)
+  config <- shg_test$getConfig(debug = TRUE)
+  
+  expect_true("rng_state_fingerprint" %in% names(config))
+  expect_true("package_version" %in% names(config))
+  expect_true("package_source" %in% names(config))
+  expect_true("r_version" %in% names(config))
+  expect_true("platform" %in% names(config))
+  expect_true("memory_usage" %in% names(config))
+  expect_true(nchar(config$package_version) > 0)
+  expect_true(nchar(config$r_version) > 0)
+})
+
+test_that("useConfig() correctly configures instance", {
+  shg1 <- new(SHGInterface)
+  shg1$rng_strategy <- "RngStream"
+  shg1$number_of_segments <- 4
+  shg1$run_multi_threaded <- TRUE
+  shg1$input_data_folder <- "/test/path"
+  shg1$immediate_cessation_year <- 2025
+  
+  config <- shg1$getConfig(debug = FALSE)
+  
+  shg2 <- new(SHGInterface)
+  shg2$useConfig(config)
+  
+  expect_equal(shg2$rng_strategy, shg1$rng_strategy)
+  expect_equal(shg2$number_of_segments, shg1$number_of_segments)
+  expect_equal(shg2$run_multi_threaded, shg1$run_multi_threaded)
+  expect_equal(shg2$input_data_folder, shg1$input_data_folder)
+  expect_equal(shg2$immediate_cessation_year, shg1$immediate_cessation_year)
+})
+
+test_that("useConfig() validates config_version", {
+  shg_test <- new(SHGInterface)
+  
+  # Missing config_version should warn but work
+  config_no_version <- list(rng_strategy = "RngStream")
+  expect_warning(shg_test$useConfig(config_no_version), "Config missing config_version")
+  
+  # Unsupported version should warn
+  config_bad_version <- list(config_version = "2.0", rng_strategy = "RngStream")
+  expect_warning(shg_test$useConfig(config_bad_version), "may not be fully supported")
+})
+
+test_that("useConfig() warns on unknown fields", {
+  shg_test <- new(SHGInterface)
+  config <- list(
+    config_version = "1.0",
+    rng_strategy = "RngStream",
+    unknown_field = "test"
+  )
+  expect_warning(shg_test$useConfig(config), "Unknown config field")
+})
+
+test_that("Round-trip: getConfig() -> useConfig() -> verify", {
+  shg1 <- new(SHGInterface)
+  shg1$rng_strategy <- "MersenneTwister"
+  shg1$number_of_segments <- 1
+  shg1$run_multi_threaded <- FALSE
+  shg1$immediate_cessation_year <- 2020
+  
+  config <- shg1$getConfig(debug = FALSE)
+  
+  # Save and reload simulation
+  temp_file <- tempfile(fileext = ".rds")
+  saveRDS(config, temp_file)
+  config_loaded <- readRDS(temp_file)
+  
+  shg2 <- new(SHGInterface)
+  shg2$useConfig(config_loaded)
+  
+  expect_equal(shg2$rng_strategy, shg1$rng_strategy)
+  expect_equal(shg2$number_of_segments, shg1$number_of_segments)
+  expect_equal(shg2$run_multi_threaded, shg1$run_multi_threaded)
+  expect_equal(shg2$immediate_cessation_year, shg1$immediate_cessation_year)
+  
+  unlink(temp_file)
+})
+
+test_that("Constructor with config parameter works", {
+  config <- list(
+    config_version = "1.0",
+    rng_strategy = "RngStream",
+    number_of_segments = 4,
+    run_multi_threaded = TRUE,
+    immediate_cessation_year = 2025
+  )
+  
+  shg <- new(SHGInterface, config = config)
+  
+  expect_equal(shg$rng_strategy, "RngStream")
+  expect_equal(shg$number_of_segments, 4)
+  expect_equal(shg$run_multi_threaded, TRUE)
+  expect_equal(shg$immediate_cessation_year, 2025)
+})
+
+test_that("Constructor with empty config works", {
+  shg <- new(SHGInterface, config = list())
+  # Should use defaults
+  expect_equal(shg$rng_strategy, "RngStream")
+  expect_equal(shg$number_of_segments, 1)
+})
+
 # Tests for MersenneTwister restrictions
 test_that("MersenneTwister cannot be used with multiple segments", {
   shg_test <- new(SHGInterface)

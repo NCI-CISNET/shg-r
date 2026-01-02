@@ -77,6 +77,14 @@ SHGInterface::SHGInterface() {
    // The Smoking_Simulators are created on the fly
 }
 
+SHGInterface::SHGInterface(Rcpp::List config) {
+   // Constructor with optional config parameter
+   // The Smoking_Simulators are created on the fly
+   if (config.size() > 0) {
+      useConfig(config);
+   }
+}
+
 void SHGInterface::set_rng_strategy(string strategy) {
    if (strategy != "MersenneTwister" && strategy != "RngStream") {
       Rcpp::stop("Invalid RNG strategy. Must be 'RngStream' or 'MersenneTwister'");
@@ -601,6 +609,236 @@ void SHGInterface::LegacyRunWebVersion(const char *sInputFileName)
    return;
 }
 
+//' Get current SHG configuration
+//' @name getConfig
+//' @title Get SHG Configuration
+//' @description Returns the current configuration of the SHG instance as an R list. Can include debug information when debug=TRUE.
+//' @param debug Logical. If TRUE, includes additional debug information such as RNG state fingerprint, package version, system info, and memory usage. If not provided, defaults to FALSE.
+//' @return A list containing the current configuration including: config_version, rng_strategy, number_of_segments, run_multi_threaded, seeds, input file paths, immediate_cessation_year, and timestamp. If debug=TRUE, also includes rng_state_fingerprint, package_version, package_source, r_version, platform, and memory_usage.
+//' @examples
+//' \dontrun{
+//' library(SmokingHistoryGenerator)
+//' shg <- new(SHGInterface)
+//' shg$rng_strategy <- "RngStream"
+//' shg$number_of_segments <- 4
+//' config <- shg$getConfig()
+//' # Save config for later use
+//' saveRDS(config, "my_config.rds")
+//' # Get config with debug info
+//' debug_config <- shg$getConfig(debug = TRUE)
+//' }
+Rcpp::List SHGInterface::getConfig(bool debug) {
+   Rcpp::List config;
+   
+   // Config version for future compatibility
+   config["config_version"] = "1.0";
+   
+   // Basic configuration
+   config["rng_strategy"] = rng_strategy;
+   config["number_of_segments"] = number_of_segments;
+   config["run_multi_threaded"] = run_multi_threaded;
+   
+   // Get seeds using get_current_seeds()
+   Rcpp::NumericVector seeds = get_current_seeds();
+   config["seeds"] = seeds;
+   
+   // Input file configuration
+   config["input_data_folder"] = input_data_folder;
+   config["initiation_filename"] = initiation_filename;
+   config["cessation_filename"] = cessation_filename;
+   config["lifetable_filename"] = lifetable_filename;
+   config["cpd_filename"] = cpd_filename;
+   config["immediate_cessation_year"] = immediate_cessation_year;
+   
+   // Timestamp
+   Rcpp::Function Sys_time("Sys.time");
+   Rcpp::Function format("format");
+   Rcpp::RObject time_obj = Sys_time();
+   Rcpp::String timestamp = Rcpp::as<std::string>(format(time_obj, Rcpp::_["format"] = "%Y-%m-%d %H:%M:%S"));
+   config["timestamp"] = timestamp;
+   
+   // Debug information
+   if (debug) {
+      // RNG state fingerprint
+      Rcpp::NumericVector rng_fingerprint = get_rng_state_fingerprint();
+      config["rng_state_fingerprint"] = rng_fingerprint;
+      
+      // Package version
+      try {
+         Rcpp::Environment utils("package:utils");
+         Rcpp::Function packageVersion = utils["packageVersion"];
+         Rcpp::RObject pkg_ver_obj = packageVersion("SmokingHistoryGenerator");
+         Rcpp::Function as_character("as.character");
+         Rcpp::RObject pkg_ver_str_obj = as_character(pkg_ver_obj);
+         Rcpp::CharacterVector pkg_ver_cv = Rcpp::as<Rcpp::CharacterVector>(pkg_ver_str_obj);
+         if (pkg_ver_cv.size() > 0) {
+            config["package_version"] = Rcpp::as<std::string>(pkg_ver_cv[0]);
+         } else {
+            config["package_version"] = "unknown";
+         }
+      } catch(...) {
+         config["package_version"] = "unknown";
+      }
+      
+      // Package source (installation path)
+      try {
+         Rcpp::Environment base("package:base");
+         Rcpp::Function system_file = base["system.file"];
+         Rcpp::RObject pkg_path_obj = system_file("", Rcpp::_["package"] = "SmokingHistoryGenerator");
+         Rcpp::StringVector pkg_path = Rcpp::as<Rcpp::StringVector>(pkg_path_obj);
+         if (pkg_path.size() > 0) {
+            config["package_source"] = Rcpp::as<std::string>(pkg_path[0]);
+         } else {
+            config["package_source"] = "unknown";
+         }
+      } catch(...) {
+         config["package_source"] = "unknown";
+      }
+      
+      // R version and platform
+      try {
+         Rcpp::Environment base_env = Rcpp::Environment::base_env();
+         Rcpp::List r_version_list = Rcpp::as<Rcpp::List>(base_env["R.version"]);
+         Rcpp::RObject version_string_obj = r_version_list["version.string"];
+         Rcpp::RObject platform_obj = r_version_list["platform"];
+         config["r_version"] = Rcpp::as<std::string>(version_string_obj);
+         config["platform"] = Rcpp::as<std::string>(platform_obj);
+      } catch(...) {
+         config["r_version"] = "unknown";
+         config["platform"] = "unknown";
+      }
+      
+      // Memory usage
+      try {
+         Rcpp::Function gc("gc");
+         Rcpp::RObject mem_info_obj = gc();
+         Rcpp::List mem_info = Rcpp::as<Rcpp::List>(mem_info_obj);
+         config["memory_usage"] = mem_info;
+      } catch(...) {
+         config["memory_usage"] = Rcpp::List::create();
+      }
+   }
+   
+   return config;
+}
+
+// Wrapper method without debug parameter (defaults to false)
+Rcpp::List SHGInterface::getConfig() {
+   return getConfig(false);
+}
+
+//' Configure SHG instance from config object
+//' @name useConfig
+//' @title Use SHG Configuration
+//' @description Configures an existing SHG instance from a configuration object (typically obtained from getConfig()).
+//' @param config A list containing configuration parameters. Must include config_version. All parameters are validated.
+//' @details This method validates the config_version and all parameters before setting them. Unknown fields are warned about but allowed for future compatibility. Missing optional fields use defaults.
+//' @examples
+//' \dontrun{
+//' library(SmokingHistoryGenerator)
+//' # Create and configure first instance
+//' shg1 <- new(SHGInterface)
+//' shg1$rng_strategy <- "RngStream"
+//' shg1$number_of_segments <- 4
+//' config <- shg1$getConfig()
+//' 
+//' # Create new instance and apply config
+//' shg2 <- new(SHGInterface)
+//' shg2$useConfig(config)
+//' # shg2 now has same configuration as shg1
+//' }
+void SHGInterface::useConfig(Rcpp::List config) {
+   // Validate config_version
+   if (!config.containsElementNamed("config_version")) {
+      Rcpp::warning("Config missing config_version field. Assuming version 1.0.");
+   } else {
+      std::string config_ver = Rcpp::as<std::string>(config["config_version"]);
+      if (config_ver != "1.0") {
+         Rcpp::Function warning("warning");
+         warning("Config version " + config_ver + " may not be fully supported. Current version is 1.0.", Rcpp::Named("call.") = false);
+      }
+   }
+   
+   // Set properties in correct order (rng_strategy first, then seeds, then others)
+   // This is important because setting rng_strategy may reset other properties
+   
+   if (config.containsElementNamed("rng_strategy")) {
+      set_rng_strategy(Rcpp::as<std::string>(config["rng_strategy"]));
+   }
+   
+    // Set seeds if provided
+    if (config.containsElementNamed("seeds")) {
+       Rcpp::NumericVector seeds = config["seeds"];
+       if (seeds.size() > 0) {
+          if (rng_strategy == "MersenneTwister" && seeds.size() == 4) {
+             set_mt_seeds(seeds);
+          } else if (rng_strategy == "RngStream" && seeds.size() == 6) {
+             set_rngstream_seed(seeds);
+          } else if (seeds.size() > 0) {
+             Rcpp::Function warning("warning");
+             warning("Seeds provided but size doesn't match RNG strategy requirements. MersenneTwister requires 4 seeds, RngStream requires 6 seeds.", Rcpp::Named("call.") = false);
+          }
+       }
+    }
+   
+   if (config.containsElementNamed("number_of_segments")) {
+      set_number_of_segments(Rcpp::as<int>(config["number_of_segments"]));
+   }
+   
+   if (config.containsElementNamed("run_multi_threaded")) {
+      set_run_multi_threaded(Rcpp::as<bool>(config["run_multi_threaded"]));
+   }
+   
+   if (config.containsElementNamed("input_data_folder")) {
+      set_input_data_folder(Rcpp::as<std::string>(config["input_data_folder"]));
+   }
+   
+   if (config.containsElementNamed("initiation_filename")) {
+      set_initiation_filename(Rcpp::as<std::string>(config["initiation_filename"]));
+   }
+   
+   if (config.containsElementNamed("cessation_filename")) {
+      set_cessation_filename(Rcpp::as<std::string>(config["cessation_filename"]));
+   }
+   
+   if (config.containsElementNamed("lifetable_filename")) {
+      set_lifetable_filename(Rcpp::as<std::string>(config["lifetable_filename"]));
+   }
+   
+   if (config.containsElementNamed("cpd_filename")) {
+      set_cpd_filename(Rcpp::as<std::string>(config["cpd_filename"]));
+   }
+   
+   if (config.containsElementNamed("immediate_cessation_year")) {
+      set_immediate_cessation_year(Rcpp::as<int>(config["immediate_cessation_year"]));
+   }
+   
+   // Warn about unknown fields (but allow for future compatibility)
+   std::vector<std::string> known_fields = {
+      "config_version", "rng_strategy", "number_of_segments", "run_multi_threaded",
+      "seeds", "input_data_folder", "initiation_filename", "cessation_filename",
+      "lifetable_filename", "cpd_filename", "immediate_cessation_year", "timestamp",
+      "rng_state_fingerprint", "package_version", "package_source", "r_version",
+      "platform", "memory_usage"
+   };
+   
+   Rcpp::CharacterVector config_names = config.names();
+   for (int i = 0; i < config_names.size(); i++) {
+      std::string field_name = Rcpp::as<std::string>(config_names[i]);
+      bool is_known = false;
+      for (const auto& known : known_fields) {
+         if (field_name == known) {
+            is_known = true;
+            break;
+         }
+      }
+      if (!is_known) {
+         Rcpp::Function warning("warning");
+         warning("Unknown config field: " + field_name + ". This field will be ignored.", Rcpp::Named("call.") = false);
+      }
+   }
+}
+
 RCPP_MODULE(SmokingSimulator) {
    using namespace Rcpp;
 
@@ -611,10 +849,14 @@ RCPP_MODULE(SmokingSimulator) {
 //' @export
 //' @description This module provides an Rcpp interface to the Smoking History Generator (SHG) application.
    class_<SHGInterface>("SHGInterface")
-       .constructor()
+       .constructor("Create a new SHGInterface instance")
+       .constructor<Rcpp::List>("Create a new SHGInterface instance with optional config parameter")
        .method("runSimFromFixedValues", &SHGInterface::runSimFromFixedValues, "Generates a data frame of simulated smoking histories for n individuals")
        .method("runSimFromDataFrame", &SHGInterface::runSimFromDataFrame, "Generates a data frame of simulated smoking histories for n individuals")
        .method("LegacyRunWebVersion", &SHGInterface::LegacyRunWebVersion, "Runs a simulation from a configuration file to produce results for a website (legacy)")
+       .method("getConfig", (Rcpp::List (SHGInterface::*)()) &SHGInterface::getConfig, "Get current SHG configuration as a list (without debug info).")
+       .method("getConfig", (Rcpp::List (SHGInterface::*)(bool)) &SHGInterface::getConfig, "Get current SHG configuration as a list. Set debug=TRUE to include additional debug information.")
+       .method("useConfig", &SHGInterface::useConfig, "Configure SHG instance from a config object (typically from getConfig())")
        .property("number_of_segments", &SHGInterface::get_number_of_segments, &SHGInterface::set_number_of_segments,"Number of segments to use for single or multi-threaded simulation")
        .property("run_multi_threaded", &SHGInterface::get_run_multi_threaded, &SHGInterface::set_run_multi_threaded, "True if the simulation should be run asynchonously; False otherwise")
        .property("rng_strategy", &SHGInterface::get_rng_strategy, &SHGInterface::set_rng_strategy, "'RngStream' for MRG32k3a (default) or 'MersenneTwister' for Mersenne Twister")
