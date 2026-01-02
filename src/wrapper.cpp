@@ -155,6 +155,18 @@ void SHGInterface::set_num_threads(int n) {
       Rcpp::stop("MersenneTwister RNG requires single-threaded execution (num_threads = 1). Use RngStream for multi-threading.");
    }
    
+   // Cap to available cores with warning
+   int availableCores = std::thread::hardware_concurrency();
+   if (availableCores < 1) availableCores = 1;
+   if (n > availableCores) {
+      Rcpp::Function warning("warning");
+      std::string msg = "num_threads=" + std::to_string(n) + " exceeds available cores (" + 
+                        std::to_string(availableCores) + "). Using " + std::to_string(availableCores) + 
+                        " threads. Using more threads than cores provides no benefit and may cause instability.";
+      warning(msg, Rcpp::Named("call.") = false);
+      n = availableCores;
+   }
+   
    // Warn if num_threads > 1 but number_of_segments == 1 (no parallelism possible)
    if (n != 1 && number_of_segments == 1) {
       Rcpp::Function warning("warning");
