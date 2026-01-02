@@ -2,9 +2,9 @@ Package: SmokingHistoryGenerator
 Type: Package
 Title: R wrapper for the Smoking History Generator
 Version: 0.0.1
-SHGMostRecentTag: v6.4.0-rc-6
-SHGCommitHash: f13781e
-SHGsrcHash: 078abaf974c625b8588ff3702609ba3c
+SHGMostRecentTag: v6.5.0-pre-create-rngstream
+SHGCommitHash: a4a39ab
+SHGsrcHash: 404190c05b7f45bea2d595e78991f24a
 Date: 2025-02-05
 Authors@R: c(
     person("John", "Clarke", email = "john.clarke@cornerstonenw.com", role = c("aut", "cre"),
