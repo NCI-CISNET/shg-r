@@ -688,11 +688,12 @@ void SHGInterface::runSimSegment(int repeat,
    short wOutputType = 1; // Not relevant for R
    Smoking_Simulator* qSimulator = new Smoking_Simulator(pSharedData, wOutputType, immediate_cessation_year);
    
-   // NOTE: Do NOT set gbSkipOversampling=true - it must match CLI for reproducibility
    qSimulator->gbSkipValidation = true;     // Skip input validation (inputs pre-validated by R)
 
    // Set RNG strategy with user-specified seeds or defaults
+   // Skip oversampling for RngStream (performance), keep for MT (backwards compatibility)
    if (rng_strategy == "MersenneTwister") {
+      qSimulator->gbSkipOversampling = false;  // MT: keep oversampling for backwards compatibility
       if (mt_seeds.size() == 4) {
          qSimulator->setRNGStrategy(new MersenneTwisterRNG(mt_seeds[0], mt_seeds[1], mt_seeds[2], mt_seeds[3]));
       } else {
@@ -700,6 +701,7 @@ void SHGInterface::runSimSegment(int repeat,
       }
    }
    else if (rng_strategy == "RngStream") {
+      qSimulator->gbSkipOversampling = true;   // RngStream: skip oversampling (faster, no benefit)
       if (rngstream_seed.size() == 6) {
          unsigned long seed_array[6];
          for (int i = 0; i < 6; i++) {
@@ -797,17 +799,19 @@ void SHGInterface::runSimSegmentToFile(int repeat,
    // Create simulator using shared data
    short wOutputType = 1;
    Smoking_Simulator* qSimulator = new Smoking_Simulator(pSharedData, wOutputType, immediate_cessation_year);
-   // NOTE: Do NOT set gbSkipOversampling=true - it must match CLI for reproducibility
    qSimulator->gbSkipValidation = true;
    
    // Set RNG strategy
+   // Skip oversampling for RngStream (performance), keep for MT (backwards compatibility)
    if (rng_strategy == "MersenneTwister") {
+      qSimulator->gbSkipOversampling = false;  // MT: keep oversampling for backwards compatibility
       if (mt_seeds.size() == 4) {
          qSimulator->setRNGStrategy(new MersenneTwisterRNG(mt_seeds[0], mt_seeds[1], mt_seeds[2], mt_seeds[3]));
       } else {
          qSimulator->setRNGStrategy(new MersenneTwisterRNG(1898587603, 1468371936, 1551308340, 1590227640));
       }
    } else if (rng_strategy == "RngStream") {
+      qSimulator->gbSkipOversampling = true;   // RngStream: skip oversampling (faster, no benefit)
       if (rngstream_seed.size() == 6) {
          unsigned long seed_array[6];
          for (int i = 0; i < 6; i++) {
