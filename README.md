@@ -1,4 +1,4 @@
-# Smoking History Generator: R Interface<img src="./man/cisnet-logo.svg" width="100px;" align="right">
+# Smoking History Generator: R Interface<img src="./man/figures/cisnet-logo.svg" width="100px;" align="right">
   <!-- badges: start -->
   [![R-CMD-check](https://github.com/NCI-CISNET/shg-rcpp/actions/workflows/R-CMD-check-all-OS.yaml/badge.svg)](https://github.com/NCI-CISNET/shg-rcpp/actions/workflows/R-CMD-check-all-OS.yaml)
   [![License: GPL-3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://choosealicense.com/licenses/gpl-3.0/)
