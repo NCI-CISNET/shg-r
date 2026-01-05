@@ -90,6 +90,48 @@ NULL
 #' }
 NULL
 
+#' Get current SHG configuration
+#' @name getConfig
+#' @title Get SHG Configuration
+#' @description Returns the current configuration of the SHG instance as an R list. Can include debug information when debug=TRUE.
+#' @param debug Logical. If TRUE, includes additional debug information such as RNG state fingerprint, package version, system info, and memory usage. If not provided, defaults to FALSE.
+#' @return A list containing the current configuration including: config_version, rng_strategy, number_of_segments, run_multi_threaded, seeds, input file paths, immediate_cessation_year, and timestamp. If debug=TRUE, also includes rng_state_fingerprint, package_version, package_source, r_version, platform, and memory_usage.
+#' @examples
+#' \dontrun{
+#' library(SmokingHistoryGenerator)
+#' shg <- new(SHGInterface)
+#' shg$rng_strategy <- "RngStream"
+#' shg$number_of_segments <- 4
+#' config <- shg$getConfig()
+#' # Save config for later use
+#' saveRDS(config, "my_config.rds")
+#' # Get config with debug info
+#' debug_config <- shg$getConfig(debug = TRUE)
+#' }
+NULL
+
+#' Configure SHG instance from config object
+#' @name useConfig
+#' @title Use SHG Configuration
+#' @description Configures an existing SHG instance from a configuration object (typically obtained from getConfig()).
+#' @param config A list containing configuration parameters. Must include config_version. All parameters are validated.
+#' @details This method validates the config_version and all parameters before setting them. Unknown fields are warned about but allowed for future compatibility. Missing optional fields use defaults.
+#' @examples
+#' \dontrun{
+#' library(SmokingHistoryGenerator)
+#' # Create and configure first instance
+#' shg1 <- new(SHGInterface)
+#' shg1$rng_strategy <- "RngStream"
+#' shg1$number_of_segments <- 4
+#' config <- shg1$getConfig()
+#' 
+#' # Create new instance and apply config
+#' shg2 <- new(SHGInterface)
+#' shg2$useConfig(config)
+#' # shg2 now has same configuration as shg1
+#' }
+NULL
+
 #' Rcpp SHG Interface Class
 #' @name Rcpp_SHGInterface
 #' @title Rcpp SHG Interface Class

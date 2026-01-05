@@ -40,6 +40,7 @@ std::string find_default_data_path() {
 class SHGInterface {
 public:
     SHGInterface();
+    SHGInterface(Rcpp::List config);
     // Function to run simulations in parallel and combine results
     bool isValidDataFrame(Rcpp::DataFrame& dfPopulation);
     Rcpp::DataFrame runSimFromFixedValues(int repeat, short wRace, short wSex, short wYearBirth);
@@ -157,6 +158,11 @@ public:
                                int effectiveSegments, bool bMultiThreaded, bool bAutoSegments);
 
     void LegacyRunWebVersion(const char *sInputFileName);
+
+    // Configuration management
+    Rcpp::List getConfig(bool debug);
+    Rcpp::List getConfig();  // Wrapper without debug parameter (defaults to false)
+    void useConfig(Rcpp::List config);
 
 };
 

@@ -104,6 +104,10 @@ File output matches CLI's data format (semicolon-separated) and achieves similar
 
 For information on specifying custom seeds for reproducibility, see [RNG-SEEDS.md](RNG-SEEDS.md).
 
+## Configuration Management
+
+The SHG package provides functions to capture and restore configuration settings, making it easy to reproduce simulations and share configurations. For detailed documentation and examples, see [CONFIG-MANAGEMENT.md](CONFIG-MANAGEMENT.md).
+
 ## Additional documentation
 
 ### Compiling from source
