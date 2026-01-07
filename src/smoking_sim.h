@@ -46,11 +46,13 @@ class Smoking_Simulator;
 class SmokingSimulatorSharedData {
    public:
       // Probability Arrays (shared across instances)
-      double *gdInitiationProbs;
-      double *gdCessationProbs;
-      double *gdLifeTableProbs;
-      double *gdIntensityProbs;
-      long double *gdCigarettesPerDay;
+      // __restrict__ tells compiler these pointers don't alias, enabling better optimizations
+      // alignas(64) ensures cache-line alignment for better performance
+      alignas(64) double * __restrict__ gdInitiationProbs;
+      alignas(64) double * __restrict__ gdCessationProbs;
+      alignas(64) double * __restrict__ gdLifeTableProbs;
+      alignas(64) double * __restrict__ gdIntensityProbs;
+      alignas(64) long double * __restrict__ gdCigarettesPerDay;
       
       // Data limit variables (shared across instances)
       short gwNumBirthCohorts;
@@ -92,10 +94,6 @@ class SmokingSimulatorSharedData {
       long glCpdYOBOffset;
       short gwNumSmokingGrps;
       
-      // CPD loading statistics (Rcpp-specific for diagnostics)
-      long glCpdRowsLoaded;
-      long glCpdRowsSkipped;
-      
       // Reference counter for memory management (atomic for thread safety)
       std::atomic<int> refCount;
       
@@ -116,10 +114,9 @@ class SmokingSimulatorSharedData {
                      gwCessProbRaceOffset(0), gwCessProbSexOffset(0), gwCessProbYOBOffset(0),
                      glLifeTabAgeOffset(0), glLifeTabRaceOffset(0), glLifeTabSexOffset(0), glLifeTabYOBOffset(0),
                      gwIntensityAgeOffset(0), gwIntensitySexOffset(0), gwIntensityRaceOffset(0),
-                    glCpdAgeOffset(0), glCpdRaceOffset(0), glCpdSexOffset(0), glCpdYOBOffset(0),
-                    gwNumSmokingGrps(0),
-                    glCpdRowsLoaded(0), glCpdRowsSkipped(0),
-                    refCount(1) {}
+                     glCpdAgeOffset(0), glCpdRaceOffset(0), glCpdSexOffset(0), glCpdYOBOffset(0),
+                     gwNumSmokingGrps(0),
+                     refCount(1) {}
       
       void addRef() { refCount.fetch_add(1, std::memory_order_relaxed); }
       void release() {
@@ -164,13 +161,14 @@ class Smoking_Simulator {
       static std::mutex dataMutex; // Mutex to protect shared resources
 
       // Probability Arrays
-      double *gdInitiationProbs;  // Prob of initiation by race/sex/year of birth and age
-      double *gdCessationProbs;   // Prob of cessation by race/sex/year of birth and age
-      double *gdLifeTableProbs;   // Prob of COD other than lung cancer by race/sex/year of birth/age and smoking status
-      double *gdIntensityProbs;   // Prob of being a light to heavy smoker (for individuals that begin smoking)
+      // __restrict__ tells compiler these pointers don't alias, enabling better optimizations
+      double * __restrict__ gdInitiationProbs;  // Prob of initiation by race/sex/year of birth and age
+      double * __restrict__ gdCessationProbs;   // Prob of cessation by race/sex/year of birth and age
+      double * __restrict__ gdLifeTableProbs;   // Prob of COD other than lung cancer by race/sex/year of birth/age and smoking status
+      double * __restrict__ gdIntensityProbs;   // Prob of being a light to heavy smoker (for individuals that begin smoking)
 
       // Cigarettes per day by race, sex, YOB and age (and smoking intensity? %bjr)
-      long double *gdCigarettesPerDay;
+      long double * __restrict__ gdCigarettesPerDay;
       
       // Data limit variables
       short gwNumBirthCohorts;    // Number of birth cohorts Available
@@ -239,11 +237,22 @@ class Smoking_Simulator {
       void Free();
       // void CalcCigarettesPerDay();
       void CalcCigarettesPerDaySwitch();
-      short GetAgeOfDeathFromOtherCOD(short wStartAge, short wEndAge, SmokingStatus eStatus, bool &bWentPastData);
-      double GetNextInitRand();
-      double GetNextCessRand();
-      double GetNextLifeTableRand();
-      double GetNextRandForIndiv();
+      short GetAgeOfDeathFromOtherCOD(short wStartAge, short wEndAge, SmokingStatus eStatus, bool &bWentPastData) __attribute__((hot));
+      
+      // Inline hot RNG accessor functions for better performance
+      inline double GetNextInitRand() __attribute__((always_inline)) {
+         return gpRngStrategy->getInitiationRand();
+      }
+      inline double GetNextCessRand() __attribute__((always_inline)) {
+         return gpRngStrategy->getCessationRand();
+      }
+      inline double GetNextLifeTableRand() __attribute__((always_inline)) {
+         return gpRngStrategy->getLifeTableRand();
+      }
+      inline double GetNextRandForIndiv() __attribute__((always_inline)) {
+         return gpRngStrategy->getIndividualRand();
+      }
+      
       void LoadCPDIntensityProbs(const char* sDataFileName);
       void LoadCPDFile(const char* sCpdDataFile);
       void LoadOtherCODFile(const char* sLifeTableFileName);
@@ -281,10 +290,31 @@ class Smoking_Simulator {
       short GetMinYearOfBirth();
       short GetNumRaceValues() { return gwNumRaceValues;};
       short GetNumSexValues() { return gwNumSexValues;};
-      short GetYOBCohortGroup(short wYearBirth);
+      
+      // Inline hot cohort lookup function for better performance
+      inline short GetYOBCohortGroup(short wYearBirth) __attribute__((always_inline)) {
+         short wReturnValue = -1;
+         short wSearchLow = 0;
+         short wSearchMid;
+         short wSearchHigh = gwNumBirthCohorts - 1;
+         
+         // Validation is typically disabled in hot paths (gbSkipValidation)
+         // Binary search for cohort
+         while (wSearchLow <= wSearchHigh) {
+            wSearchMid = (wSearchLow + wSearchHigh) / 2;
+            if (gwYOBCohortEndYrs[wSearchMid] < wYearBirth) {
+               wSearchLow = wSearchMid + 1;
+            } else if (gwYOBCohortStartYrs[wSearchMid] > wYearBirth) {
+               wSearchHigh = wSearchMid - 1;
+            } else {
+               return wSearchMid;
+            }
+         }
+         return wReturnValue;
+      }
 
       void RunSimulation(const char* sInputFileName, const char* sOutputFileName = 0, bool bPrintToScreen = true);
-      void RunSimulationSingle(short wRace, short wSex, short wYearBirth, FILE* pOutStream = 0);
+      void RunSimulationSingle(short wRace, short wSex, short wYearBirth, FILE* pOutStream = 0) __attribute__((hot));
 
       void SetOutputType(short wOutputType);
       void WriteAsData(FILE *pOutStream);
@@ -320,6 +350,8 @@ class Smoking_Simulator {
       // Static function to create and load shared data
       static SmokingSimulatorSharedData* CreateSharedData(const char* sInitiationProbFile, const char* sCessationProbFile,
                                           const char* sLifeTableFile, const char* sCpdDataFile);
+      
+      // Static function to create shared data for a SINGLE cohort year
 
 };
 // Implemented in main.cpp

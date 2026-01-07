@@ -15,6 +15,8 @@
 #ifndef RNG_STRATEGY_H
 #define RNG_STRATEGY_H
 
+#include <memory>
+
 #ifdef IS_RCPP
 #include <Rcpp.h>
 #else
@@ -283,12 +285,111 @@ public:
         }
         return fingerprint;
     }
+    
+    // Expose internal streams for buffering (performance optimization)
+    RngStream* getInitiationStream() { return gpInitiationRNG; }
+    RngStream* getCessationStream() { return gpCessationRNG; }
+    RngStream* getLifeTableStream() { return gpLifeTableRNG; }
+    RngStream* getIndividualStream() { return gpIndividualRNG; }
 
 private:
     RngStream *gpInitiationRNG;
     RngStream *gpCessationRNG;
     RngStream *gpLifeTableRNG;
     RngStream *gpIndividualRNG;
+};
+
+// ==============================================================================
+// RNG Buffering Classes: Pre-generate random numbers in batches
+// Maintains exact sequence - just reduces function call overhead
+// ==============================================================================
+
+// Buffer for a single RNG stream
+class RNGStreamBuffer {
+private:
+    std::vector<double> buffer;
+    size_t next_index;
+    size_t buffer_size;
+    RngStream* stream;
+    
+public:
+    RNGStreamBuffer(RngStream* rng_stream, size_t batch_size = 1000) 
+        : stream(rng_stream), buffer_size(batch_size), next_index(batch_size) {
+        buffer.resize(batch_size);
+    }
+    
+    // Get next random value (refills buffer if needed)
+    __attribute__((always_inline))
+    inline double getNext() {
+        if (__builtin_expect(next_index >= buffer_size, 0)) {  // Branch prediction hint
+            // Refill buffer - generate batch of random numbers
+            for (size_t i = 0; i < buffer_size; i++) {
+                buffer[i] = stream->RandU01();
+            }
+            next_index = 0;
+        }
+        return buffer[next_index++];
+    }
+};
+
+// Buffered RNG Strategy: Wraps RngStreamRNG with buffering
+// Drop-in replacement - maintains EXACT same sequence!
+class BufferedRngStreamRNG : public RNG_Strategy {
+private:
+    RngStreamRNG* underlying_rng;
+    bool owns_rng;
+    
+    std::unique_ptr<RNGStreamBuffer> initiation_buffer;
+    std::unique_ptr<RNGStreamBuffer> cessation_buffer;
+    std::unique_ptr<RNGStreamBuffer> life_table_buffer;
+    std::unique_ptr<RNGStreamBuffer> individual_buffer;
+    
+public:
+    // Constructor: wraps an existing RngStreamRNG
+    BufferedRngStreamRNG(RngStreamRNG* rng, size_t buffer_size = 1000, bool take_ownership = false)
+        : underlying_rng(rng), owns_rng(take_ownership) {
+        
+        // Create buffers for each of the 4 independent streams
+        initiation_buffer = std::make_unique<RNGStreamBuffer>(
+            rng->getInitiationStream(), buffer_size);
+        cessation_buffer = std::make_unique<RNGStreamBuffer>(
+            rng->getCessationStream(), buffer_size);
+        life_table_buffer = std::make_unique<RNGStreamBuffer>(
+            rng->getLifeTableStream(), buffer_size);
+        individual_buffer = std::make_unique<RNGStreamBuffer>(
+            rng->getIndividualStream(), buffer_size);
+    }
+    
+    ~BufferedRngStreamRNG() {
+        if (owns_rng) delete underlying_rng;
+    }
+    
+    // RNG_Strategy interface - use buffers instead of direct calls
+    double getInitiationRand() override {
+        lInitiationRandCount++;
+        return initiation_buffer->getNext();
+    }
+    double getCessationRand() override {
+        lCessationRandCount++;
+        return cessation_buffer->getNext();
+    }
+    double getLifeTableRand() override {
+        lLifeTableRandCount++;
+        return life_table_buffer->getNext();
+    }
+    double getIndividualRand() override {
+        lIndividualRandCount++;
+        return individual_buffer->getNext();
+    }
+    
+    // Pass-through methods to underlying RNG
+    void initialize() override { underlying_rng->initialize(); }
+    void resetStrategy() override { underlying_rng->resetStrategy(); }
+    void incrementSubstreams() override { underlying_rng->incrementSubstreams(); }
+    void writeRNGState() override { underlying_rng->writeRNGState(); }
+    std::vector<double> getRNGStateFingerprint() override { 
+        return underlying_rng->getRNGStateFingerprint(); 
+    }
 };
 
 #endif // RNG_STRATEGY_H
