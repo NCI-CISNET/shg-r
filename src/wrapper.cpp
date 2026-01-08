@@ -459,23 +459,24 @@ Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) 
    last_max_init_age = pSharedData->gwMaxInitiationAge;
    last_min_cess_age = pSharedData->gwMinCessationAge;
    last_max_cess_age = pSharedData->gwMaxCessationAge;
-   last_cpd_min_age = pSharedData->gwCpdMinAge;
-   last_cpd_max_age = pSharedData->gwCpdMaxAge;
-   last_num_intensity_grps = pSharedData->gwNumIntensityGrps;
-   last_cpd_rows_loaded = pSharedData->glCpdRowsLoaded;
-   last_cpd_rows_skipped = pSharedData->glCpdRowsSkipped;
-   if (last_num_cohorts > 0) {
-      last_first_cohort_start = pSharedData->gwYOBCohortStartYrs[0];
-      last_first_cohort_end = pSharedData->gwYOBCohortEndYrs[0];
-      last_last_cohort_start = pSharedData->gwYOBCohortStartYrs[last_num_cohorts - 1];
-      last_last_cohort_end = pSharedData->gwYOBCohortEndYrs[last_num_cohorts - 1];
-   }
-   
-   // Report CPD row warnings if any
-   if (last_cpd_rows_skipped > 0) {
-      Rcpp::warning("CPD file: %ld rows skipped due to cohort mismatch (treated as no data)", 
-                    last_cpd_rows_skipped);
-   }
+  last_cpd_min_age = pSharedData->gwCpdMinAge;
+  last_cpd_max_age = pSharedData->gwCpdMaxAge;
+  last_num_intensity_grps = pSharedData->gwNumIntensityGrps;
+  // Note: glCpdRowsLoaded and glCpdRowsSkipped removed from shared code
+  // last_cpd_rows_loaded = pSharedData->glCpdRowsLoaded;
+  // last_cpd_rows_skipped = pSharedData->glCpdRowsSkipped;
+  if (last_num_cohorts > 0) {
+    last_first_cohort_start = pSharedData->gwYOBCohortStartYrs[0];
+    last_first_cohort_end = pSharedData->gwYOBCohortEndYrs[0];
+    last_last_cohort_start = pSharedData->gwYOBCohortStartYrs[last_num_cohorts - 1];
+    last_last_cohort_end = pSharedData->gwYOBCohortEndYrs[last_num_cohorts - 1];
+  }
+  
+  // Report CPD row warnings if any - disabled, metrics removed from shared code
+  // if (last_cpd_rows_skipped > 0) {
+  //   Rcpp::warning("CPD file: %ld rows skipped due to cohort mismatch (treated as no data)", 
+  //                 last_cpd_rows_skipped);
+  // }
 
    // ============================================================
    // FILE OUTPUT MODE: Write directly to disk like CLI
@@ -1011,7 +1012,7 @@ void SHGInterface::LegacyRunWebVersion(const char *sInputFileName)
 //' @title Get SHG Configuration
 //' @description Returns the current configuration of the SHG instance as an R list. Can include debug information when debug=TRUE.
 //' @param debug Logical. If TRUE, includes additional debug information such as RNG state fingerprint, package version, system info, and memory usage. If not provided, defaults to FALSE.
-//' @return A list containing the current configuration including: config_version, rng_strategy, number_of_segments, run_multi_threaded, seeds, input file paths, immediate_cessation_year, and timestamp. If debug=TRUE, also includes rng_state_fingerprint, package_version, package_source, r_version, platform, and memory_usage.
+//' @return A list containing the current configuration including: config_version, rng_strategy, number_of_segments, num_threads, seeds, input file paths, immediate_cessation_year, and timestamp. If debug=TRUE, also includes rng_state_fingerprint, package_version, package_source, r_version, platform, and memory_usage.
 //' @examples
 //' \dontrun{
 //' library(SmokingHistoryGenerator)
@@ -1030,13 +1031,14 @@ Rcpp::List SHGInterface::getConfig(bool debug) {
    // Config version for future compatibility
    config["config_version"] = "1.0";
    
-   // Basic configuration
-   config["rng_strategy"] = rng_strategy;
-   config["number_of_segments"] = number_of_segments;
-   config["run_multi_threaded"] = run_multi_threaded;
-   
-   // Get seeds using get_current_seeds()
-   Rcpp::NumericVector seeds = get_current_seeds();
+  // Basic configuration
+  config["rng_strategy"] = rng_strategy;
+  config["number_of_segments"] = number_of_segments;
+  // Note: run_multi_threaded removed - threading controlled by number_of_segments
+  // config["run_multi_threaded"] = run_multi_threaded;
+  
+  // Get seeds using get_current_seeds()
+  Rcpp::NumericVector seeds = get_current_seeds();
    config["seeds"] = seeds;
    
    // Input file configuration
@@ -1179,14 +1181,15 @@ void SHGInterface::useConfig(Rcpp::List config) {
     }
    
    if (config.containsElementNamed("number_of_segments")) {
-      set_number_of_segments(Rcpp::as<int>(config["number_of_segments"]));
-   }
-   
-   if (config.containsElementNamed("run_multi_threaded")) {
-      set_run_multi_threaded(Rcpp::as<bool>(config["run_multi_threaded"]));
-   }
-   
-   if (config.containsElementNamed("input_data_folder")) {
+    set_number_of_segments(Rcpp::as<int>(config["number_of_segments"]));
+  }
+  
+  // Note: run_multi_threaded removed - threading controlled by number_of_segments
+  // if (config.containsElementNamed("run_multi_threaded")) {
+  //   set_run_multi_threaded(Rcpp::as<bool>(config["run_multi_threaded"]));
+  // }
+  
+  if (config.containsElementNamed("input_data_folder")) {
       set_input_data_folder(Rcpp::as<std::string>(config["input_data_folder"]));
    }
    
@@ -1206,16 +1209,29 @@ void SHGInterface::useConfig(Rcpp::List config) {
       set_cpd_filename(Rcpp::as<std::string>(config["cpd_filename"]));
    }
    
-   if (config.containsElementNamed("immediate_cessation_year")) {
+  if (config.containsElementNamed("immediate_cessation_year")) {
       set_immediate_cessation_year(Rcpp::as<int>(config["immediate_cessation_year"]));
    }
-   
-   // Warn about unknown fields (but allow for future compatibility)
-   std::vector<std::string> known_fields = {
-      "config_version", "rng_strategy", "number_of_segments", "run_multi_threaded",
-      "seeds", "input_data_folder", "initiation_filename", "cessation_filename",
-      "lifetable_filename", "cpd_filename", "immediate_cessation_year", "timestamp",
-      "rng_state_fingerprint", "package_version", "package_source", "r_version",
+  
+  // Check for deprecated run_multi_threaded property
+  if (config.containsElementNamed("run_multi_threaded")) {
+      Rcpp::Function warning("warning");
+      bool old_value = Rcpp::as<bool>(config["run_multi_threaded"]);
+      std::string suggestion;
+      if (old_value) {
+         suggestion = "Use shg$num_threads <- -1 instead (or shg$num_threads <- N for N threads)";
+      } else {
+         suggestion = "Use shg$num_threads <- 1 instead";
+      }
+      warning("The 'run_multi_threaded' property is deprecated. " + suggestion + ". Example: shg$num_threads <- -1  # -1 = auto (all cores), 1 = single-threaded", Rcpp::Named("call.") = false);
+   }
+  
+  // Warn about unknown fields (but allow for future compatibility)
+  std::vector<std::string> known_fields = {
+    "config_version", "rng_strategy", "number_of_segments", "num_threads", "run_multi_threaded",
+    "seeds", "input_data_folder", "initiation_filename", "cessation_filename",
+    "lifetable_filename", "cpd_filename", "immediate_cessation_year", "timestamp",
+    "rng_state_fingerprint", "package_version", "package_source", "r_version",
       "platform", "memory_usage"
    };
    
@@ -1264,11 +1280,13 @@ RCPP_MODULE(SmokingSimulator) {
        .property("cpd_filename", &SHGInterface::get_cpd_filename, &SHGInterface::set_cpd_filename, "Set or get the cpd filename")
        .property("mt_seeds", &SHGInterface::get_mt_seeds, &SHGInterface::set_mt_seeds, "Set or get MersenneTwister seeds. Must be a numeric vector of exactly 4 values (one for each stream: initiation, cessation, life table, individual). If not set, default seeds are used.")
        .property("rngstream_seed", &SHGInterface::get_rngstream_seed, &SHGInterface::set_rngstream_seed, "Set or get RngStream seed. Must be a numeric vector of exactly 6 values (a single seed array that generates 4 substreams, one for each stream: initiation, cessation, life table, individual). If not set, default seed is used.")
-       .method("get_current_seeds", &SHGInterface::get_current_seeds, "Get the current seed(s) for the selected RNG strategy. Returns mt_seeds if rng_strategy is 'MersenneTwister', or rngstream_seed if rng_strategy is 'RngStream'. Returns empty vector if seeds have not been explicitly set (defaults will be used).")
-       .method("reset_seeds_to_defaults", &SHGInterface::reset_seeds_to_defaults, "Reset the seed(s) to their default values for the currently selected RNG strategy. For MersenneTwister, sets mt_seeds to default values. For RngStream, sets rngstream_seed to default values.")
-       .method("get_rng_state_fingerprint", &SHGInterface::get_rng_state_fingerprint, "Get a fingerprint of the RNG internal state. For RngStream, returns the actual internal state (24 values). For MersenneTwister, returns random numbers generated from each stream (12 values). Different seeds will produce different fingerprints, verifying that seeds are actually being used.")
-       .method("get_data_shape", &SHGInterface::get_data_shape, "Get information about the shape/dimensions of the loaded input data. Returns a list with num_races, num_sexes, num_cohorts, age ranges, and CPD loading statistics.");
-      // TODO: also antithetical variates; also increment substreams
-   }
+      .method("get_current_seeds", &SHGInterface::get_current_seeds, "Get the current seed(s) for the selected RNG strategy. Returns mt_seeds if rng_strategy is 'MersenneTwister', or rngstream_seed if rng_strategy is 'RngStream'. Returns empty vector if seeds have not been explicitly set (defaults will be used).")
+      .method("reset_seeds_to_defaults", &SHGInterface::reset_seeds_to_defaults, "Reset the seed(s) to their default values for the currently selected RNG strategy. For MersenneTwister, sets mt_seeds to default values. For RngStream, sets rngstream_seed to default values.")
+      .method("get_rng_state_fingerprint", &SHGInterface::get_rng_state_fingerprint, "Get a fingerprint of the RNG internal state. For RngStream, returns the actual internal state (24 values). For MersenneTwister, returns random numbers generated from each stream (12 values). Different seeds will produce different fingerprints, verifying that seeds are actually being used.")
+      .method("get_data_shape", &SHGInterface::get_data_shape, "Get information about the shape/dimensions of the loaded input data. Returns a list with num_races, num_sexes, num_cohorts, age ranges, and CPD loading statistics.")
+      .method("getConfig", (Rcpp::List (SHGInterface::*)(bool)) &SHGInterface::getConfig, "Get current configuration as a list. Returns all current settings including RNG strategy, seeds, input file paths, and simulation parameters. Set debug=TRUE for additional debug info.")
+      .method("useConfig", &SHGInterface::useConfig, "Apply configuration from a list. Sets all configuration parameters from a list previously obtained from getConfig() or manually created. Validates config version and warns about unknown fields.");
+     // TODO: also antithetical variates; also increment substreams
+  }
 
 
