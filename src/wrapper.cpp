@@ -1042,8 +1042,7 @@ Rcpp::List SHGInterface::getConfig(bool debug) {
   // Basic configuration
   config["rng_strategy"] = rng_strategy;
   config["number_of_segments"] = number_of_segments;
-  // Note: run_multi_threaded removed - threading controlled by number_of_segments
-  // config["run_multi_threaded"] = run_multi_threaded;
+  config["num_threads"] = num_threads;
   
   // Get seeds using get_current_seeds()
   Rcpp::NumericVector seeds = get_current_seeds();
@@ -1192,10 +1191,9 @@ void SHGInterface::useConfig(Rcpp::List config) {
     set_number_of_segments(Rcpp::as<int>(config["number_of_segments"]));
   }
   
-  // Note: run_multi_threaded removed - threading controlled by number_of_segments
-  // if (config.containsElementNamed("run_multi_threaded")) {
-  //   set_run_multi_threaded(Rcpp::as<bool>(config["run_multi_threaded"]));
-  // }
+  if (config.containsElementNamed("num_threads")) {
+    set_num_threads(Rcpp::as<int>(config["num_threads"]));
+  }
   
   if (config.containsElementNamed("input_data_folder")) {
       set_input_data_folder(Rcpp::as<std::string>(config["input_data_folder"]));
