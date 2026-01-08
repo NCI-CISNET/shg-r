@@ -212,7 +212,7 @@ test_that("getConfig() returns correct structure with config_version", {
   expect_equal(config$config_version, "1.0")
   expect_true("rng_strategy" %in% names(config))
   expect_true("number_of_segments" %in% names(config))
-  expect_true("run_multi_threaded" %in% names(config))
+  expect_true("num_threads" %in% names(config))
   expect_true("seeds" %in% names(config))
   expect_true("input_data_folder" %in% names(config))
   expect_true("timestamp" %in% names(config))
@@ -236,7 +236,7 @@ test_that("useConfig() correctly configures instance", {
   shg1 <- new(SHGInterface)
   shg1$rng_strategy <- "RngStream"
   shg1$number_of_segments <- 4
-  shg1$run_multi_threaded <- TRUE
+  shg1$num_threads <- -1  # auto multi-threaded
   shg1$input_data_folder <- "/test/path"
   shg1$immediate_cessation_year <- 2025
   
@@ -247,7 +247,7 @@ test_that("useConfig() correctly configures instance", {
   
   expect_equal(shg2$rng_strategy, shg1$rng_strategy)
   expect_equal(shg2$number_of_segments, shg1$number_of_segments)
-  expect_equal(shg2$run_multi_threaded, shg1$run_multi_threaded)
+  expect_equal(shg2$num_threads, shg1$num_threads)
   expect_equal(shg2$input_data_folder, shg1$input_data_folder)
   expect_equal(shg2$immediate_cessation_year, shg1$immediate_cessation_year)
 })
@@ -278,7 +278,7 @@ test_that("Round-trip: getConfig() -> useConfig() -> verify", {
   shg1 <- new(SHGInterface)
   shg1$rng_strategy <- "MersenneTwister"
   shg1$number_of_segments <- 1
-  shg1$run_multi_threaded <- FALSE
+  shg1$num_threads <- 1  # single-threaded for MersenneTwister
   shg1$immediate_cessation_year <- 2020
   
   config <- shg1$getConfig(debug = FALSE)
@@ -293,7 +293,7 @@ test_that("Round-trip: getConfig() -> useConfig() -> verify", {
   
   expect_equal(shg2$rng_strategy, shg1$rng_strategy)
   expect_equal(shg2$number_of_segments, shg1$number_of_segments)
-  expect_equal(shg2$run_multi_threaded, shg1$run_multi_threaded)
+  expect_equal(shg2$num_threads, shg1$num_threads)
   expect_equal(shg2$immediate_cessation_year, shg1$immediate_cessation_year)
   
   unlink(temp_file)
@@ -304,7 +304,7 @@ test_that("Constructor with config parameter works", {
     config_version = "1.0",
     rng_strategy = "RngStream",
     number_of_segments = 4,
-    run_multi_threaded = TRUE,
+    num_threads = -1,  # auto multi-threaded
     immediate_cessation_year = 2025
   )
   
@@ -312,7 +312,7 @@ test_that("Constructor with config parameter works", {
   
   expect_equal(shg$rng_strategy, "RngStream")
   expect_equal(shg$number_of_segments, 4)
-  expect_equal(shg$run_multi_threaded, TRUE)
+  expect_equal(shg$num_threads, -1)
   expect_equal(shg$immediate_cessation_year, 2025)
 })
 
@@ -320,7 +320,7 @@ test_that("Constructor with empty config works", {
   shg <- new(SHGInterface, config = list())
   # Should use defaults
   expect_equal(shg$rng_strategy, "RngStream")
-  expect_equal(shg$number_of_segments, 1)
+  expect_equal(shg$number_of_segments, -1)  # default is -1 (auto)
 })
 
 # Tests for MersenneTwister restrictions
