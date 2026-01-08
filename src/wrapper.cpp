@@ -774,15 +774,23 @@ void SHGInterface::runSimSegment(int repeat,
    }
    else if (rng_strategy == "RngStream") {
       qSimulator->gbSkipOversampling = true;   // RngStream: skip oversampling (faster, no benefit)
+      
+      // Create base RNG
+      RngStreamRNG* baseRng;
       if (rngstream_seed.size() == 6) {
          unsigned long seed_array[6];
          for (int i = 0; i < 6; i++) {
             seed_array[i] = rngstream_seed[i];
          }
-         qSimulator->setRNGStrategy(new RngStreamRNG(seed_array));
+         baseRng = new RngStreamRNG(seed_array);
       } else {
-         qSimulator->setRNGStrategy(new RngStreamRNG());
+         baseRng = new RngStreamRNG();
       }
+      
+      // Wrap with buffering for 13-15% performance improvement (same as CLI)
+      // Buffer size 10000 matches CLI (reduces RNG function call overhead)
+      BufferedRngStreamRNG* bufferedRng = new BufferedRngStreamRNG(baseRng, 10000, true);
+      qSimulator->setRNGStrategy(bufferedRng);
    }
    else
       Rcpp::stop("Invalid RNG strategy or strategy not yet implemented");

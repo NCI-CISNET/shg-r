@@ -481,7 +481,7 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
 
    // Common case: nColumns == 6 (typical smoking groups)
    // This allows compiler to better optimize loops
-   constexpr short TYPICAL_N_COLUMNS = 6;
+   // constexpr short TYPICAL_N_COLUMNS = 6;  // Unused, but kept for documentation
 
    short    //wIntensityLookupAge,  // Age to look up in the smoking intensity groups
             //wIntensityIndex,      // Index to start at for look up of the smoking intensity groups
@@ -1013,10 +1013,11 @@ std::lock_guard<std::mutex> lock(dataMutex);
       }
 
       pTokenPtr       = strtok(sInputLine, ",");
-      wRaceValue      = atoi(pTokenPtr);     pTokenPtr = strtok(NULL, ",");
-      wSexValue       = atoi(pTokenPtr);     pTokenPtr = strtok(NULL, ",");
-      // TODO: remove wNumCohorts, but make sure we are parsing the rest of the variables correctly
-      wNumCohorts     = atoi(pTokenPtr);     pTokenPtr = strtok(NULL, ",");
+   wRaceValue      = atoi(pTokenPtr);     pTokenPtr = strtok(NULL, ",");
+   wSexValue       = atoi(pTokenPtr);     pTokenPtr = strtok(NULL, ",");
+   // TODO: remove wNumCohorts, but make sure we are parsing the rest of the variables correctly
+   wNumCohorts     = atoi(pTokenPtr);     pTokenPtr = strtok(NULL, ",");
+   (void)wNumCohorts;  // Mark as intentionally unused (for file format compatibility)
       wMinAgeValue    = atoi(pTokenPtr);     pTokenPtr = strtok(NULL, ",");
       wMaxAgeValue    = atoi(pTokenPtr);     pTokenPtr = strtok(NULL, ",");
       wNumSmokingGrps = atoi(pTokenPtr);

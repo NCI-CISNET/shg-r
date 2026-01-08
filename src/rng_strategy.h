@@ -314,7 +314,7 @@ private:
     
 public:
     RNGStreamBuffer(RngStream* rng_stream, size_t batch_size = 1000) 
-        : stream(rng_stream), buffer_size(batch_size), next_index(batch_size) {
+        : buffer(), next_index(batch_size), buffer_size(batch_size), stream(rng_stream) {
         buffer.resize(batch_size);
     }
     

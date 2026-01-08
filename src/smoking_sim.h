@@ -97,26 +97,26 @@ class SmokingSimulatorSharedData {
       // Reference counter for memory management (atomic for thread safety)
       std::atomic<int> refCount;
       
-      SmokingSimulatorSharedData() : 
-                     gdInitiationProbs(0), gdCessationProbs(0),
-                     gdLifeTableProbs(0), gdIntensityProbs(0), gdCigarettesPerDay(0),
-                     gwYOBCohortStartYrs(0), gwYOBCohortEndYrs(0),
-                     // Initialize all metadata fields to safe defaults
-                     gwNumBirthCohorts(0), gwNumRaceValues(0), gwNumSexValues(0),
-                     gwMinInitiationAge(0), gwMinCessationAge(0),
-                     gwMaxInitiationAge(0), gwMaxCessationAge(0),
-                     gwMinLifeTableAge(0), gwMaxLifeTableAge(0),
-                     gwMinLifeTableYear(0), gwMaxLifeTableYear(0),
-                     gwNumIntensityGrps(0), gwIntensityMinAge(0), gwIntensityMaxAge(0),
-                     gwCpdMinAge(0), gwCpdMaxAge(0),
-                     // Initialize all offset values
-                     gwInitProbRaceOffset(0), gwInitProbSexOffset(0), gwInitProbYOBOffset(0),
-                     gwCessProbRaceOffset(0), gwCessProbSexOffset(0), gwCessProbYOBOffset(0),
-                     glLifeTabAgeOffset(0), glLifeTabRaceOffset(0), glLifeTabSexOffset(0), glLifeTabYOBOffset(0),
-                     gwIntensityAgeOffset(0), gwIntensitySexOffset(0), gwIntensityRaceOffset(0),
-                     glCpdAgeOffset(0), glCpdRaceOffset(0), glCpdSexOffset(0), glCpdYOBOffset(0),
-                     gwNumSmokingGrps(0),
-                     refCount(1) {}
+   SmokingSimulatorSharedData() : 
+                  gdInitiationProbs(0), gdCessationProbs(0),
+                  gdLifeTableProbs(0), gdIntensityProbs(0), gdCigarettesPerDay(0),
+                  gwNumBirthCohorts(0), gwYOBCohortStartYrs(0), gwYOBCohortEndYrs(0),
+                  // Initialize all metadata fields to safe defaults
+                  gwNumRaceValues(0), gwNumSexValues(0),
+                  gwMinInitiationAge(0), gwMinCessationAge(0),
+                  gwMaxInitiationAge(0), gwMaxCessationAge(0),
+                  gwMinLifeTableAge(0), gwMaxLifeTableAge(0),
+                  gwMinLifeTableYear(0), gwMaxLifeTableYear(0),
+                  gwNumIntensityGrps(0), gwIntensityMinAge(0), gwIntensityMaxAge(0),
+                  gwCpdMinAge(0), gwCpdMaxAge(0),
+                  // Initialize all offset values
+                  gwInitProbRaceOffset(0), gwInitProbSexOffset(0), gwInitProbYOBOffset(0),
+                  gwCessProbRaceOffset(0), gwCessProbSexOffset(0), gwCessProbYOBOffset(0),
+                  glLifeTabAgeOffset(0), glLifeTabRaceOffset(0), glLifeTabSexOffset(0), glLifeTabYOBOffset(0),
+                  gwIntensityAgeOffset(0), gwIntensitySexOffset(0), gwIntensityRaceOffset(0),
+                  glCpdAgeOffset(0), glCpdRaceOffset(0), glCpdSexOffset(0), glCpdYOBOffset(0),
+                  gwNumSmokingGrps(0),
+                  refCount(1) {}
       
       void addRef() { refCount.fetch_add(1, std::memory_order_relaxed); }
       void release() {
