@@ -15,8 +15,8 @@ cd "$(dirname "$0")/.."
 echo "Running R CMD check for SmokingHistoryGenerator..."
 echo
 
-# Clean previous check artifacts
-rm -rf SmokingHistoryGenerator.Rcheck *.tar.gz 2>/dev/null || true
+# Clean previous check artifacts (R names the dir after the tarball, e.g. SmokingHistoryGenerator_0.0.2.Rcheck)
+rm -rf SmokingHistoryGenerator.Rcheck SmokingHistoryGenerator_*.Rcheck *.tar.gz 2>/dev/null || true
 
 # Build the package
 R CMD build . --no-manual --no-build-vignettes
@@ -32,12 +32,16 @@ fi
 # Run check
 R CMD check "$TARBALL" --as-cran --no-manual
 
-# Check for warnings
-if grep -q "WARNING" SmokingHistoryGenerator.Rcheck/00check.log 2>/dev/null; then
+# Check for warnings (match versioned .Rcheck directory from this run)
+RCHECK_DIR=$(ls -d SmokingHistoryGenerator_*.Rcheck 2>/dev/null | head -1)
+if [ -z "$RCHECK_DIR" ]; then
+    RCHECK_DIR="SmokingHistoryGenerator.Rcheck"
+fi
+if [ -f "$RCHECK_DIR/00check.log" ] && grep -q "WARNING" "$RCHECK_DIR/00check.log"; then
     echo
     echo "ERROR: R CMD check found WARNINGs. Please fix before committing."
     echo
-    grep -A2 "WARNING" SmokingHistoryGenerator.Rcheck/00check.log
+    grep -A2 "WARNING" "$RCHECK_DIR/00check.log"
     exit 1
 fi
 

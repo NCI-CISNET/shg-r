@@ -101,20 +101,19 @@ cat("==========================================================\n\n")
 summary_df <- data.frame(
   Configuration = c(
     "RngStream (parallel)",
-    "RngStream (single)",
-    "MersenneTwister"
+    "RngStream (single)"
   ),
   Mean_Sec = c(
     mean(results$rngstream_auto),
-    mean(results$rngstream_single),
+    mean(results$rngstream_single)
   ),
   Records_Per_Sec = c(
     N / mean(results$rngstream_auto),
-    N / mean(results$rngstream_single),
+    N / mean(results$rngstream_single)
   )
 )
 
-summary_df$Speedup <- summary_df$Records_Per_Sec[2] / summary_df$Records_Per_Sec
+summary_df$Speedup <- summary_df$Records_Per_Sec[1] / summary_df$Records_Per_Sec[2]
 
 print(summary_df, row.names = FALSE)
 

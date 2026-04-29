@@ -11,7 +11,7 @@ cat("Running R CMD check for SmokingHistoryGenerator...\n\n")
 
 # Check if we're in the right directory
 if (!file.exists("DESCRIPTION")) {
-  stop("Please run this script from the shg-rcpp directory")
+  stop("Please run this script from the shg-r package root (directory containing DESCRIPTION)")
 }
 
 # Run check with rcmdcheck if available, otherwise use base R CMD check

@@ -6,8 +6,9 @@ devtools::load_all()
 library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
 
-#shg$LegacyRunWebVersion("./inst/inputs/examples/test_input_example_MersenneTwister.txt")
-shg$LegacyRunWebVersion("./inst/inputs/examples/test_input_example_RngStream.txt")
+# Run from package source root; config paths are repo-relative (inst/extdata/...).
+# shg$LegacyRunWebVersion("tests/testdata/legacy-web-examples/test_input_example_MersenneTwister.txt")
+shg$LegacyRunWebVersion("tests/testdata/legacy-web-examples/test_input_example_RngStream.txt")
 
 # N <- 100
 # start_time <- Sys.time()
