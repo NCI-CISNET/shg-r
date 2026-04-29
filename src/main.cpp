@@ -935,9 +935,9 @@ void RunSegment(SegmentParams& params) {
       
       if (params.segmentIndex == 0) {
          SHG_STDERR( "    [SEG0] Setup: %lld ms, Sim+Write: %lld ms, Close: %lld ms\n",
-            std::chrono::duration_cast<std::chrono::milliseconds>(tAfterSetup-tSegStart).count(),
-            std::chrono::duration_cast<std::chrono::milliseconds>(tAfterSim-tAfterSetup).count(),
-            std::chrono::duration_cast<std::chrono::milliseconds>(tSegEnd-tAfterSim).count());
+            static_cast<long long>(std::chrono::duration_cast<std::chrono::milliseconds>(tAfterSetup-tSegStart).count()),
+            static_cast<long long>(std::chrono::duration_cast<std::chrono::milliseconds>(tAfterSim-tAfterSetup).count()),
+            static_cast<long long>(std::chrono::duration_cast<std::chrono::milliseconds>(tSegEnd-tAfterSim).count()));
       }
    } catch (SimException& ex) {
       if (pTempFile) {

@@ -3,8 +3,8 @@ Type: Package
 Title: R wrapper for the Smoking History Generator
 Version: 0.0.2
 SHGMostRecentTag: v6.5.0-rc-latest
-SHGCommitHash: 4066fa8
-SHGsrcHash: 290a61d061fac1668a8a8c330f075bfb
+SHGCommitHash: d45fb57
+SHGsrcHash: 063d3b0d8280295bd4ee57b882d85948
 Date: 2026-04-21
 Authors@R: c(
     person("John", "Clarke", email = "john.clarke@cornerstonenw.com", role = c("aut", "cre"),
