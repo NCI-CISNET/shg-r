@@ -1,4 +1,4 @@
-# Agent Guidelines for shg-rcpp
+# Agent Guidelines for shg-r
 
 ## Git Workflow
 
@@ -19,6 +19,7 @@
 ## Shared Files with shg-cli
 
 The following `src/` files **MUST match shg-cli exactly**:
+- `main.cpp`
 - `mersenne_class.cpp`, `mersenne_class.h`
 - `rng_strategy.h`
 - `RngStream.cpp`, `RngStream.h`
@@ -26,20 +27,22 @@ The following `src/` files **MUST match shg-cli exactly**:
 - `smoking_sim.cpp`, `smoking_sim.h`
 - `version.h`
 
-**Rcpp-only files:** `wrapper.cpp`, `wrapper.h`, `RcppExports.cpp`
+**R-only glue (not synced from CLI):** `wrapper.cpp`, `wrapper.h`, `RcppExports.cpp`
 
-**DO NOT modify shared files in shg-rcpp** without first updating shg-cli. The CLI is the source of truth for shared simulation code.
+**Bundled inputs (not synced; CRAN-sized subset):** flat **`inst/extdata/*.csv`** (csv-partial style: `initiation.csv`, `cessation.csv`, `cpd.csv`, `acm.csv`, `ocm-excl-lung-cancer.csv`). Regenerate with **`tools/trim-nhis-testdata.R`** (from `csv-complete/`). For trimming wide legacy `.txt` in a custom folder, use **`tools/trim-default-inputs.R`** with that directory as the sole argument. After changing bundled inputs or CPD loading, refresh legacy XML fixtures with **`tools/refresh-legacy-fixtures.R`**. Sample Legacy web configs: `tests/testdata/legacy-web-examples/`. Full tables: Zenodo (see `README.md`).
+
+**DO NOT modify shared files in shg-r** without first updating shg-cli. The CLI is the source of truth for shared simulation code.
 
 ## Sync Script
 
 Use `tools/shg-sync.py` to manage synchronization:
 
 ```bash
-python tools/shg-sync.py check           # Check if files match
-python tools/shg-sync.py sync-to-rcpp    # Copy CLI → Rcpp (standard)
-python tools/shg-sync.py sync-to-cli     # Copy Rcpp → CLI (dev only!)
+python tools/shg-sync.py check              # Check if files match
+python tools/shg-sync.py sync-from-cli     # Copy CLI → shg-r (standard)
+python tools/shg-sync.py sync-to-cli       # Copy shg-r → CLI (dev only!)
 python tools/shg-sync.py update-description  # Update DESCRIPTION sync fields
-python tools/shg-sync.py validate        # Pre-release validation
+python tools/shg-sync.py validate          # Pre-release validation
 ```
 
 ## Version Management
@@ -73,4 +76,3 @@ Also tracks CLI sync state in `DESCRIPTION`:
 6. Merge to master
 7. Create git tag
 8. Create GitHub release noting CLI version compatibility
-
