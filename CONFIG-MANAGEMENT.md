@@ -29,7 +29,7 @@ saveRDS(config, "my_shg_config.rds")
 
 The configuration object includes:
 - `config_version`: Version of the config format (currently "1.0")
-- All SHG settings: `rng_strategy`, `number_of_segments`, `run_multi_threaded`, `seeds`, input file paths, `immediate_cessation_year`
+- All SHG settings: `rng_strategy`, `number_of_segments`, `run_multi_threaded`, `seeds`, `input_data_folder`, `initiation_filename`, `cessation_filename`, `mortality_filename` (same path as legacy `lifetable_filename`), `cpd_filename`, `immediate_cessation_year`
 - `timestamp`: When the configuration was captured
 - (If `debug = TRUE`) Additional debug information: RNG state fingerprint, package version, system information, memory usage
 
