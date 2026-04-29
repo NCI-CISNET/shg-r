@@ -40,6 +40,8 @@
 #include <thread>     // Thread support
 #include <chrono>     // Timing
 #include <climits>
+#include <cmath>
+#include <cstdint>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -48,6 +50,15 @@
 #include "smoking_sim.h"
 #include "sim_exception.h"
 #include "version.h"
+
+namespace {
+
+/** MT19937 init uses 32-bit seeds; values may exceed 32 bits in R — mask when passing to C++ MT engine. */
+inline unsigned long mt_seed_to_engine_arg(std::uint64_t stored_user_seed) {
+   return static_cast<unsigned long>(stored_user_seed & 0xffffffffULL);
+}
+
+}  // namespace
 #include <Rcpp.h>
 
 using namespace std;
@@ -216,7 +227,7 @@ void SHGInterface::set_mt_seeds(Rcpp::NumericVector seeds) {
    mt_seeds.clear();
    mt_seeds.reserve(4);
    for (int i = 0; i < 4; i++) {
-      mt_seeds.push_back(static_cast<unsigned long>(seeds[i]));
+      mt_seeds.push_back(static_cast<std::uint64_t>(std::llround(seeds[i])));
    }
 }
 
@@ -270,7 +281,11 @@ Rcpp::NumericVector SHGInterface::get_rng_state_fingerprint() {
    // Set RNG strategy with user-specified seeds or defaults (same logic as runSimSegment)
    if (rng_strategy == "MersenneTwister") {
       if (mt_seeds.size() == 4) {
-         qSimulator->setRNGStrategy(new MersenneTwisterRNG(mt_seeds[0], mt_seeds[1], mt_seeds[2], mt_seeds[3]));
+         qSimulator->setRNGStrategy(new MersenneTwisterRNG(
+            mt_seed_to_engine_arg(mt_seeds[0]),
+            mt_seed_to_engine_arg(mt_seeds[1]),
+            mt_seed_to_engine_arg(mt_seeds[2]),
+            mt_seed_to_engine_arg(mt_seeds[3])));
       } else {
          qSimulator->setRNGStrategy(new MersenneTwisterRNG(1898587603, 1468371936, 1551308340, 1590227640));
       }
@@ -786,7 +801,11 @@ void SHGInterface::runSimSegment(int repeat,
    if (rng_strategy == "MersenneTwister") {
       qSimulator->gbSkipOversampling = false;  // MT: keep oversampling for backwards compatibility
       if (mt_seeds.size() == 4) {
-         qSimulator->setRNGStrategy(new MersenneTwisterRNG(mt_seeds[0], mt_seeds[1], mt_seeds[2], mt_seeds[3]));
+         qSimulator->setRNGStrategy(new MersenneTwisterRNG(
+            mt_seed_to_engine_arg(mt_seeds[0]),
+            mt_seed_to_engine_arg(mt_seeds[1]),
+            mt_seed_to_engine_arg(mt_seeds[2]),
+            mt_seed_to_engine_arg(mt_seeds[3])));
       } else {
          qSimulator->setRNGStrategy(new MersenneTwisterRNG(1898587603, 1468371936, 1551308340, 1590227640));
       }
@@ -905,7 +924,11 @@ void SHGInterface::runSimSegmentToFile(int repeat,
    if (rng_strategy == "MersenneTwister") {
       qSimulator->gbSkipOversampling = false;  // MT: keep oversampling for backwards compatibility
       if (mt_seeds.size() == 4) {
-         qSimulator->setRNGStrategy(new MersenneTwisterRNG(mt_seeds[0], mt_seeds[1], mt_seeds[2], mt_seeds[3]));
+         qSimulator->setRNGStrategy(new MersenneTwisterRNG(
+            mt_seed_to_engine_arg(mt_seeds[0]),
+            mt_seed_to_engine_arg(mt_seeds[1]),
+            mt_seed_to_engine_arg(mt_seeds[2]),
+            mt_seed_to_engine_arg(mt_seeds[3])));
       } else {
          qSimulator->setRNGStrategy(new MersenneTwisterRNG(1898587603, 1468371936, 1551308340, 1590227640));
       }

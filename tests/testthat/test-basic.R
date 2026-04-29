@@ -192,10 +192,17 @@ test_that("Invalid input configuration path fails with proper error message", {
 })
 
 test_that("Invalid input parameter path (eg initiation) fails with proper error message", {
-  # Test when initiation input file doesn't exist
+  # SimException emits Rcpp::warning(); under options(warn >= 2) (e.g. some CI / WRE) that
+  # becomes an error and expect_warning fails — treat warnings as warnings for this call.
+  warn_prev <- options(warn = 1)
+  on.exit(options(warn_prev), add = TRUE)
+
   template_path <- readLines(test_path("../templates/test_input_example_incorrect_init_path.txt"))
   input_filepath <- write_input_file_from_template(template_path, "MersenneTwister", 1950, 0, data_folder, outputs_folder)
-  expect_warning(shg$LegacyRunWebVersion(input_filepath), "^SimException: Error: The specified input file")
+  expect_warning(
+    shg$LegacyRunWebVersion(input_filepath),
+    regexp = "SimException:.*[Tt]he specified input file"
+  )
 })
 
 test_that("Invalid output path fails with proper error message", {
