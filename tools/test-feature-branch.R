@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# Quick test script for shg-rcpp feature/v6.5.0-sync
+# Quick test script for shg-r feature/v6.5.0-sync
 # 
 # Usage:
 #   Rscript tools/test-feature-branch.R
@@ -12,7 +12,7 @@ cat("=== Installing SmokingHistoryGenerator from feature/v6.5.0-sync ===\n\n")
 if (!requireNamespace("devtools", quietly = TRUE)) {
   install.packages("devtools")
 }
-devtools::install_github("NCI-CISNET/shg-rcpp@feature/v6.5.0-sync", force = TRUE)
+devtools::install_github("NCI-CISNET/shg-r@feature/v6.5.0-sync", force = TRUE)
 
 library(SmokingHistoryGenerator)
 

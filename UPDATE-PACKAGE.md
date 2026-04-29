@@ -11,9 +11,9 @@ remove.packages("SmokingHistoryGenerator")
 # Step 2: Restart R/RStudio (important!)
 
 # Step 3: Reinstall from GitHub (installs from master branch by default)
-devtools::install_github("NCI-CISNET/shg-rcpp")
-# Or install from a specific branch: devtools::install_github("NCI-CISNET/shg-rcpp@branch-name")
-# Or install from a specific tag: devtools::install_github("NCI-CISNET/shg-rcpp@v1.0.0")
+devtools::install_github("NCI-CISNET/shg-r")
+# Or install from a specific branch: devtools::install_github("NCI-CISNET/shg-r@branch-name")
+# Or install from a specific tag: devtools::install_github("NCI-CISNET/shg-r@v1.0.0")
 ```
 
 ## Complete Update Script
@@ -32,11 +32,11 @@ tryCatch({
 # Restart R/RStudio before continuing!
 
 # Install from GitHub (defaults to master branch)
-devtools::install_github("NCI-CISNET/shg-rcpp")
+devtools::install_github("NCI-CISNET/shg-r")
 # OR install from a specific branch
-devtools::install_github("NCI-CISNET/shg-rcpp@branch-name")
+devtools::install_github("NCI-CISNET/shg-r@branch-name")
 # OR install from a specific tag/release
-devtools::install_github("NCI-CISNET/shg-rcpp@v1.0.0")
+devtools::install_github("NCI-CISNET/shg-r@v1.0.0")
 
 # Load and verify
 library(SmokingHistoryGenerator)

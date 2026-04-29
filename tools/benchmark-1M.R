@@ -16,7 +16,7 @@ if ("--install" %in% args) {
   if (!requireNamespace("devtools", quietly = TRUE)) {
     install.packages("devtools")
   }
-  devtools::install_github("NCI-CISNET/shg-rcpp@feature/v6.5.0-sync", force = TRUE)
+  devtools::install_github("NCI-CISNET/shg-r@feature/v6.5.0-sync", force = TRUE)
 }
 
 library(SmokingHistoryGenerator)

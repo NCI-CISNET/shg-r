@@ -1,5 +1,7 @@
 # legacy-complete (full legacy `.txt` tables)
 
+These full tables are **tracked in git** for local development, benchmarks, and restoring `csv-complete/` / legacy workflows. They are **not** shipped in the CRAN tarball: `tests/testdata/NHIS-1965-2016/legacy-complete/` is listed in `.Rbuildignore` (same pattern as `csv-complete/`).
+
 These five files are the **last committed** wide-table bundle that lived under `inst/extdata/default/` in git as `lbc_smokehist_*.txt`, restored here under the usual CLI names:
 
 | File here | Source in git (`HEAD`) |

@@ -1,6 +1,6 @@
 # Smoking History Generator: R Interface<img src="./man/figures/cisnet-logo.svg" width="100px;" align="right">
   <!-- badges: start -->
-  [![R-CMD-check](https://github.com/NCI-CISNET/shg-rcpp/actions/workflows/R-CMD-check-all-OS.yaml/badge.svg)](https://github.com/NCI-CISNET/shg-rcpp/actions/workflows/R-CMD-check-all-OS.yaml)
+  [![R-CMD-check](https://github.com/NCI-CISNET/shg-r/actions/workflows/R-CMD-check-all-OS.yaml/badge.svg)](https://github.com/NCI-CISNET/shg-r/actions/workflows/R-CMD-check-all-OS.yaml)
   [![License: GPL-3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://choosealicense.com/licenses/gpl-3.0/)
   <!-- badges: end -->
 
@@ -19,9 +19,9 @@ install.packages("SmokingHistoryGenerator") # Coming soon to CRAN
 ```r
 install.packages("devtools")
 Sys.setenv(PKG_BUILD_EXTRA_FLAGS = "false") # optional, but should increase performance
-devtools::install_github("NCI-CISNET/shg-rcpp")
+devtools::install_github("NCI-CISNET/shg-r")
 # OR
-devtools::install_github("NCI-CISNET/shg-rcpp@[optional-branch-of-your-choice]")
+devtools::install_github("NCI-CISNET/shg-r@[optional-branch-of-your-choice]")
 ```
 ## Basic usage
 Relying on the default values for input filepaths, RNG strategy, multi-threading, immediate cessation, segments you can launch a smoking history simulation as follows: 
