@@ -100,7 +100,8 @@ inline void append_int(std::string& s, int val) {
 //' @field input_data_folder Set or get the base folder for input data files
 //' @field initiation_filename Set or get the initiation filename
 //' @field cessation_filename Set or get the cessation filename
-//' @field lifetable_filename Set or get the lifetable filename
+//' @field lifetable_filename Set or get the mortality input filename (legacy name; same as mortality_filename)
+//' @field mortality_filename Set or get the mortality probabilities filename (e.g. acm.csv or ocm-excl-lung-cancer.csv)
 //' @field cpd_filename Set or get the cpd filename
 //' @field immediate_cessation_year Set or get Immediate Cessation Year; If 0, no immediate cessation
 //' @field mt_seeds Set or get MersenneTwister seeds. Must be a numeric vector of exactly 4 values (one for each stream: initiation, cessation, life table, individual). If not set, default seeds are used. Only used when rng_strategy is "MersenneTwister".
@@ -124,16 +125,16 @@ void SHGInterface::set_rng_strategy(string strategy) {
       Rcpp::stop("Invalid RNG strategy. Must be 'RngStream' or 'MersenneTwister'");
    }
    
-   // If switching to MersenneTwister, enforce restrictions
+   // If switching to MersenneTwister, enforce restrictions (informational: not a warning)
    if (strategy == "MersenneTwister") {
       if (number_of_segments > 1) {
-         Rcpp::Function warning("warning");
-         warning("Resetting number_of_segments to 1 for MersenneTwister RNG.", Rcpp::Named("call.") = false);
+         Rcpp::Function rl_message("message");
+         rl_message("Resetting number_of_segments to 1 for MersenneTwister RNG.");
          number_of_segments = 1;
       }
       if (num_threads != 1) {
-         Rcpp::Function warning("warning");
-         warning("Resetting num_threads to 1 for MersenneTwister RNG (single-threaded only).", Rcpp::Named("call.") = false);
+         Rcpp::Function rl_message("message");
+         rl_message("Resetting num_threads to 1 for MersenneTwister RNG (single-threaded only).");
          num_threads = 1;
       }
    }
@@ -299,7 +300,7 @@ Smoking_Simulator* SHGInterface::loadSimulator()
 {
    char *sInitiationFile = AssignFilename(input_data_folder.c_str(), initiation_filename.c_str());
    char *sCessationFile = AssignFilename(input_data_folder.c_str(), cessation_filename.c_str());
-   char *sLifeTableFile = AssignFilename(input_data_folder.c_str(), lifetable_filename.c_str()); // oc_mortality or ac_mortality
+   char *sLifeTableFile = AssignFilename(input_data_folder.c_str(), lifetable_filename.c_str()); // OCM or ACM mortality table
    char *sCPDDataFile = AssignFilename(input_data_folder.c_str(), cpd_filename.c_str());
    int wCessationYear = immediate_cessation_year; // 0 is default and specifies no immediate cessation
 
@@ -369,7 +370,9 @@ Rcpp::List SHGInterface::get_data_shape() {
 //' \dontrun{
 //' library(SmokingHistoryGenerator)
 //' shg <- new(SHGInterface)
-//' shg$input_data_folder <- system.file("inputs/default", "", package="SmokingHistoryGenerator")
+//' # Multi-cohort populations need full NHIS-style inputs (all cohort columns).
+//' # inst/extdata is CRAN-sized only; full bundle coming soon on Zenodo — see README.
+//' shg$input_data_folder <- "/path/to/NHIS-1965-2016/csv-complete"
 //' N <- 10^6
 //' pop <- list(
 //'     race = rep(0, N),
@@ -385,7 +388,7 @@ Rcpp::List SHGInterface::get_data_shape() {
 //' 
 //' # Example with MersenneTwister and custom seeds (4 values)
 //' shg2 <- new(SHGInterface)
-//' shg2$input_data_folder <- system.file("inputs/default", "", package="SmokingHistoryGenerator")
+//' shg2$input_data_folder <- system.file("extdata", package="SmokingHistoryGenerator")
 //' shg2$rng_strategy <- "MersenneTwister"
 //' shg2$mt_seeds <- c(1898587603, 1468371936, 1551308340, 1590227640)
 //' smoking_history2 <- shg2$runSimFromFixedValues(1000, 0, 0, 1950)
@@ -462,21 +465,18 @@ Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) 
   last_cpd_min_age = pSharedData->gwCpdMinAge;
   last_cpd_max_age = pSharedData->gwCpdMaxAge;
   last_num_intensity_grps = pSharedData->gwNumIntensityGrps;
-  // Note: glCpdRowsLoaded and glCpdRowsSkipped removed from shared code
-  // last_cpd_rows_loaded = pSharedData->glCpdRowsLoaded;
-  // last_cpd_rows_skipped = pSharedData->glCpdRowsSkipped;
   if (last_num_cohorts > 0) {
     last_first_cohort_start = pSharedData->gwYOBCohortStartYrs[0];
     last_first_cohort_end = pSharedData->gwYOBCohortEndYrs[0];
     last_last_cohort_start = pSharedData->gwYOBCohortStartYrs[last_num_cohorts - 1];
     last_last_cohort_end = pSharedData->gwYOBCohortEndYrs[last_num_cohorts - 1];
   }
-  
-  // Report CPD row warnings if any - disabled, metrics removed from shared code
-  // if (last_cpd_rows_skipped > 0) {
-  //   Rcpp::warning("CPD file: %ld rows skipped due to cohort mismatch (treated as no data)", 
-  //                 last_cpd_rows_skipped);
-  // }
+
+  if (pSharedData->glCpdRowsSkipped > 0) {
+    Rcpp::Rcout << "[INFO] CPD file: " << pSharedData->glCpdRowsLoaded
+                << " rows loaded, " << pSharedData->glCpdRowsSkipped
+                << " rows skipped (cohort labels not matching initiation cohorts).\n";
+  }
 
    // ============================================================
    // FILE OUTPUT MODE: Write directly to disk like CLI
@@ -614,16 +614,26 @@ Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) 
    Rcpp::IntegerVector cessationAgeVec(cessationAge.begin(), cessationAge.end());
    Rcpp::IntegerVector ageAtDeathVec(ageAtDeath.begin(), ageAtDeath.end());
 
+   // Check if input columns are constant (optimization: skip if all same value)
+   Rcpp::IntegerVector raceVec = dfPopulation["race"];
+   Rcpp::IntegerVector sexVec = dfPopulation["sex"];
+   Rcpp::IntegerVector cohortVec = dfPopulation["birth_cohort"];
+   
+   bool raceConstant = (raceVec.size() > 0 && std::all_of(raceVec.begin(), raceVec.end(), [&](int v) { return v == raceVec[0]; }));
+   bool sexConstant = (sexVec.size() > 0 && std::all_of(sexVec.begin(), sexVec.end(), [&](int v) { return v == sexVec[0]; }));
+   bool cohortConstant = (cohortVec.size() > 0 && std::all_of(cohortVec.begin(), cohortVec.end(), [&](int v) { return v == cohortVec[0]; }));
+
    Rcpp::DataFrame df;
    if (cpd_format == "none") {
-      df = Rcpp::DataFrame::create(
-         Rcpp::Named("race") = dfPopulation["race"],
-         Rcpp::Named("sex") = dfPopulation["sex"],
-         Rcpp::Named("birth_cohort") = dfPopulation["birth_cohort"],
-         Rcpp::Named("smoking_initiation_age") = initiationAgeVec,
-         Rcpp::Named("smoking_cessation_age") = cessationAgeVec,
-         Rcpp::Named("age_at_death") = ageAtDeathVec
-      );
+      // Build DataFrame conditionally - exclude constant columns
+      Rcpp::List dfList;
+      if (!raceConstant) dfList["race"] = raceVec;
+      if (!sexConstant) dfList["sex"] = sexVec;
+      if (!cohortConstant) dfList["birth_cohort"] = cohortVec;
+      dfList["smoking_initiation_age"] = initiationAgeVec;
+      dfList["smoking_cessation_age"] = cessationAgeVec;
+      dfList["age_at_death"] = ageAtDeathVec;
+      df = Rcpp::DataFrame(dfList);
    } else {
       // String formats (sparse/full) - slower due to R string creation
       SEXP cpdSEXP = PROTECT(Rf_allocVector(STRSXP, repeat));
@@ -634,15 +644,16 @@ Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) 
       Rcpp::CharacterVector cpdStringVec(cpdSEXP);
       UNPROTECT(1);
       
-      df = Rcpp::DataFrame::create(
-         Rcpp::Named("race") = dfPopulation["race"],
-         Rcpp::Named("sex") = dfPopulation["sex"],
-         Rcpp::Named("birth_cohort") = dfPopulation["birth_cohort"],
-         Rcpp::Named("smoking_initiation_age") = initiationAgeVec,
-         Rcpp::Named("smoking_cessation_age") = cessationAgeVec,
-         Rcpp::Named("age_at_death") = ageAtDeathVec,
-         Rcpp::Named("cigarettes_per_day") = cpdStringVec
-      );
+      // Build DataFrame conditionally - exclude constant columns
+      Rcpp::List dfList;
+      if (!raceConstant) dfList["race"] = raceVec;
+      if (!sexConstant) dfList["sex"] = sexVec;
+      if (!cohortConstant) dfList["birth_cohort"] = cohortVec;
+      dfList["smoking_initiation_age"] = initiationAgeVec;
+      dfList["smoking_cessation_age"] = cessationAgeVec;
+      dfList["age_at_death"] = ageAtDeathVec;
+      dfList["cigarettes_per_day"] = cpdStringVec;
+      df = Rcpp::DataFrame(dfList);
    }
 
     return df;
@@ -658,7 +669,7 @@ Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) 
 //' \dontrun{
 //' library(SmokingHistoryGenerator)
 //' shg <- new(SHGInterface)
-//' shg$input_data_folder <- system.file("inputs/default", "", package="SmokingHistoryGenerator")
+//' shg$input_data_folder <- system.file("extdata", package="SmokingHistoryGenerator")
 //' N <- 10^6
 //' smoking_history <- shg$runSimFromFixedValues(N, 0, 0, 1950)
 //' }
@@ -994,16 +1005,26 @@ bool SHGInterface::fileExists(const char* filename) {
 //' @name LegacyRunWebVersion
 //' @title LegacyRunWebVersion method
 //' @description This method offers a way to configure and run a simulation from an input configuration file. Rather than return a R DataFrame, it produces results in an output file. It works in the same as calling the CLI version of the Smoking History Generator with a single input file parameter.
-//' @param input_file_name The name of the configuration file (see ./inst/inputs/ for 2 examples)
+//' @param input_file_name Path to a Legacy web-style configuration file. Paths inside the file are resolved relative to the R process working directory (the \code{input_data_folder} property is ignored). Sample text configs live under \code{tests/testdata/legacy-web-examples/} in the package source; for installed use, build a config with absolute paths from \code{system.file("extdata", package = "SmokingHistoryGenerator")}.
 //' @examples
 //' \dontrun{
-//' # Warning: This way of running a simulation ignores the Rcpp interface properties and relies soley 
-//' # on parameters set in the input configuration file. See main.cpp's RunWebVersion for more detail.
+//' # Warning: LegacyRunWebVersion ignores Rcpp properties and uses only the config file.
 //' library(SmokingHistoryGenerator)
 //' shg <- new(SHGInterface)
-//' shg$input_data_folder <- system.file("inputs/default", "", package="SmokingHistoryGenerator")
-//' example_input_filepath <- system.file("inputs/examples/", "test_input_example_MersenneTwister.txt", package="SmokingHistoryGenerator")
-//' shg$LegacyRunWebVersion(example_input_filepath)
+//' d <- system.file("extdata", package = "SmokingHistoryGenerator")
+//' tf <- tempfile(fileext = ".txt")
+//' writeLines(c(
+//'   "RNGSTRATEGY=RngStream",
+//'   "RNGSTREAM_SEED=12345,12345,12345,12345,12345,12345",
+//'   "RACE=0", "SEX=0", "YOB=1950", "CESSATION_YR=0", "REPEAT=100",
+//'   paste0("INIT_PROB=", file.path(d, "initiation.csv")),
+//'   paste0("CESS_PROB=", file.path(d, "cessation.csv")),
+//'   paste0("MORTALITY_PROB=", file.path(d, "acm.csv")),
+//'   paste0("CPD_DATA=", file.path(d, "cpd.csv")),
+//'   paste0("OUTPUTFILE=", tempfile("out_", fileext = ".txt")),
+//'   paste0("ERRORFILE=", tempfile("err_", fileext = ".txt"))
+//' ), tf)
+//' shg$LegacyRunWebVersion(tf)
 //' }
 void SHGInterface::LegacyRunWebVersion(const char *sInputFileName)
 {
@@ -1053,6 +1074,7 @@ Rcpp::List SHGInterface::getConfig(bool debug) {
    config["initiation_filename"] = initiation_filename;
    config["cessation_filename"] = cessation_filename;
    config["lifetable_filename"] = lifetable_filename;
+   config["mortality_filename"] = lifetable_filename;
    config["cpd_filename"] = cpd_filename;
    config["immediate_cessation_year"] = immediate_cessation_year;
    
@@ -1138,7 +1160,7 @@ Rcpp::List SHGInterface::getConfig() {
 //' @title Use SHG Configuration
 //' @description Configures an existing SHG instance from a configuration object (typically obtained from getConfig()).
 //' @param config A list containing configuration parameters. Must include config_version. All parameters are validated.
-//' @details This method validates the config_version and all parameters before setting them. Unknown fields are warned about but allowed for future compatibility. Missing optional fields use defaults.
+//' @details This method validates the config_version and all parameters before setting them. Unknown fields are warned about but allowed for future compatibility. Missing optional fields use defaults. Fields are applied in an order suitable for round-trips from getConfig(): number_of_segments and num_threads are set before rng_strategy (so switching to Mersenne Twister does not message when the saved list already has single-threaded settings), then seeds, then paths and other options.
 //' @examples
 //' \dontrun{
 //' library(SmokingHistoryGenerator)
@@ -1165,35 +1187,32 @@ void SHGInterface::useConfig(Rcpp::List config) {
       }
    }
    
-   // Set properties in correct order (rng_strategy first, then seeds, then others)
-   // This is important because setting rng_strategy may reset other properties
-   
+   // Apply segment/thread counts before rng_strategy so switching to MersenneTwister
+   // does not spuriously message (saved configs from getConfig() list threads first).
+   if (config.containsElementNamed("number_of_segments")) {
+      set_number_of_segments(Rcpp::as<int>(config["number_of_segments"]));
+   }
+   if (config.containsElementNamed("num_threads")) {
+      set_num_threads(Rcpp::as<int>(config["num_threads"]));
+   }
    if (config.containsElementNamed("rng_strategy")) {
       set_rng_strategy(Rcpp::as<std::string>(config["rng_strategy"]));
    }
-   
-    // Set seeds if provided
-    if (config.containsElementNamed("seeds")) {
-       Rcpp::NumericVector seeds = config["seeds"];
-       if (seeds.size() > 0) {
-          if (rng_strategy == "MersenneTwister" && seeds.size() == 4) {
-             set_mt_seeds(seeds);
-          } else if (rng_strategy == "RngStream" && seeds.size() == 6) {
-             set_rngstream_seed(seeds);
-          } else if (seeds.size() > 0) {
-             Rcpp::Function warning("warning");
-             warning("Seeds provided but size doesn't match RNG strategy requirements. MersenneTwister requires 4 seeds, RngStream requires 6 seeds.", Rcpp::Named("call.") = false);
-          }
-       }
-    }
-   
-   if (config.containsElementNamed("number_of_segments")) {
-    set_number_of_segments(Rcpp::as<int>(config["number_of_segments"]));
-  }
-  
-  if (config.containsElementNamed("num_threads")) {
-    set_num_threads(Rcpp::as<int>(config["num_threads"]));
-  }
+
+   // Set seeds if provided (after rng_strategy; seed setters depend on strategy)
+   if (config.containsElementNamed("seeds")) {
+      Rcpp::NumericVector seeds = config["seeds"];
+      if (seeds.size() > 0) {
+         if (rng_strategy == "MersenneTwister" && seeds.size() == 4) {
+            set_mt_seeds(seeds);
+         } else if (rng_strategy == "RngStream" && seeds.size() == 6) {
+            set_rngstream_seed(seeds);
+         } else if (seeds.size() > 0) {
+            Rcpp::Function warning("warning");
+            warning("Seeds provided but size doesn't match RNG strategy requirements. MersenneTwister requires 4 seeds, RngStream requires 6 seeds.", Rcpp::Named("call.") = false);
+         }
+      }
+   }
   
   if (config.containsElementNamed("input_data_folder")) {
       set_input_data_folder(Rcpp::as<std::string>(config["input_data_folder"]));
@@ -1207,7 +1226,9 @@ void SHGInterface::useConfig(Rcpp::List config) {
       set_cessation_filename(Rcpp::as<std::string>(config["cessation_filename"]));
    }
    
-   if (config.containsElementNamed("lifetable_filename")) {
+   if (config.containsElementNamed("mortality_filename")) {
+      set_mortality_filename(Rcpp::as<std::string>(config["mortality_filename"]));
+   } else if (config.containsElementNamed("lifetable_filename")) {
       set_lifetable_filename(Rcpp::as<std::string>(config["lifetable_filename"]));
    }
    
@@ -1236,7 +1257,7 @@ void SHGInterface::useConfig(Rcpp::List config) {
   std::vector<std::string> known_fields = {
     "config_version", "rng_strategy", "number_of_segments", "num_threads", "run_multi_threaded",
     "seeds", "input_data_folder", "initiation_filename", "cessation_filename",
-    "lifetable_filename", "cpd_filename", "immediate_cessation_year", "timestamp",
+    "lifetable_filename", "mortality_filename", "cpd_filename", "immediate_cessation_year", "timestamp",
     "rng_state_fingerprint", "package_version", "package_source", "r_version",
       "platform", "memory_usage"
    };
@@ -1282,7 +1303,8 @@ RCPP_MODULE(SmokingSimulator) {
        .property("immediate_cessation_year", &SHGInterface::get_immediate_cessation_year, &SHGInterface::set_immediate_cessation_year, "Set or get Immediate Cessation Year; If 0, no immediate cessation")
        .property("initiation_filename", &SHGInterface::get_initiation_filename, &SHGInterface::set_initiation_filename, "Set or get the initiation filename")
        .property("cessation_filename", &SHGInterface::get_cessation_filename, &SHGInterface::set_cessation_filename, "Set or get the cessation filename")
-       .property("lifetable_filename", &SHGInterface::get_lifetable_filename, &SHGInterface::set_lifetable_filename, "Set or get the lifetable filename")
+       .property("lifetable_filename", &SHGInterface::get_lifetable_filename, &SHGInterface::set_lifetable_filename, "Set or get the mortality input filename (legacy name; prefer mortality_filename)")
+       .property("mortality_filename", &SHGInterface::get_mortality_filename, &SHGInterface::set_mortality_filename, "Set or get the mortality probabilities filename (e.g. acm.csv or ocm-excl-lung-cancer.csv)")
        .property("cpd_filename", &SHGInterface::get_cpd_filename, &SHGInterface::set_cpd_filename, "Set or get the cpd filename")
        .property("mt_seeds", &SHGInterface::get_mt_seeds, &SHGInterface::set_mt_seeds, "Set or get MersenneTwister seeds. Must be a numeric vector of exactly 4 values (one for each stream: initiation, cessation, life table, individual). If not set, default seeds are used.")
        .property("rngstream_seed", &SHGInterface::get_rngstream_seed, &SHGInterface::set_rngstream_seed, "Set or get RngStream seed. Must be a numeric vector of exactly 6 values (a single seed array that generates 4 substreams, one for each stream: initiation, cessation, life table, individual). If not set, default seed is used.")

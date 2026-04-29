@@ -26,7 +26,7 @@
 #include <iostream>
 #include <mutex>
 #include "RngStream.h"
-#ifdef IS_RCPP
+#ifdef IS_R
 #include <Rcpp.h>
 #endif
 using namespace std;
@@ -225,7 +225,7 @@ int CheckSeed (const unsigned long seed[6])
     int i;
 
     for (i = 0; i < 3; ++i) {
-        #ifdef IS_RCPP
+        #ifdef IS_R
         // Maybe add Rcpp::Stop() here
         #else
         if (seed[i] >= m1) {
@@ -238,7 +238,7 @@ int CheckSeed (const unsigned long seed[6])
     }
     for (i = 3; i < 6; ++i) {
         if (seed[i] >= m2) {
-            #ifdef IS_RCPP
+            #ifdef IS_R
             // Maybe add Rcpp::Stop() here
             #else
             cerr << "*****************************************\n"
@@ -249,7 +249,7 @@ int CheckSeed (const unsigned long seed[6])
         }
     }
     if (seed[0] == 0 && seed[1] == 0 && seed[2] == 0) {
-        #ifdef IS_RCPP
+        #ifdef IS_R
         // Maybe add Rcpp::Stop() here
         #else
          cerr << "****************************\n"
@@ -258,7 +258,7 @@ int CheckSeed (const unsigned long seed[6])
          return (-1);
         #endif
     }
-    #ifdef IS_RCPP
+    #ifdef IS_R
     // Maybe add Rcpp::Stop() here
     #else
     if (seed[3] == 0 && seed[4] == 0 && seed[5] == 0) {
@@ -468,7 +468,7 @@ void RngStream::GetState (unsigned long seed[6]) const
 //-------------------------------------------------------------------------
 void RngStream::WriteState () const
 {
-    #ifdef IS_RCPP
+    #ifdef IS_R
     // Maybe add Rcpp::Rcout here at some point
     #else
     cout << "The current state of the Rngstream";
@@ -487,7 +487,7 @@ void RngStream::WriteState () const
 //-------------------------------------------------------------------------
 void RngStream::WriteStateFull () const
 {
-    #ifdef IS_RCPP
+    #ifdef IS_R
     // Maybe add Rcpp::Rcout here at some point
         int i;
 

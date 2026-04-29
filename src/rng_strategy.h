@@ -17,7 +17,7 @@
 
 #include <memory>
 
-#ifdef IS_RCPP
+#ifdef IS_R
 #include <Rcpp.h>
 #else
 #include <iostream>
@@ -30,12 +30,12 @@ public:
     virtual ~RNG_Strategy() {}
     virtual void initialize() = 0;
     // Overloaded method for MersenneTwister
-    void initialize(unsigned long ulInitSeed, unsigned long ulCessSeed, unsigned long ulLifeTableSeed, unsigned long ulIndRndsSeed);
+    void initialize(unsigned long ulInitSeed, unsigned long ulCessSeed, unsigned long ulMortalitySeed, unsigned long ulIndRndsSeed);
     // Overloaded method for RngStream
     void initialize(unsigned long seed[6]); 
     virtual double getInitiationRand() = 0;
     virtual double getCessationRand() = 0;
-    virtual double getLifeTableRand() = 0;
+    virtual double getMortalityRand() = 0;
     virtual double getIndividualRand() = 0;
     virtual void resetStrategy() = 0;  // resets all RNGs to their initial state
     virtual void writeRNGState() = 0;  // writes the current state of the RNGs to the console
@@ -50,13 +50,13 @@ public:
     void resetCounters() {
         lInitiationRandCount = 0;
         lCessationRandCount = 0;
-        lLifeTableRandCount = 0;
+        lMortalityRandCount = 0;
         lIndividualRandCount = 0;
     }
 
     long lInitiationRandCount = 0;
     long lCessationRandCount = 0;
-    long lLifeTableRandCount = 0;
+    long lMortalityRandCount = 0;
     long lIndividualRandCount = 0;
 };
 
@@ -68,8 +68,8 @@ public:
     MersenneTwisterRNG() {
         initialize();
     }
-    MersenneTwisterRNG(unsigned long ulInitSeed, unsigned long ulCessSeed, unsigned long ulLifeTableSeed, unsigned long ulIndRndsSeed) {
-        initialize(ulInitSeed, ulCessSeed, ulLifeTableSeed, ulIndRndsSeed);
+    MersenneTwisterRNG(unsigned long ulInitSeed, unsigned long ulCessSeed, unsigned long ulMortalitySeed, unsigned long ulIndRndsSeed) {
+        initialize(ulInitSeed, ulCessSeed, ulMortalitySeed, ulIndRndsSeed);
     }
     // Free the dynamically allocated memory
     ~MersenneTwisterRNG()
@@ -77,14 +77,14 @@ public:
         // TODO: ensure that we aren't missing anything here
         delete gpInitiationRNG;
         delete gpCessationRNG; 
-        delete gpLifeTableRNG;
+        delete gpMortalityRNG;
         delete gpIndividualRNG;
     }
 
-    void initialize(unsigned long ulInitSeed, unsigned long ulCessSeed, unsigned long ulLifeTableSeed, unsigned long ulIndRndsSeed) {
+    void initialize(unsigned long ulInitSeed, unsigned long ulCessSeed, unsigned long ulMortalitySeed, unsigned long ulIndRndsSeed) {
         gpInitiationRNG = new MersenneTwister(ulInitSeed);
         gpCessationRNG  = new MersenneTwister(ulCessSeed);
-        gpLifeTableRNG  = new MersenneTwister(ulLifeTableSeed);
+        gpMortalityRNG  = new MersenneTwister(ulMortalitySeed);
         gpIndividualRNG = new MersenneTwister(ulIndRndsSeed);
 
     }
@@ -92,9 +92,9 @@ public:
         // default MT seeds also used in run_tests.py
         unsigned long ulInitSeed      = 1898587603;
         unsigned long ulCessSeed      = 1468371936;
-        unsigned long ulLifeTableSeed = 1551308340;
+        unsigned long ulMortalitySeed = 1551308340;
         unsigned long ulIndRndsSeed   = 1590227640;
-        initialize(ulInitSeed, ulCessSeed, ulLifeTableSeed, ulIndRndsSeed);
+        initialize(ulInitSeed, ulCessSeed, ulMortalitySeed, ulIndRndsSeed);
     }
     double getInitiationRand() override {
         lInitiationRandCount++;
@@ -104,9 +104,9 @@ public:
         lCessationRandCount++;
         return gpCessationRNG->genrand_real1();
     }
-    double getLifeTableRand() override {
-        lLifeTableRandCount++;
-        return gpLifeTableRNG->genrand_real1();
+    double getMortalityRand() override {
+        lMortalityRandCount++;
+        return gpMortalityRNG->genrand_real1();
     }
     double getIndividualRand() override {
         lIndividualRandCount++;
@@ -114,7 +114,7 @@ public:
     }
     void resetStrategy() override {
         // reset all RNGs to their initial state
-        initialize(ulInitiationSeed, ulCessationSeed, ulLifeTableSeed, ulIndividualSeed);
+        initialize(ulInitiationSeed, ulCessationSeed, ulMortalitySeed, ulIndividualSeed);
     }
     void incrementSubstreams() override {
         // Set all RNGs to the next unused substream (without colliding with existing substreams)
@@ -138,7 +138,7 @@ public:
             fingerprint.push_back(gpCessationRNG->genrand_real1());
         }
         for (int i = 0; i < 3; i++) {
-            fingerprint.push_back(gpLifeTableRNG->genrand_real1());
+            fingerprint.push_back(gpMortalityRNG->genrand_real1());
         }
         for (int i = 0; i < 3; i++) {
             fingerprint.push_back(gpIndividualRNG->genrand_real1());
@@ -149,12 +149,12 @@ public:
 private:
     MersenneTwister *gpInitiationRNG;
     MersenneTwister *gpCessationRNG;
-    MersenneTwister *gpLifeTableRNG;
+    MersenneTwister *gpMortalityRNG;
     MersenneTwister *gpIndividualRNG;
 
     unsigned long ulInitiationSeed;
     unsigned long ulCessationSeed;
-    unsigned long ulLifeTableSeed;
+    unsigned long ulMortalitySeed;
     unsigned long ulIndividualSeed;
 };
 
@@ -175,7 +175,7 @@ public:
         // TODO: ensure that we aren't missing anything here
         delete gpInitiationRNG;
         delete gpCessationRNG; 
-        delete gpLifeTableRNG;
+        delete gpMortalityRNG;
         delete gpIndividualRNG;
     }
     void initialize() override {
@@ -187,9 +187,9 @@ public:
 
         gpCessationRNG = new RngStream(*gpInitiationRNG);
         gpCessationRNG->ResetNextSubstream();
-        gpLifeTableRNG  = new RngStream(*gpCessationRNG);
-        gpLifeTableRNG->ResetNextSubstream();
-        gpIndividualRNG = new RngStream(*gpLifeTableRNG);
+        gpMortalityRNG  = new RngStream(*gpCessationRNG);
+        gpMortalityRNG->ResetNextSubstream();
+        gpIndividualRNG = new RngStream(*gpMortalityRNG);
         gpIndividualRNG->ResetNextSubstream();
     }
 
@@ -200,9 +200,9 @@ public:
         gpInitiationRNG->SetSeed(seed);
         gpCessationRNG = new RngStream(*gpInitiationRNG);
         gpCessationRNG->ResetNextSubstream();
-        gpLifeTableRNG  = new RngStream(*gpCessationRNG);
-        gpLifeTableRNG->ResetNextSubstream();
-        gpIndividualRNG = new RngStream(*gpLifeTableRNG);
+        gpMortalityRNG  = new RngStream(*gpCessationRNG);
+        gpMortalityRNG->ResetNextSubstream();
+        gpIndividualRNG = new RngStream(*gpMortalityRNG);
         gpIndividualRNG->ResetNextSubstream();
     }
     double getInitiationRand() override {
@@ -213,9 +213,9 @@ public:
         lCessationRandCount++;
         return gpCessationRNG->RandU01();
     }
-    double getLifeTableRand() override {
-        lLifeTableRandCount++;
-        return gpLifeTableRNG->RandU01();
+    double getMortalityRand() override {
+        lMortalityRandCount++;
+        return gpMortalityRNG->RandU01();
     }
     double getIndividualRand() override {
         lIndividualRandCount++;
@@ -225,7 +225,7 @@ public:
         // Reset all RNGs to their initial states
         gpInitiationRNG->ResetStartSubstream(); // same as ResetSubstream() for gpInitiationRNG
         gpCessationRNG->ResetStartSubstream();
-        gpLifeTableRNG->ResetStartSubstream();
+        gpMortalityRNG->ResetStartSubstream();
         gpIndividualRNG->ResetStartSubstream();
     }
     void incrementSubstreams() override {
@@ -235,7 +235,7 @@ public:
         for (int i = 0; i < 4; i++) {
             gpInitiationRNG->ResetNextSubstream();
             gpCessationRNG->ResetNextSubstream();
-            gpLifeTableRNG->ResetNextSubstream();
+            gpMortalityRNG->ResetNextSubstream();
             gpIndividualRNG->ResetNextSubstream();
         }
     }
@@ -245,13 +245,13 @@ public:
         // Cg[6] Current state (in subset of current substream)
         // See https://www-labs.iro.umontreal.ca/~lecuyer/myftp/papers/streams00.pdf
 
-        #ifdef IS_RCPP
+        #ifdef IS_R
             Rcpp::Rcout << "Initiation RNG State:" << std::endl;
             gpInitiationRNG->WriteStateFull();
             Rcpp::Rcout << "Cessation RNG State:" << std::endl;
             gpCessationRNG->WriteStateFull();
-            Rcpp::Rcout << "Life Table RNG State:" << std::endl;
-            gpLifeTableRNG->WriteStateFull();
+            Rcpp::Rcout << "Mortality RNG State:" << std::endl;
+            gpMortalityRNG->WriteStateFull();
             Rcpp::Rcout << "Individual RNG State:" << std::endl;
             gpIndividualRNG->WriteStateFull();
             Rcpp::Rcout << "----- Done -----" << std::endl;
@@ -275,7 +275,7 @@ public:
         for (int i = 0; i < 6; i++) {
             fingerprint.push_back(static_cast<double>(state[i]));
         }
-        gpLifeTableRNG->GetState(state);
+        gpMortalityRNG->GetState(state);
         for (int i = 0; i < 6; i++) {
             fingerprint.push_back(static_cast<double>(state[i]));
         }
@@ -289,13 +289,13 @@ public:
     // Expose internal streams for buffering (performance optimization)
     RngStream* getInitiationStream() { return gpInitiationRNG; }
     RngStream* getCessationStream() { return gpCessationRNG; }
-    RngStream* getLifeTableStream() { return gpLifeTableRNG; }
+    RngStream* getMortalityStream() { return gpMortalityRNG; }
     RngStream* getIndividualStream() { return gpIndividualRNG; }
 
 private:
     RngStream *gpInitiationRNG;
     RngStream *gpCessationRNG;
-    RngStream *gpLifeTableRNG;
+    RngStream *gpMortalityRNG;
     RngStream *gpIndividualRNG;
 };
 
@@ -341,7 +341,7 @@ private:
     
     std::unique_ptr<RNGStreamBuffer> initiation_buffer;
     std::unique_ptr<RNGStreamBuffer> cessation_buffer;
-    std::unique_ptr<RNGStreamBuffer> life_table_buffer;
+    std::unique_ptr<RNGStreamBuffer> mortality_buffer;
     std::unique_ptr<RNGStreamBuffer> individual_buffer;
     
 public:
@@ -354,8 +354,8 @@ public:
             rng->getInitiationStream(), buffer_size);
         cessation_buffer = std::make_unique<RNGStreamBuffer>(
             rng->getCessationStream(), buffer_size);
-        life_table_buffer = std::make_unique<RNGStreamBuffer>(
-            rng->getLifeTableStream(), buffer_size);
+        mortality_buffer = std::make_unique<RNGStreamBuffer>(
+            rng->getMortalityStream(), buffer_size);
         individual_buffer = std::make_unique<RNGStreamBuffer>(
             rng->getIndividualStream(), buffer_size);
     }
@@ -373,9 +373,9 @@ public:
         lCessationRandCount++;
         return cessation_buffer->getNext();
     }
-    double getLifeTableRand() override {
-        lLifeTableRandCount++;
-        return life_table_buffer->getNext();
+    double getMortalityRand() override {
+        lMortalityRandCount++;
+        return mortality_buffer->getNext();
     }
     double getIndividualRand() override {
         lIndividualRandCount++;

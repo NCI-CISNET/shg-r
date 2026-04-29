@@ -4,12 +4,11 @@
 using namespace std;
 
 // Note that the CLI SHG version might specify default paths differently
-#define R_DEFAULT_DATA_DIR "./inputs/default/"
-#define R_INITIATION_DATA_FILE "lbc_smokehist_initiation.txt"
-#define R_CESSATION_DATA_FILE "lbc_smokehist_cessation.txt"
-#define R_OTHER_COD_DATA_FILE "lbc_smokehist_oc_mortality.txt"
-#define R_CPD_INTENSITY_PROBS "lbc_smokehist_cpdintensityprobs.txt"  
-#define R_CPD_DATA_FILE "lbc_smokehist_cpd.txt" 
+#define R_DEFAULT_DATA_DIR "./extdata/"
+#define R_INITIATION_DATA_FILE "initiation.csv"
+#define R_CESSATION_DATA_FILE "cessation.csv"
+#define R_OTHER_COD_DATA_FILE "ocm-excl-lung-cancer.csv"
+#define R_CPD_DATA_FILE "cpd.csv"
 
 std::string find_default_data_path() {
     Rcpp::Environment base("package:base");
@@ -20,17 +19,21 @@ std::string find_default_data_path() {
     // Depending on local testing environment or installed package environment, the path to the default data will vary
     // TODO: review
  
-    // Try to find the inst/inputs/default folder; if empty, the folder was not found
-    path = sys_file("inst/inputs", "default", Rcpp::_["package"] = "SmokingHistoryGenerator");
+    // Installed layout: inst/extdata/* -> .../extdata/
+    path = sys_file("extdata", Rcpp::_["package"] = "SmokingHistoryGenerator");
     default_data_path = Rcpp::as<std::string>(path);
 
     if (default_data_path.length() == 0) {
-        // inst/inputs/default folder not found so package has likely been installed in R without the inst folder
+        // pkgload::load_all() / devtools sometimes resolves inst/ before install
+        path = sys_file("inst", "extdata", Rcpp::_["package"] = "SmokingHistoryGenerator");
+        default_data_path = Rcpp::as<std::string>(path);
+    }
+    if (default_data_path.length() == 0) {
+        // Older installs may still have inputs/default
         path = sys_file("inputs", "default", Rcpp::_["package"] = "SmokingHistoryGenerator");
         default_data_path = Rcpp::as<std::string>(path);
     }
-    else if (default_data_path.length() == 0) {
-        // If still not found, we use default relative path;
+    if (default_data_path.length() == 0) {
         default_data_path = R_DEFAULT_DATA_DIR;
     }
 
@@ -94,6 +97,9 @@ public:
 
     string get_lifetable_filename() {return lifetable_filename;};
     void set_lifetable_filename(string filename) {lifetable_filename = filename;};
+    /** Same backing field as lifetable_filename; preferred name (mortality / ACM vs OCM). */
+    string get_mortality_filename() {return lifetable_filename;};
+    void set_mortality_filename(string filename) {lifetable_filename = filename;};
 
     string get_cpd_filename() { return cpd_filename;};
     void set_cpd_filename(string filename) {cpd_filename = filename;};

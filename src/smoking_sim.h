@@ -19,7 +19,7 @@
 #include <atomic>
 #include <vector>
 
-#ifdef IS_RCPP
+#ifdef IS_R
 #include <Rcpp.h>
 // CRAN-compliant: use REprintf instead of fprintf(stderr, ...)
 #define SHG_STDERR(...) REprintf(__VA_ARGS__)
@@ -50,7 +50,7 @@ class SmokingSimulatorSharedData {
       // alignas(64) ensures cache-line alignment for better performance
       alignas(64) double * __restrict__ gdInitiationProbs;
       alignas(64) double * __restrict__ gdCessationProbs;
-      alignas(64) double * __restrict__ gdLifeTableProbs;
+      alignas(64) double * __restrict__ gdMortalityProbs;
       alignas(64) double * __restrict__ gdIntensityProbs;
       alignas(64) long double * __restrict__ gdCigarettesPerDay;
       
@@ -64,10 +64,10 @@ class SmokingSimulatorSharedData {
       short gwMinCessationAge;
       short gwMaxInitiationAge;
       short gwMaxCessationAge;
-      short gwMinLifeTableAge;
-      short gwMaxLifeTableAge;
-      short gwMinLifeTableYear;
-      short gwMaxLifeTableYear;
+      short gwMinMortalityAge;
+      short gwMaxMortalityAge;
+      short gwMinMortalityYear;
+      short gwMaxMortalityYear;
       short gwNumIntensityGrps;
       long gwIntensityMinAge;
       long gwIntensityMaxAge;
@@ -85,10 +85,10 @@ class SmokingSimulatorSharedData {
       long gwCessProbRaceOffset;
       long gwCessProbSexOffset;
       long gwCessProbYOBOffset;
-      long glLifeTabAgeOffset;
-      long glLifeTabRaceOffset;
-      long glLifeTabSexOffset;
-      long glLifeTabYOBOffset;
+      long glMortTabAgeOffset;
+      long glMortTabRaceOffset;
+      long glMortTabSexOffset;
+      long glMortTabYOBOffset;
       long gwIntensityAgeOffset;
       long gwIntensitySexOffset;
       long gwIntensityRaceOffset;
@@ -103,21 +103,21 @@ class SmokingSimulatorSharedData {
       
    SmokingSimulatorSharedData() : 
                   gdInitiationProbs(0), gdCessationProbs(0),
-                  gdLifeTableProbs(0), gdIntensityProbs(0), gdCigarettesPerDay(0),
+                  gdMortalityProbs(0), gdIntensityProbs(0), gdCigarettesPerDay(0),
                   gwNumBirthCohorts(0), gwYOBCohortStartYrs(0), gwYOBCohortEndYrs(0),
                   // Initialize all metadata fields to safe defaults
                   gwNumRaceValues(0), gwNumSexValues(0),
                   gwMinInitiationAge(0), gwMinCessationAge(0),
                   gwMaxInitiationAge(0), gwMaxCessationAge(0),
-                  gwMinLifeTableAge(0), gwMaxLifeTableAge(0),
-                  gwMinLifeTableYear(0), gwMaxLifeTableYear(0),
+                  gwMinMortalityAge(0), gwMaxMortalityAge(0),
+                  gwMinMortalityYear(0), gwMaxMortalityYear(0),
                   gwNumIntensityGrps(0), gwIntensityMinAge(0), gwIntensityMaxAge(0),
                   gwCpdMinAge(0), gwCpdMaxAge(0),
                   glCpdRowsLoaded(0), glCpdRowsSkipped(0),
                   // Initialize all offset values
                   gwInitProbRaceOffset(0), gwInitProbSexOffset(0), gwInitProbYOBOffset(0),
                   gwCessProbRaceOffset(0), gwCessProbSexOffset(0), gwCessProbYOBOffset(0),
-                  glLifeTabAgeOffset(0), glLifeTabRaceOffset(0), glLifeTabSexOffset(0), glLifeTabYOBOffset(0),
+                  glMortTabAgeOffset(0), glMortTabRaceOffset(0), glMortTabSexOffset(0), glMortTabYOBOffset(0),
                   gwIntensityAgeOffset(0), gwIntensitySexOffset(0), gwIntensityRaceOffset(0),
                   glCpdAgeOffset(0), glCpdRaceOffset(0), glCpdSexOffset(0), glCpdYOBOffset(0),
                   gwNumSmokingGrps(0),
@@ -128,7 +128,7 @@ class SmokingSimulatorSharedData {
          if (refCount.fetch_sub(1, std::memory_order_acq_rel) == 1) {
             delete [] gdInitiationProbs;
             delete [] gdCessationProbs;
-            delete [] gdLifeTableProbs;
+            delete [] gdMortalityProbs;
             delete [] gdIntensityProbs;
             delete [] gdCigarettesPerDay;
             delete [] gwYOBCohortStartYrs;
@@ -152,8 +152,8 @@ class Smoking_Simulator {
       // Individuals smoking frequency quintile (light to heavy)
       enum SmokingIntensity {SMKR_Light = 0, SMKR_LgtMed, SMKR_Medium, SMKR_MedHvy, SMKR_Heavy, SMKR_NumGroups, SMKR_Uninitialized};
 
-      // Columns of data in the other COD Life Table file
-      enum LifeTableColumns {COL_Never = 0, COL_Current_Q1, COL_Current_Q2, COL_Current_Q3, COL_Current_Q4, COL_Current_Q5, COL_NumColumns};
+      // Columns in the mortality parameter file (all-cause or other-cause, etc.)
+      enum MortalityColumns {COL_Never = 0, COL_Current_Q1, COL_Current_Q2, COL_Current_Q3, COL_Current_Q4, COL_Current_Q5, COL_NumColumns};
 
       // These 2 enums are used to write the input tag for the web version output
       enum Sex {SEX_Male = 0, SEX_Female, NUM_SEXES};
@@ -169,7 +169,7 @@ class Smoking_Simulator {
       // __restrict__ tells compiler these pointers don't alias, enabling better optimizations
       double * __restrict__ gdInitiationProbs;  // Prob of initiation by race/sex/year of birth and age
       double * __restrict__ gdCessationProbs;   // Prob of cessation by race/sex/year of birth and age
-      double * __restrict__ gdLifeTableProbs;   // Prob of COD other than lung cancer by race/sex/year of birth/age and smoking status
+      double * __restrict__ gdMortalityProbs;   // Annual death probabilities from mortality inputs (all-cause or other-cause, etc.) by race/sex/YOB/age and smoking status
       double * __restrict__ gdIntensityProbs;   // Prob of being a light to heavy smoker (for individuals that begin smoking)
 
       // Cigarettes per day by race, sex, YOB and age (and smoking intensity? %bjr)
@@ -185,10 +185,10 @@ class Smoking_Simulator {
       short gwMinCessationAge;    // Min cessation age (assumed constant for all cohort groups)
       short gwMaxInitiationAge;   // Max initiation age (Max possible age, data may quit before max age)
       short gwMaxCessationAge;    // Max cessation age (Max possible age, data may quit before max age)
-      short gwMinLifeTableAge;
-      short gwMaxLifeTableAge;
-      short gwMinLifeTableYear;
-      short gwMaxLifeTableYear;
+      short gwMinMortalityAge;
+      short gwMaxMortalityAge;
+      short gwMinMortalityYear;
+      short gwMaxMortalityYear;
       short gwNumIntensityGrps;    // Number of CPD Intesity groups
       long gwIntensityMinAge;      // Minimum age among the smoking intensity group probabilities
       long gwIntensityMaxAge;      // Maximum age among the smoking intensity group probabilities
@@ -203,7 +203,7 @@ class Smoking_Simulator {
       short gwPersonsSex;          // Sex
       short gwPersonsInitAge;      // Age of Smoking Initiation
       short gwPersonsCessAge;      // Age of Smoking Cessation
-      short gwPersonsAgeAtDeath;   // Age at death from COD other than lung cancer
+      short gwPersonsAgeAtDeath;   // Simulated age at death from loaded mortality inputs (all-cause or other-cause, etc.)
       SmokingIntensity gwPersonsSmkIntensity; // The smoking intesity group for the person (smokers only)
       double *gdPersonsCPDbyAge;   // Cigarettes smoked per day by age (points to gdPersonsCPDbyAgeStorage)
       double gdPersonsCPDbyAgeStorage[100];  // Pre-allocated storage for CPD (max 100 years)
@@ -216,10 +216,10 @@ class Smoking_Simulator {
       long gwCessProbRaceOffset;   // Cessation Array  - Race Offset
       long gwCessProbSexOffset;    // Cessation Array  - Sex Offset
       long gwCessProbYOBOffset;    // Cessation Array  - YOB Offset
-      long glLifeTabAgeOffset;     // Other COD Array  - Age Offset
-      long glLifeTabRaceOffset;    // Other COD Array  - Race Offset
-      long glLifeTabSexOffset;     // Other COD Array  - Sex Offset
-      long glLifeTabYOBOffset;     // Other COD Array  - YOB Offset
+      long glMortTabAgeOffset;     // Mortality probability array — age offset
+      long glMortTabRaceOffset;    // Mortality probability array — race offset
+      long glMortTabSexOffset;     // Mortality probability array — sex offset
+      long glMortTabYOBOffset;     // Mortality probability array — year-of-birth offset
       long gwIntensityAgeOffset;   // Smoking Intesity Array - Age Offset
       long gwIntensitySexOffset;
       long gwIntensityRaceOffset;
@@ -242,7 +242,7 @@ class Smoking_Simulator {
       void Free();
       // void CalcCigarettesPerDay();
       void CalcCigarettesPerDaySwitch();
-      short GetAgeOfDeathFromOtherCOD(short wStartAge, short wEndAge, SmokingStatus eStatus, bool &bWentPastData) __attribute__((hot));
+      short GetAgeOfDeathFromMortality(short wStartAge, short wEndAge, SmokingStatus eStatus, bool &bWentPastData) __attribute__((hot));
       
       // Inline hot RNG accessor functions for better performance
       inline double GetNextInitRand() __attribute__((always_inline)) {
@@ -251,8 +251,8 @@ class Smoking_Simulator {
       inline double GetNextCessRand() __attribute__((always_inline)) {
          return gpRngStrategy->getCessationRand();
       }
-      inline double GetNextLifeTableRand() __attribute__((always_inline)) {
-         return gpRngStrategy->getLifeTableRand();
+      inline double GetNextMortalityRand() __attribute__((always_inline)) {
+         return gpRngStrategy->getMortalityRand();
       }
       inline double GetNextRandForIndiv() __attribute__((always_inline)) {
          return gpRngStrategy->getIndividualRand();
@@ -260,7 +260,8 @@ class Smoking_Simulator {
       
       void LoadCPDIntensityProbs(const char* sDataFileName);
       void LoadCPDFile(const char* sCpdDataFile);
-      void LoadOtherCODFile(const char* sLifeTableFileName);
+      // Previously LoadOtherCODFile / LoadMortalityFile (formerly LoadLifeTableFile): older names implied a single other-cause table; loader applies to any mortality file (e.g. all-cause acm or OCM excluding lung cancer).
+      void LoadMortalityFile(const char* sMortalityFileName);
       void LoadProbabilityData(const char* sDataFileName, DataType eFileType);
       void OversamplePRNGs();
    
@@ -270,14 +271,14 @@ class Smoking_Simulator {
    
    private:
       // Data loading statistics (for warnings/info)
-      long glCpdRowsSkipped;            // Count of CPD rows skipped due to cohort mismatch
+      long glCpdRowsSkipped;            // CPD lines skipped (cohort range not in initiation file)
       long glCpdRowsLoaded;             // Count of CPD rows successfully loaded
 
    public:
 
       // Constructor for RunWebVersion (which initiates RNGs after instantiation)
       Smoking_Simulator(const char* sInitiationProbFile,  const char* sCessationProbFile,
-                        const char* sLifeTableFile,       const char* sCpdIntensityProbFile,
+                        const char* sMortalityFile,       const char* sCpdIntensityProbFile,
                         const char* sCpdDataFile,         short wOutputType,
                         short wCessationYear);
 
@@ -286,9 +287,9 @@ class Smoking_Simulator {
 
       // Constructor
       Smoking_Simulator(const char* sInitiationProbFile, const char* sCessationProbFile,
-                        const char* sLifeTableFile,      const char* sCpdIntensityProbFile,
+                        const char* sMortalityFile,      const char* sCpdIntensityProbFile,
                         const char* sCpdDataFile,        unsigned long ulInitPRNGSeed,
-                        unsigned long ulCessPRNGSeed,    unsigned long ulLifeTableSeed,
+                        unsigned long ulCessPRNGSeed,    unsigned long ulMortalitySeed,
                         unsigned long ulIndivRndsSeed,   short wOutputType,
                         short wCessationYear);
 
@@ -380,7 +381,7 @@ class Smoking_Simulator {
 
       // Static function to create and load shared data
       static SmokingSimulatorSharedData* CreateSharedData(const char* sInitiationProbFile, const char* sCessationProbFile,
-                                          const char* sLifeTableFile, const char* sCpdDataFile);
+                                          const char* sMortalityFile, const char* sCpdDataFile);
       
       // Static function to create shared data for a SINGLE cohort year
 
@@ -397,9 +398,9 @@ void PrintError(const char* format, ...);
 // XML header writing functions (shared between CLI and R wrapper)
 // These write the metadata header that CLI produces, allowing R to generate identical output
 void WriteRunInfoTag(FILE* pOutStream, const char* sVersion, const char* sInitiationSeed,
-                     const char* sCessSeed, const char* sOCDSeed, const char* sMiscSeed,
+                     const char* sCessSeed, const char* sMortalitySeed, const char* sMiscSeed,
                      const char* sImmediateCessYear, const char* sInitFile, const char* sCessFile,
-                     const char* sOCDProbFile, const char* sQuintilesFile, const char* sCPDDataFile,
+                     const char* sMortalityProbFile, const char* sQuintilesFile, const char* sCPDDataFile,
                      const char* sOutputFile, const char* sErrorFile, const char* sRNGStrategy, 
                      const char* sRngStreamSeed, const char* sInputFileName,
                      int numSegments, int numThreads, bool multiThreaded, bool autoSegments);
