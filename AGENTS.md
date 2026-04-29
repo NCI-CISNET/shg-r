@@ -86,7 +86,7 @@ Also tracks CLI sync state in `DESCRIPTION`:
 3. Update `DESCRIPTION`:
    - Bump `Version` field
    - Run `python tools/shg-sync.py update-description`
-4. Run `R CMD check .` - must pass
+4. Run `R CMD check` (or `rcmdcheck::rcmdcheck(error_on = "warning")` to match **GitHub Actions**, which fails on any WARNING, not only errors)
 5. Create PR, wait for CI
 6. Merge to master
 7. Create git tag

@@ -6,6 +6,7 @@
 ^R-sandbox$
 ^launch\.json$
 ^out$
+^\.R-lib/
 ^\.DS_Store$
 ^\.RDataTmp$
 ^\.Rhistory$
@@ -15,7 +16,7 @@
 ^src/\.DS_Store$
 ^\.\.Rcheck$
 ^\.git$
-^tools/update-shg-rcpp.py$
+^tools/update-shg-r.py$
 ^\.lintr$
 ^CITATION\.cff$
 ^\.venv$
@@ -23,6 +24,7 @@
 ^AGENTS\.md$
 ^RNG-SEEDS\.md$
 ^UPDATE-PACKAGE\.md$
+^CONFIG-MANAGEMENT\.md$
 ^data-readme\.md$
 ^dev-readme\.md$
 ^legacy-readme\.md$
