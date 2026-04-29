@@ -2506,8 +2506,11 @@ void Smoking_Simulator::WriteAsData(FILE *pOutStream) {
    fputs(buffer, pOutStream);
 }
 
-// RCPP does not allow sim_fprintf to be used, so this function is used to replace it
+// R / CLI: variadic file write; null stream is a no-op (avoids UB if output could not be opened)
 void WriteToFile(FILE* stream, const char* format, ...) {
+   if (!stream) {
+      return;
+   }
    va_list args;
    va_start(args, format);
    #ifdef IS_R

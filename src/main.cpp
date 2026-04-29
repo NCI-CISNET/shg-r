@@ -1886,6 +1886,10 @@ int RunWebVersion(const char * sInputFileName)
             SHG_STDERR( "  [TIMING] Shared data creation: %lld ms\n", 
                static_cast<long long>(std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count()));
             
+            if (iNumSegments < 1) {
+               WriteToFile(pErrorStream, "\n<ERROR>\nInvalid NUM_SEGMENTS=%d. Must be >= 1.\n</ERROR>\n<CALLPATH>\nMain:ParallelProcessing()\n</CALLPATH>\n", iNumSegments);
+               throw SimException("Invalid NUM_SEGMENTS", "Main:ParallelProcessing()");
+            }
             // Calculate reps per segment
             long repsPerSegment = lNumReps / iNumSegments;
             long remainder = lNumReps % iNumSegments;

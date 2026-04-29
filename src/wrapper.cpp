@@ -39,6 +39,7 @@
 #include <future>     // Asynchronous operations
 #include <thread>     // Thread support
 #include <chrono>     // Timing
+#include <climits>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -56,6 +57,13 @@ using namespace std;
 inline char* fast_itoa(int val, char* buf) {
    if (val < 0) {
       *buf++ = '-';
+      if (val == INT_MIN) {
+         const char* s = "2147483648";
+         while (*s) {
+            *buf++ = *s++;
+         }
+         return buf;
+      }
       val = -val;
    }
    // Handle 0-99 directly (most common case for ages and CPD)
@@ -1160,7 +1168,7 @@ Rcpp::List SHGInterface::getConfig() {
 //' @title Use SHG Configuration
 //' @description Configures an existing SHG instance from a configuration object (typically obtained from getConfig()).
 //' @param config A list containing configuration parameters. Must include config_version. All parameters are validated.
-//' @details This method validates the config_version and all parameters before setting them. Unknown fields are warned about but allowed for future compatibility. Missing optional fields use defaults. Fields are applied in an order suitable for round-trips from getConfig(): number_of_segments and num_threads are set before rng_strategy (so switching to Mersenne Twister does not message when the saved list already has single-threaded settings), then seeds, then paths and other options.
+//' @details This method validates the config_version and all parameters before setting them. Unknown fields are warned about but allowed for future compatibility. Missing optional fields use defaults. Fields are applied in an order suitable for round-trips from getConfig(): number_of_segments and num_threads are set before rng_strategy (so switching to Mersenne Twister does not message when the saved list already has single-threaded settings), then seeds, then paths and other options. If the list has deprecated \code{run_multi_threaded} but no \code{num_threads}, it is mapped: FALSE -> \code{num_threads = 1}, TRUE -> \code{num_threads = -1}. If both are present, \code{num_threads} wins.
 //' @examples
 //' \dontrun{
 //' library(SmokingHistoryGenerator)
@@ -1192,8 +1200,24 @@ void SHGInterface::useConfig(Rcpp::List config) {
    if (config.containsElementNamed("number_of_segments")) {
       set_number_of_segments(Rcpp::as<int>(config["number_of_segments"]));
    }
-   if (config.containsElementNamed("num_threads")) {
+   const bool had_num_threads = config.containsElementNamed("num_threads");
+   if (had_num_threads) {
       set_num_threads(Rcpp::as<int>(config["num_threads"]));
+   } else if (config.containsElementNamed("run_multi_threaded")) {
+      const bool old_mt = Rcpp::as<bool>(config["run_multi_threaded"]);
+      set_num_threads(old_mt ? -1 : 1);
+      Rcpp::Function warning("warning");
+      warning(
+         std::string("Deprecated 'run_multi_threaded' applied as num_threads = ") +
+            (old_mt ? "-1 (auto)" : "1 (single-threaded)") +
+            ". Prefer saving configs with num_threads.",
+         Rcpp::Named("call.") = false);
+   }
+   if (had_num_threads && config.containsElementNamed("run_multi_threaded")) {
+      Rcpp::Function warning("warning");
+      warning(
+         "'run_multi_threaded' is deprecated and ignored when 'num_threads' is present.",
+         Rcpp::Named("call.") = false);
    }
    if (config.containsElementNamed("rng_strategy")) {
       set_rng_strategy(Rcpp::as<std::string>(config["rng_strategy"]));
@@ -1238,19 +1262,6 @@ void SHGInterface::useConfig(Rcpp::List config) {
    
   if (config.containsElementNamed("immediate_cessation_year")) {
       set_immediate_cessation_year(Rcpp::as<int>(config["immediate_cessation_year"]));
-   }
-  
-  // Check for deprecated run_multi_threaded property
-  if (config.containsElementNamed("run_multi_threaded")) {
-      Rcpp::Function warning("warning");
-      bool old_value = Rcpp::as<bool>(config["run_multi_threaded"]);
-      std::string suggestion;
-      if (old_value) {
-         suggestion = "Use shg$num_threads <- -1 instead (or shg$num_threads <- N for N threads)";
-      } else {
-         suggestion = "Use shg$num_threads <- 1 instead";
-      }
-      warning("The 'run_multi_threaded' property is deprecated. " + suggestion + ". Example: shg$num_threads <- -1  # -1 = auto (all cores), 1 = single-threaded", Rcpp::Named("call.") = false);
    }
   
   // Warn about unknown fields (but allow for future compatibility)
