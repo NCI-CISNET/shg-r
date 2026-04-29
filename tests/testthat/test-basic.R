@@ -49,11 +49,14 @@ write_input_file_from_template <- function(template_path, rng_strategy, yob, ces
   return(input_filepath)
 }
 
-generate_output <- function(rng_strategy, yob, cessation_yr, outputs_folder) {
-  template_path <- readLines("../templates/test_input_example.txt")
-  input_filepath <- write_input_file_from_template(template_path, rng_strategy, yob, cessation_yr, data_folder, outputs_folder)
+generate_output <- function(rng_strategy, yob, cessation_yr, outputs_dir_abs) {
+  template_path <- readLines(test_path("../templates/test_input_example.txt"))
+  input_filepath <- write_input_file_from_template(
+    template_path, rng_strategy, yob, cessation_yr, data_folder, outputs_dir_abs
+  )
   shg$LegacyRunWebVersion(input_filepath)
-  return(get_run_details(glue("../outputs/test_output_{rng_strategy}_{yob}_{cessation_yr}.txt")))
+  out_file <- file.path(outputs_dir_abs, glue("test_output_{rng_strategy}_{yob}_{cessation_yr}.txt"))
+  return(get_run_details(out_file))
 }
 
 clear_test_artifacts <- function(folder) {
@@ -77,31 +80,32 @@ get_stats_from_df <- function(df) {
 }
 # Tests
 shg <- new(SHGInterface)
+# Legacy XML fixtures were generated with ACM (all-cause) mortality tables
+shg$mortality_filename <- "acm.csv"
+shg$num_threads <- 1L
+shg$number_of_segments <- 1L
 shg$rng_strategy <- "MersenneTwister"
-shg$number_of_segments <- 1
-shg$num_threads <- 1  # single-threaded for MersenneTwister
 N <- 10^4 # Individuals to simulate (REPEAT)
 
 # TODO: maybe a better way to reference the input data folder in the package?
-# when running CMD Check, the ./inst/inputs/default/ folder is found at ../../SmokingHistoryGenerator/inputs/default/
-# when running devtools:test(), the ./inst/inputs/default/ folder is found at ../../inst/inputs/default/
-# This path is needed for both:
-# - the LegacyRunWebVersion(inputfile) (config files must reference the initiation, cessation, etc.)
-# - the runSimFromFixedValues call (initiation, cessation, files are expected and found based on input_data_folder
+# Bundled CSV inputs install to system.file("extdata", package=...) (see inst/extdata in source).
+# LegacyRunWebVersion ignores input_data_folder; config paths are cwd-relative or absolute.
 
-data_folder <- file.path(system.file("/inputs/", package="SmokingHistoryGenerator"), "default")
-test_that("SHG inputs/default folder exists", {
-  expect_true(file.exists(data_folder))
+data_folder <- system.file("extdata", package = "SmokingHistoryGenerator")
+test_that("SHG extdata folder exists and contains bundled CSV inputs", {
+  expect_true(nzchar(data_folder) && dir.exists(data_folder))
+  expect_true(file.exists(file.path(data_folder, "initiation.csv")))
 })
 
 shg$input_data_folder <- data_folder
 
 clear_test_artifacts("../inputs")
 clear_test_artifacts("../outputs")
-dir.create("../inputs")
-dir.create("../outputs")
+dir.create(test_path("../inputs"), recursive = TRUE, showWarnings = FALSE)
+dir.create(test_path("../outputs"), recursive = TRUE, showWarnings = FALSE)
+outputs_dir_abs <- normalizePath(test_path("../outputs"), winslash = "/", mustWork = FALSE)
 
-outputs_folder <- "../outputs"
+outputs_folder <- outputs_dir_abs
 MT_output_A <- generate_output("MersenneTwister", 1950, 0, outputs_folder)
 MT_fixture_A <- get_run_details(test_path("../fixtures/MT/yob_1950_cessation_0.txt"))
 
@@ -189,13 +193,13 @@ test_that("Invalid input configuration path fails with proper error message", {
 
 test_that("Invalid input parameter path (eg initiation) fails with proper error message", {
   # Test when initiation input file doesn't exist
-  template_path <- readLines("../templates/test_input_example_incorrect_init_path.txt")
+  template_path <- readLines(test_path("../templates/test_input_example_incorrect_init_path.txt"))
   input_filepath <- write_input_file_from_template(template_path, "MersenneTwister", 1950, 0, data_folder, outputs_folder)
   expect_warning(shg$LegacyRunWebVersion(input_filepath), "^SimException: Error: The specified input file")
 })
 
 test_that("Invalid output path fails with proper error message", {
-  template_path <- readLines("../templates/test_input_example.txt")
+  template_path <- readLines(test_path("../templates/test_input_example.txt"))
   outputs_folder <- "folder_does_not_exist"
   input_filepath <- write_input_file_from_template(template_path, "MersenneTwister", 1950, 0, data_folder, outputs_folder)
   expect_error(shg$LegacyRunWebVersion(input_filepath), "Specified error file: 'folder_does_not_exist/test_errors_MersenneTwister_1950_0.txt' could not be opened for writing.")
@@ -215,6 +219,7 @@ test_that("getConfig() returns correct structure with config_version", {
   expect_true("num_threads" %in% names(config))
   expect_true("seeds" %in% names(config))
   expect_true("input_data_folder" %in% names(config))
+  expect_true("mortality_filename" %in% names(config))
   expect_true("timestamp" %in% names(config))
 })
 
@@ -276,9 +281,9 @@ test_that("useConfig() warns on unknown fields", {
 
 test_that("Round-trip: getConfig() -> useConfig() -> verify", {
   shg1 <- new(SHGInterface)
+  shg1$num_threads <- 1L
+  shg1$number_of_segments <- 1L
   shg1$rng_strategy <- "MersenneTwister"
-  shg1$number_of_segments <- 1
-  shg1$num_threads <- 1  # single-threaded for MersenneTwister
   shg1$immediate_cessation_year <- 2020
   
   config <- shg1$getConfig(debug = FALSE)
@@ -326,13 +331,13 @@ test_that("Constructor with empty config works", {
 # Tests for MersenneTwister restrictions
 test_that("MersenneTwister cannot be used with multiple segments", {
   shg_test <- new(SHGInterface)
-  shg_test$rng_strategy <- "MersenneTwister"
+  suppressMessages(shg_test$rng_strategy <- "MersenneTwister")
   expect_error(shg_test$number_of_segments <- 2, "MersenneTwister RNG cannot maintain IID properties with multiple segments")
 })
 
 test_that("MersenneTwister cannot be used with multi-threading", {
   shg_test <- new(SHGInterface)
-  shg_test$rng_strategy <- "MersenneTwister"
+  suppressMessages(shg_test$rng_strategy <- "MersenneTwister")
   expect_error(shg_test$num_threads <- -1, "MersenneTwister RNG requires single-threaded execution")
   expect_error(shg_test$num_threads <- 4, "MersenneTwister RNG requires single-threaded execution")
 })
@@ -343,8 +348,8 @@ test_that("Switching to MersenneTwister resets segments and threads to valid val
   shg_test$number_of_segments <- 4
   shg_test$num_threads <- -1  # auto multi-threaded
   
-  expect_warning(
-    expect_warning(
+  expect_message(
+    expect_message(
       shg_test$rng_strategy <- "MersenneTwister",
       "Resetting number_of_segments to 1"
     ),
@@ -366,7 +371,13 @@ test_that("MersenneTwister with multiple segments is reset to 1 segment", {
   # Use RngStream then switch to MersenneTwister
   shg_test$rng_strategy <- "RngStream"
   shg_test$number_of_segments <- 2
-  expect_warning(shg_test$rng_strategy <- "MersenneTwister", "Resetting number_of_segments to 1")
+  expect_message(
+    expect_message(
+      shg_test$rng_strategy <- "MersenneTwister",
+      "Resetting number_of_segments to 1"
+    ),
+    "Resetting num_threads to 1"
+  )
   expect_equal(shg_test$number_of_segments, 1)
   
   # Should work fine with 1 segment
@@ -393,9 +404,9 @@ test_that("MersenneTwister: custom seeds produce different results and reverting
   N <- 1000
   shg_mt <- new(SHGInterface)
   shg_mt$input_data_folder <- data_folder
+  shg_mt$num_threads <- 1L
+  shg_mt$number_of_segments <- 1L
   shg_mt$rng_strategy <- "MersenneTwister"
-  shg_mt$number_of_segments <- 1
-  shg_mt$num_threads <- 1  # single-threaded for MT
   
   # Baseline: run with default seeds (no seeds set)
   baseline <- shg_mt$runSimFromFixedValues(N, 0, 0, 1940)
@@ -473,6 +484,8 @@ test_that("RngStream: custom seed produces different results and reverting to de
 
 test_that("get_current_seeds() returns correct seeds based on RNG strategy", {
   shg_mt <- new(SHGInterface)
+  shg_mt$num_threads <- 1L
+  shg_mt$number_of_segments <- 1L
   shg_mt$rng_strategy <- "MersenneTwister"
   shg_mt$mt_seeds <- c(1111111111, 2222222222, 3333333333, 4444444444)
   
@@ -495,9 +508,9 @@ test_that("reset_seeds_to_defaults() resets seeds to default values", {
   N <- 1000
   shg_mt <- new(SHGInterface)
   shg_mt$input_data_folder <- data_folder
+  shg_mt$num_threads <- 1L
+  shg_mt$number_of_segments <- 1L
   shg_mt$rng_strategy <- "MersenneTwister"
-  shg_mt$number_of_segments <- 1
-  shg_mt$num_threads <- 1  # single-threaded
   
   # Set custom seeds
   shg_mt$mt_seeds <- c(1111111111, 2222222222, 3333333333, 4444444444)
@@ -518,9 +531,9 @@ test_that("reset_seeds_to_defaults() resets seeds to default values", {
   # Create a fresh instance for comparison
   shg_baseline <- new(SHGInterface)
   shg_baseline$input_data_folder <- data_folder
+  shg_baseline$num_threads <- 1L
+  shg_baseline$number_of_segments <- 1L
   shg_baseline$rng_strategy <- "MersenneTwister"
-  shg_baseline$number_of_segments <- 1
-  shg_baseline$num_threads <- 1  # single-threaded
   # Don't set seeds, so defaults will be used
   baseline_fresh <- shg_baseline$runSimFromFixedValues(N, 0, 0, 1940)
   baseline_fresh_stats <- get_stats_from_df(baseline_fresh)
@@ -550,6 +563,8 @@ test_that("reset_seeds_to_defaults() resets seeds to default values", {
 test_that("get_rng_state_fingerprint() verifies seeds actually affect RNG internal state", {
   shg_mt1 <- new(SHGInterface)
   shg_mt1$input_data_folder <- data_folder
+  shg_mt1$num_threads <- 1L
+  shg_mt1$number_of_segments <- 1L
   shg_mt1$rng_strategy <- "MersenneTwister"
   shg_mt1$mt_seeds <- c(1111111111, 2222222222, 3333333333, 4444444444)
   
@@ -831,4 +846,15 @@ test_that("output_file produces same init/cess/ocd as memory mode", {
   expect_equal(unname(file_init_ages), result_mem$smoking_initiation_age)
   
   unlink(output_path)
+})
+
+test_that("NHIS csv-partial bundle lists expected filenames (checked in test-nhis-partial-inputs.R)", {
+  nh <- test_path("../testdata/NHIS-1965-2016/csv-partial")
+  skip_if_not(dir.exists(nh), "NHIS csv-partial fixtures missing (not in CRAN tarball; use full git checkout)")
+  req <- c(
+    "initiation.csv", "cessation.csv", "cpd.csv", "acm.csv", "ocm-excl-lung-cancer.csv"
+  )
+  for (f in req) {
+    expect_true(file.exists(file.path(nh, f)), info = f)
+  }
 })
