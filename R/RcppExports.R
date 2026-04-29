@@ -129,7 +129,7 @@ NULL
 #' @title Use SHG Configuration
 #' @description Configures an existing SHG instance from a configuration object (typically obtained from getConfig()).
 #' @param config A list containing configuration parameters. Must include config_version. All parameters are validated.
-#' @details This method validates the config_version and all parameters before setting them. Unknown fields are warned about but allowed for future compatibility. Missing optional fields use defaults. Fields are applied in an order suitable for round-trips from getConfig(): number_of_segments and num_threads are set before rng_strategy (so switching to Mersenne Twister does not message when the saved list already has single-threaded settings), then seeds, then paths and other options.
+#' @details This method validates the config_version and all parameters before setting them. Unknown fields are warned about but allowed for future compatibility. Missing optional fields use defaults. Fields are applied in an order suitable for round-trips from getConfig(): number_of_segments and num_threads are set before rng_strategy (so switching to Mersenne Twister does not message when the saved list already has single-threaded settings), then seeds, then paths and other options. If the list has deprecated \code{run_multi_threaded} but no \code{num_threads}, it is mapped: FALSE -> \code{num_threads = 1}, TRUE -> \code{num_threads = -1}. If both are present, \code{num_threads} wins.
 #' @examples
 #' \dontrun{
 #' library(SmokingHistoryGenerator)
