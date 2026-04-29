@@ -218,7 +218,7 @@ public:
     }
 };
 
-void RunSegment(const SegmentParams& params);
+void RunSegment(SegmentParams& params);
 void AssembleSegmentFiles(const std::vector<std::string>& tempFiles, const std::string& outputFile, bool withTags);
 
 // Removing main() when IS_R is defined (R / shg-r package build); standalone CLI needs main()
@@ -864,7 +864,7 @@ inline int fast_dtoa2(double val, char* buf) {
 }
 
 // Runs a single segment - optimized with larger write buffer
-void RunSegment(const SegmentParams& params) {
+void RunSegment(SegmentParams& params) {
    FILE* pTempFile = NULL;
    try {
       auto tSegStart = std::chrono::high_resolution_clock::now();
@@ -904,6 +904,7 @@ void RunSegment(const SegmentParams& params) {
       // Otherwise create one (fallback for legacy code paths)
       if (params.preCreatedRng) {
          simulator.setRNGStrategy(params.preCreatedRng);
+         params.preCreatedRng = nullptr;
       } else {
          unsigned long seed[6];
          memcpy(seed, params.rngSeed, sizeof(seed));
@@ -1859,28 +1860,37 @@ int RunWebVersion(const char * sInputFileName)
             fclose(pOutStream);
             pOutStream = NULL;
             
+            SmokingSimulatorSharedData* pSharedData = nullptr;
+            std::vector<std::string> tempFiles;
+            std::vector<SegmentParams> segmentParams;
+            
+            auto cleanupParallelAllocations = [&]() {
+               for (auto& p : segmentParams) {
+                  delete p.preCreatedRng;
+                  p.preCreatedRng = nullptr;
+               }
+               if (pSharedData) {
+                  pSharedData->release();
+                  pSharedData = nullptr;
+               }
+            };
+            
+            try {
             // Create shared data for all segments
             // Note: Full data loading (~32ms) is faster than cohort-specific (~53ms)
             // because filtering overhead exceeds the memory bandwidth benefit for this workload
             auto t1 = std::chrono::high_resolution_clock::now();
-            SmokingSimulatorSharedData* pSharedData = Smoking_Simulator::CreateSharedData(
+            pSharedData = Smoking_Simulator::CreateSharedData(
                sFILE_InitProb, sFILE_CessProb, sFILE_MortalityProb, sFILE_CPDData);
             auto t2 = std::chrono::high_resolution_clock::now();
             SHG_STDERR( "  [TIMING] Shared data creation: %lld ms\n", 
                static_cast<long long>(std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count()));
-            
-            // Safety check: ensure iNumSegments is valid
-            if (iNumSegments < 1) {
-               WriteToFile(pErrorStream, "\n<ERROR>\nInvalid NUM_SEGMENTS=%d. Must be >= 1.\n</ERROR>\n<CALLPATH>\nMain:ParallelProcessing()\n</CALLPATH>\n", iNumSegments);
-               throw SimException("Invalid NUM_SEGMENTS", "Main:ParallelProcessing()");
-            }
             
             // Calculate reps per segment
             long repsPerSegment = lNumReps / iNumSegments;
             long remainder = lNumReps % iNumSegments;
             
             // Create temp file paths (use filesystem path for cross-platform compatibility)
-            std::vector<std::string> tempFiles;
             std::filesystem::path outputPath(sOutputFile);
             std::filesystem::path outputDir = outputPath.parent_path();
             if (outputDir.empty()) outputDir = ".";
@@ -1891,7 +1901,6 @@ int RunWebVersion(const char * sInputFileName)
             }
             
             // Prepare segment parameters
-            std::vector<SegmentParams> segmentParams;
             long currentStart = 0;
             for (int seg = 0; seg < iNumSegments; seg++) {
                SegmentParams params;
@@ -1937,6 +1946,7 @@ int RunWebVersion(const char * sInputFileName)
             
             // Run segments (parallel or sequential)
             auto t3 = std::chrono::high_resolution_clock::now();
+            bool parallelWorkersHadErrors = false;
             if (bRunMultiThreaded) {
                // Determine number of threads to use (-1 = auto)
                int availableCores = std::thread::hardware_concurrency();
@@ -2036,18 +2046,17 @@ int RunWebVersion(const char * sInputFileName)
                   }
                }
                
-               // If any segment failed, report and fail
                if (!segmentErrors.empty()) {
                   std::string errorMsg = "Parallel execution failed:\n";
                   for (const auto& err : segmentErrors) {
                      errorMsg += "  " + err + "\n";
                   }
                   WriteToFile(pErrorStream, "\n<ERROR>\n%s</ERROR>\n<CALLPATH>\nMain:ParallelProcessing()\n</CALLPATH>\n", errorMsg.c_str());
-                  throw SimException(errorMsg.c_str(), "Main:ParallelProcessing()");
+                  parallelWorkersHadErrors = true;
                }
             } else {
                // Run segments sequentially
-               for (const auto& params : segmentParams) {
+               for (auto& params : segmentParams) {
                   RunSegment(params);
                }
             }
@@ -2055,20 +2064,55 @@ int RunWebVersion(const char * sInputFileName)
             SHG_STDERR( "  [TIMING] Segment execution: %lld ms\n",
                static_cast<long long>(std::chrono::duration_cast<std::chrono::milliseconds>(t4-t3).count()));
             
-            // Reopen output file and assemble results
-            auto t5 = std::chrono::high_resolution_clock::now();
-            pOutStream = fopen(sOutputFile, "a");
-            AssembleSegmentFiles(tempFiles, sOutputFile, !gWithHoldTags);
-            auto t6 = std::chrono::high_resolution_clock::now();
-            SHG_STDERR( "  [TIMING] File assembly: %lld ms\n",
-               static_cast<long long>(std::chrono::duration_cast<std::chrono::milliseconds>(t6-t5).count()));
+            if (parallelWorkersHadErrors) {
+               cleanupParallelAllocations();
+               pOutStream = fopen(sOutputFile, "a");
+               if (pOutStream) {
+                  WriteToFile(pOutStream, "<RESULT>\nERROR\n</RESULT>\n");
+               }
+               bRunApp = false;
+            } else {
+               // Reopen output file and assemble results
+               auto t5 = std::chrono::high_resolution_clock::now();
+               pOutStream = fopen(sOutputFile, "a");
+               AssembleSegmentFiles(tempFiles, sOutputFile, !gWithHoldTags);
+               auto t6 = std::chrono::high_resolution_clock::now();
+               SHG_STDERR( "  [TIMING] File assembly: %lld ms\n",
+                  static_cast<long long>(std::chrono::duration_cast<std::chrono::milliseconds>(t6-t5).count()));
+               
+               cleanupParallelAllocations();
+               
+               auto tEnd = std::chrono::high_resolution_clock::now();
+               SHG_STDERR( "  [TIMING] Total parallel section: %lld ms\n",
+                  static_cast<long long>(std::chrono::duration_cast<std::chrono::milliseconds>(tEnd-tStart).count()));
+            }
             
-            // Release shared data
-            pSharedData->release();
-            
-            auto tEnd = std::chrono::high_resolution_clock::now();
-            SHG_STDERR( "  [TIMING] Total parallel section: %lld ms\n",
-               static_cast<long long>(std::chrono::duration_cast<std::chrono::milliseconds>(tEnd-tStart).count()));
+            } catch (SimException& ex) {
+               cleanupParallelAllocations();
+               pOutStream = fopen(sOutputFile, "a");
+               if (pOutStream) {
+                  WriteToFile(pErrorStream, "\n<ERROR>%s</ERROR>\n", ex.GetError());
+                  WriteToFile(pErrorStream, "<CALLPATH>%s</CALLPATH>", ex.GetCallPath());
+                  WriteToFile(pOutStream, "<RESULT>\nERROR\n</RESULT>\n");
+               }
+               bRunApp = (ex.GetType() == SimException::NON_FATAL);
+            } catch (std::exception& ex) {
+               cleanupParallelAllocations();
+               pOutStream = fopen(sOutputFile, "a");
+               if (pOutStream) {
+                  WriteToFile(pErrorStream, "\n<ERROR>%s</ERROR>\n<CALLPATH>\nMain:ParallelProcessing()\n</CALLPATH>\n", ex.what());
+                  WriteToFile(pOutStream, "<RESULT>\nERROR\n</RESULT>\n");
+               }
+               bRunApp = false;
+            } catch (...) {
+               cleanupParallelAllocations();
+               pOutStream = fopen(sOutputFile, "a");
+               if (pOutStream) {
+                  WriteToFile(pErrorStream, "\n<ERROR>\nUnknown error during parallel segment execution.\n</ERROR>\n<CALLPATH>\nMain:ParallelProcessing()\n</CALLPATH>\n");
+                  WriteToFile(pOutStream, "<RESULT>\nERROR\n</RESULT>\n");
+               }
+               bRunApp = false;
+            }
             
          } else {
             // Original single-segment code path

@@ -934,6 +934,7 @@ void Smoking_Simulator::Init() {
 }
 
 void Smoking_Simulator::setRNGStrategy(RNG_Strategy* rngStrategy) {
+   delete gpRngStrategy;
    gpRngStrategy = rngStrategy;
 }
 
