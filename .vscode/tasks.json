@@ -4,11 +4,38 @@
 		{
 			"type": "R",
 			"code": [
-				"devtools::test()"
+				"shg_lib <- file.path(getwd(), \".R-lib\")",
+				"dir.create(shg_lib, showWarnings = FALSE, recursive = TRUE)",
+				".libPaths(c(shg_lib, .libPaths()))",
+				"unlink(Sys.glob(file.path(\"src\", c(\"*.o\", \"*.so\", \"*.dll\"))))",
+				"suppressWarnings(try(remove.packages(\"SmokingHistoryGenerator\", lib = shg_lib), silent = TRUE))",
+				"pkgbuild::clean_dll()",
+				"devtools::install(\".\", args = \"--preclean\", quiet = TRUE, upgrade = FALSE)",
+				"testthat::test_local(getwd(), load_package = \"installed\")"
 			],
 			"group": "build",
 			"problemMatcher": [],
-			"label": "R: Test"
+			"label": "R: Test",
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			}
+		},
+		{
+			"type": "R",
+			"code": [
+				"shg_lib <- file.path(getwd(), \".R-lib\")",
+				"dir.create(shg_lib, showWarnings = FALSE, recursive = TRUE)",
+				".libPaths(c(shg_lib, .libPaths()))",
+				"testthat::test_local(getwd(), load_package = \"installed\")"
+			],
+			"group": "build",
+			"problemMatcher": [],
+			"label": "R: Test (quick)",
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			}
 		},
 		{
 			"type": "R",

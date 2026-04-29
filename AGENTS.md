@@ -16,6 +16,21 @@
 - Fix any linter errors before proceeding with commits
 - Do not commit code that fails linting checks
 
+### C++ / Rcpp rebuild hygiene (avoid stale-binary segfaults)
+
+Incremental compiles plus **LTO** (`-flto` in the toolchain) can leave **`src/*.o` out of sync** with regenerated **`RcppExports.cpp`** or other headers. That mismatch often crashes inside **`CppMethod__invoke`** / **`runSimFromFixedValues`** with a fault near address **`0x1`** (wrong vtable / ABI), not a logic bug in the simulator.
+
+**Do this after changing exported Rcpp methods, `RcppExports.cpp`, `wrapper.cpp`, shared engine sources, or when tests suddenly segfault:**
+
+1. **Clean rebuild:** from the package root, run **`bash tools/rebuild-package.sh`** (runs `rm -f src/*.o`, removes any stray `src/*.so`, then **`R CMD INSTALL --preclean .`**).
+2. **Or manually:** `rm -f src/*.o && R CMD INSTALL --preclean .`
+3. **From R:** delete `src/*.o` (and `src/*.so` / `src/*.dll` on some platforms)—**`pkgbuild::clean_dll()` does not remove object files**, so **`make` can still skip compile** and leave a broken `.so`. Then **`devtools::install(..., args = "--preclean")`** or **`R CMD INSTALL --preclean .`**. (The **R: Test** VS Code task now does this `unlink` step before install.)
+4. **`devtools::load_all(compile = TRUE)`** can mix **debug** (`-g -O0`) with **release** flags from **`~/.R/Makevars`** in some setups—if behavior is odd after a load-all compile, use **`--preclean`** install instead.
+
+CI usually does a clean compile; this issue is mainly **local development**.
+
+5. **`devtools::test()` always loads the package with `load_package = "source"`** (pkgload from the source tree), so a prior **`devtools::install()`** into `.R-lib` does **not** affect which `.so` runs during tests. To test the **installed** build, use **`testthat::test_local(getwd(), load_package = "installed")`** (as in the **R: Test** VS Code task) or run **`R CMD check`**.
+
 ## Shared Files with shg-cli
 
 The following `src/` files **MUST match shg-cli exactly**:
