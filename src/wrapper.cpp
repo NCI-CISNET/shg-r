@@ -53,9 +53,13 @@
 
 namespace {
 
-/** MT19937 init uses 32-bit seeds; values may exceed 32 bits in R — mask when passing to C++ MT engine. */
-inline unsigned long mt_seed_to_engine_arg(std::uint64_t stored_user_seed) {
-   return static_cast<unsigned long>(stored_user_seed & 0xffffffffULL);
+/** MT19937 init uses 32-bit seeds; mask when passing user-supplied values (may exceed UINT_MAX) to the engine. */
+inline unsigned long mt_seed_to_engine_arg(double stored_user_seed) {
+   if (!R_FINITE(stored_user_seed) || stored_user_seed < 0.0) {
+      Rcpp::stop("Invalid MersenneTwister seed (must be finite and non-negative).");
+   }
+   const std::uint64_t u = static_cast<std::uint64_t>(std::llround(stored_user_seed));
+   return static_cast<unsigned long>(u & 0xffffffffULL);
 }
 
 }  // namespace
@@ -215,7 +219,7 @@ void SHGInterface::set_cpd_format(string format) {
 Rcpp::NumericVector SHGInterface::get_mt_seeds() {
    Rcpp::NumericVector result(mt_seeds.size());
    for (size_t i = 0; i < mt_seeds.size(); i++) {
-      result[i] = static_cast<double>(mt_seeds[i]);
+      result[i] = mt_seeds[i];
    }
    return result;
 }
@@ -227,7 +231,10 @@ void SHGInterface::set_mt_seeds(Rcpp::NumericVector seeds) {
    mt_seeds.clear();
    mt_seeds.reserve(4);
    for (int i = 0; i < 4; i++) {
-      mt_seeds.push_back(static_cast<std::uint64_t>(std::llround(seeds[i])));
+      if (!R_FINITE(seeds[i])) {
+         Rcpp::stop("MersenneTwister seeds must be finite numeric values (no NA/NaN/Inf).");
+      }
+      mt_seeds.push_back(seeds[i]);
    }
 }
 

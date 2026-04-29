@@ -1,5 +1,4 @@
 #define STRICT_R_HEADERS
-#include <cstdint>
 #include <Rcpp.h>
 #include "smoking_sim.h"
 using namespace std;
@@ -67,9 +66,8 @@ public:
     string cpd_format = "sparse"; // "none" (fastest), "sparse" (default), "legacy" (backwards compat)
     string output_file = "";      // Empty = return DataFrame; set path = write to disk like CLI
     
-    // Seed storage for RNG strategies
-    // Store full seed integers from R (doubles); Windows LLP64 has 32-bit unsigned long — do not use that here.
-    vector<std::uint64_t> mt_seeds;  // 4 seeds for MersenneTwister (initiation, cessation, life table, individual)
+    // Seed storage for RNG strategies (store MT seeds as double for exact R round-trip on all platforms).
+    vector<double> mt_seeds;  // 4 seeds for MersenneTwister (initiation, cessation, life table, individual)
     vector<unsigned long> rngstream_seed;  // 6-element seed array for RngStream
 
     // Getters and Setters

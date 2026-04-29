@@ -78,6 +78,11 @@ get_stats_from_df <- function(df) {
   age_at_death <- get_mean_from_column(df, "age_at_death")
   return(list(mean_initiation = mean_initiation, mean_cessation = mean_cessation, age_at_death = age_at_death))
 }
+
+# SHG file output may use CRLF on Windows; strip \r so tag patterns match.
+read_output_lines <- function(path) {
+  sub("\r$", "", readLines(path, warn = FALSE))
+}
 # Tests
 shg <- new(SHGInterface)
 # Legacy XML fixtures were generated with ACM (all-cause) mortality tables
@@ -773,7 +778,7 @@ test_that("output_file writes results to disk", {
   
   # File should exist 
   expect_true(file.exists(output_path))
-  lines <- readLines(output_path)
+  lines <- read_output_lines(output_path)
   
   # Find data section (between <RUN> and </RUN>)
   run_start <- which(grepl("^<RUN>$", lines))
@@ -804,7 +809,7 @@ test_that("output_file parallel execution works", {
   result <- shg$runSimFromDataFrame(df)
   
   # File should have all rows (between <RUN> and </RUN> tags)
-  lines <- readLines(output_path)
+  lines <- read_output_lines(output_path)
   run_start <- which(grepl("^<RUN>$", lines))
   run_end <- which(grepl("^</RUN>", lines))
   expect_true(length(run_start) > 0 && length(run_end) > 0)
@@ -841,7 +846,7 @@ test_that("output_file produces same init/cess/ocd as memory mode", {
   shg_file$runSimFromDataFrame(df)
   
   # Parse file and compare (skip XML header, find <RUN> tag to get data lines)
-  lines <- readLines(output_path)
+  lines <- read_output_lines(output_path)
   run_start <- which(grepl("^<RUN>$", lines))
   run_end <- which(grepl("^</RUN>", lines))
   if (length(run_start) > 0 && length(run_end) > 0) {
