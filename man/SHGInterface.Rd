@@ -24,7 +24,9 @@ SHGInterface Class
 
 \item{\code{cessation_filename}}{Set or get the cessation filename}
 
-\item{\code{lifetable_filename}}{Set or get the lifetable filename}
+\item{\code{lifetable_filename}}{Set or get the mortality input filename (legacy name; same as mortality_filename)}
+
+\item{\code{mortality_filename}}{Set or get the mortality probabilities filename (e.g. acm.csv or ocm-excl-lung-cancer.csv)}
 
 \item{\code{cpd_filename}}{Set or get the cpd filename}
 

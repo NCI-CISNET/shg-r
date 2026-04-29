@@ -4,25 +4,29 @@
 \alias{LegacyRunWebVersion}
 \title{LegacyRunWebVersion method}
 \arguments{
-\item{input_file_name}{The name of the configuration file (see ./inst/inputs/ for 2 examples)}
+\item{input_file_name}{Path to a Legacy web-style configuration file. Paths inside the file are resolved relative to the R process working directory (the \code{input_data_folder} property is ignored). Sample text configs live under \code{tests/testdata/legacy-web-examples/} in the package source; for installed use, build a config with absolute paths from \code{system.file("extdata", package = "SmokingHistoryGenerator")}.}
 }
 \description{
 This method offers a way to configure and run a simulation from an input configuration file. Rather than return a R DataFrame, it produces results in an output file. It works in the same as calling the CLI version of the Smoking History Generator with a single input file parameter.
 }
 \examples{
 \dontrun{
-# Warning: This way of running a simulation ignores the Rcpp interface
-# properties and relies solely on parameters set in the input configuration
-# file. See main.cpp's RunWebVersion for more detail.
+# Warning: LegacyRunWebVersion ignores Rcpp properties and uses only the config file.
 library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
-shg$input_data_folder <- system.file(
-  "inputs/default", "", package = "SmokingHistoryGenerator"
-)
-example_input_filepath <- system.file(
-  "inputs/examples/", "test_input_example_MersenneTwister.txt",
-  package = "SmokingHistoryGenerator"
-)
-shg$LegacyRunWebVersion(example_input_filepath)
+d <- system.file("extdata", package = "SmokingHistoryGenerator")
+tf <- tempfile(fileext = ".txt")
+writeLines(c(
+  "RNGSTRATEGY=RngStream",
+  "RNGSTREAM_SEED=12345,12345,12345,12345,12345,12345",
+  "RACE=0", "SEX=0", "YOB=1950", "CESSATION_YR=0", "REPEAT=100",
+  paste0("INIT_PROB=", file.path(d, "initiation.csv")),
+  paste0("CESS_PROB=", file.path(d, "cessation.csv")),
+  paste0("MORTALITY_PROB=", file.path(d, "acm.csv")),
+  paste0("CPD_DATA=", file.path(d, "cpd.csv")),
+  paste0("OUTPUTFILE=", tempfile("out_", fileext = ".txt")),
+  paste0("ERRORFILE=", tempfile("err_", fileext = ".txt"))
+), tf)
+shg$LegacyRunWebVersion(tf)
 }
 }
