@@ -1,6 +1,5 @@
-# This script is used to copy src files from shg-cli to shg-rcpp and update its DESCRIPTION file
-# with the most recent tag, commit hash and src hash.
-# Assumes that the shg-cli directory is present in the parent directory as a sibling of shg-rcpp.
+# Copy src files from shg-cli to shg-r and update DESCRIPTION sync fields (tag, commit hash, src hash).
+# Assumes shg-cli is a sibling directory of shg-r (parent contains both repos).
 
 import subprocess
 import shutil
@@ -26,7 +25,7 @@ def md5_update_from_dir(directory, hash):
 def md5_dir(directory):
     return md5_update_from_dir(directory, hashlib.md5()).hexdigest()
 
-# Step 1: copy the src files from shg-cli to shg-rcpp
+# Step 1: copy the src files from shg-cli to shg-r
 shutil.copytree(source_dir, target_dir, dirs_exist_ok=True)
 
 
@@ -46,7 +45,7 @@ else:
 # which is not relevant for the hash from shg-cli
 src_hash = md5_dir(source_dir)
 
-# Read DESCRIPTION file in shg-rcpp
+# Read DESCRIPTION file in shg-r
 with open('DESCRIPTION', 'r') as file:
     lines = file.readlines()
 
@@ -61,4 +60,3 @@ with open('DESCRIPTION', 'w') as file:
             file.write(f'SHGsrcHash: {src_hash}\n')
         else:
             file.write(line)
-
