@@ -1,10 +1,7 @@
-# Fast feedback on Windows without waiting for macOS/Ubuntu.
-# Trigger: Actions → this workflow → Run workflow (any branch), or push to branch ci/windows-debug.
+# Optional Windows-only R CMD check (does not run on every push; use when debugging Win CI).
+# Trigger: Actions → "R CMD check (Windows only)" → Run workflow (choose branch).
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - ci/windows-debug
 
 name: R CMD check (Windows only)
 
