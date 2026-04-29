@@ -2,13 +2,13 @@ Package: SmokingHistoryGenerator
 Type: Package
 Title: R wrapper for the Smoking History Generator
 Version: 0.0.2
-SHGMostRecentTag: v6.5.0-rc
-SHGCommitHash: d5ec48e
-SHGsrcHash: c6213115f8373737044d0e6b53ba54f0
+SHGMostRecentTag: v6.5.0-rc-2-latest
+SHGCommitHash: 8a9770d
+SHGsrcHash: 8b44a3ae430c25998f2c1301ca65c4ab
 Date: 2026-01-02
 Authors@R: c(
     person("John", "Clarke", email = "john.clarke@cornerstonenw.com", role = c("aut", "cre"),
-           comment = "Author and maintainer of Rcpp wrapper for the SHG"),
+           comment = "Author and maintainer of R package wrapper for the SHG"),
     person("Ben", "Racine", role = "aut",
            comment = "Co-author of the original SHG"),
     person("Martin", "Krapcho", role = "aut",
@@ -18,7 +18,7 @@ Authors@R: c(
   )
 Maintainer: John Clarke <john.clarke@cornerstonenw.com>
 Description: This package is an efficient R wrapper for the CISNET Smoking History Generator.
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 URL: https://github.com/NCI-CISNET/shg-rcpp
 Imports: methods, Rcpp (>= 1.0.2)
 Suggests: testthat (>= 3.0.0), glue
