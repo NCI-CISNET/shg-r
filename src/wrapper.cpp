@@ -512,16 +512,16 @@ Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) 
    // FILE OUTPUT MODE: Write directly to disk like CLI
    // ============================================================
    if (!output_file.empty()) {
-      Rcpp::Rcout << "[INFO] Writing results to file: " << output_file << "\n";
+      Rcpp::Rcout << "[INFO] Writing results to file: " << output_file << "\n" << std::flush;
       
-      // Create temp file paths
+      // Create temp file paths (use path / operator — avoids broken mixed separators on Windows)
       vector<string> tempFiles;
-      string outputDir = std::filesystem::path(output_file).parent_path().string();
-      if (outputDir.empty()) outputDir = ".";
+      std::filesystem::path outDir = std::filesystem::path(output_file).parent_path();
+      if (outDir.empty()) outDir = ".";
       
       for (int seg = 0; seg < n; seg++) {
-         string tempPath = outputDir + "/shg_segment_" + to_string(seg) + ".tmp";
-         tempFiles.push_back(tempPath);
+         std::filesystem::path tempPath = outDir / ("shg_segment_" + std::to_string(seg) + ".tmp");
+         tempFiles.push_back(tempPath.string());
       }
       
       // Launch segments
@@ -570,7 +570,7 @@ Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) 
       
       delete pSharedData;
       
-      Rcpp::Rcout << "[INFO] Results written to: " << output_file << "\n";
+      Rcpp::Rcout << "[INFO] Results written to: " << output_file << "\n" << std::flush;
       
       // Return minimal DataFrame with info
       return Rcpp::DataFrame::create(
@@ -912,7 +912,8 @@ void SHGInterface::runSimSegmentToFile(int repeat,
                                        SmokingSimulatorSharedData* pSharedData,
                                        int segmentNumber) {
    
-   FILE* pOutFile = fopen(tempFilePath.c_str(), "w");
+   // Binary mode: avoid Windows CRT translating \\n -> \\r\\n (breaks line-based tests / XML tags).
+   FILE* pOutFile = fopen(tempFilePath.c_str(), "wb");
    if (!pOutFile) {
       Rcpp::stop("Could not open temp file for writing: " + tempFilePath);
    }
@@ -969,7 +970,7 @@ void SHGInterface::runSimSegmentToFile(int repeat,
 void SHGInterface::assembleSegmentFiles(const vector<string>& tempFiles, const string& outputFile,
                                         int repeat, int race, int sex, int yob,
                                         int effectiveSegments, bool bMultiThreaded, bool bAutoSegments) {
-   FILE* pOutFile = fopen(outputFile.c_str(), "w");
+   FILE* pOutFile = fopen(outputFile.c_str(), "wb");
    if (!pOutFile) {
       Rcpp::stop("Could not open output file for writing: " + outputFile);
    }
@@ -1019,7 +1020,7 @@ void SHGInterface::assembleSegmentFiles(const vector<string>& tempFiles, const s
    // Copy segment data
    char buffer[65536];
    for (const auto& tempPath : tempFiles) {
-      FILE* pIn = fopen(tempPath.c_str(), "r");
+      FILE* pIn = fopen(tempPath.c_str(), "rb");
       if (pIn) {
          size_t n;
          while ((n = fread(buffer, 1, sizeof(buffer), pIn)) > 0) {
