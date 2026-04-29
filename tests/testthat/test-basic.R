@@ -202,7 +202,11 @@ test_that("Invalid output path fails with proper error message", {
   template_path <- readLines(test_path("../templates/test_input_example.txt"))
   outputs_folder <- "folder_does_not_exist"
   input_filepath <- write_input_file_from_template(template_path, "MersenneTwister", 1950, 0, data_folder, outputs_folder)
-  expect_error(shg$LegacyRunWebVersion(input_filepath), "Specified error file: 'folder_does_not_exist/test_errors_MersenneTwister_1950_0.txt' could not be opened for writing.")
+  # C++ may emit Windows path separators in the error string on Win builders
+  expect_error(
+    shg$LegacyRunWebVersion(input_filepath),
+    regexp = "Specified error file: '.*folder_does_not_exist.*test_errors_MersenneTwister_1950_0\\.txt' could not be opened for writing"
+  )
 })
 
 # TODO: Compare Legacy tests with runSimFromFixedValues(): requires parsing of results

@@ -55,6 +55,8 @@
 #include <windows.h>
 #include <excpt.h>
 
+#if !defined(IS_R)
+
 static const char* GetExceptionName(DWORD code) {
     switch (code) {
         case EXCEPTION_ACCESS_VIOLATION:         return "ACCESS_VIOLATION";
@@ -85,8 +87,12 @@ static LONG WINAPI CrashHandler(EXCEPTION_POINTERS* pExceptionInfo) {
     return EXCEPTION_CONTINUE_SEARCH;  // Let Windows handle the crash after we've logged
 }
 
+#endif /* !IS_R */
+
 static void InstallCrashHandler() {
+#if !defined(IS_R)
     SetUnhandledExceptionFilter(CrashHandler);
+#endif
 }
 #else
 // No-op on non-Windows platforms (they have better error reporting)
@@ -182,8 +188,8 @@ struct alignas(64) SegmentParams {
 class OutputBuffer {
 private:
     std::vector<char> buffer;
-    size_t pos;
     FILE* output_file;
+    size_t pos;
     static constexpr size_t BUFFER_SIZE = 4 * 1024 * 1024;  // 4 MB buffer
     static constexpr size_t FLUSH_THRESHOLD = BUFFER_SIZE - 100000;  // Leave 100KB safety margin
     
@@ -311,7 +317,7 @@ char* AssignFilename(const char* sDirectory, const char * sFilename) {
    char* sFullFilePath;
    sFullFilePath = new char[strlen(sDirectory) + strlen(sFilename) + 2];
    iCurrIndex = 0;
-   for (i=0; i <(strlen(sDirectory)); i++) {
+   for (i=0; i < static_cast<int>(strlen(sDirectory)); i++) {
       sFullFilePath[iCurrIndex] = sDirectory[i];
       iCurrIndex++;
    }
@@ -326,7 +332,7 @@ char* AssignFilename(const char* sDirectory, const char * sFilename) {
          iCurrIndex++;
       }
    #endif
-   for (i=0; i <(strlen(sFilename)); i++) {
+   for (i=0; i < static_cast<int>(strlen(sFilename)); i++) {
       sFullFilePath[iCurrIndex] = sFilename[i];
       iCurrIndex++;
    }
@@ -502,7 +508,6 @@ void RunInterface() {
    char           		sInputChar[101],
                   		sOutputFileName[105],
                   		sInputFileName[105],
-                  		sExtensionCheck[5],
                        *sInitiationFile = 0,
                        *sCessationFile = 0,
                        *sMortalityFile = 0,
@@ -523,8 +528,7 @@ void RunInterface() {
                         wOutputFormat,
                         wCessationYear,
                   		i;
-   long           		lExtCheckPosition,
-                  		lNumRepetitions;
+   long           		lNumRepetitions;
    FILE*          		pOutputFile = 0;
 
    PrintMessage("Smoking History Simulator\n\n");
@@ -683,15 +687,6 @@ void RunInterface() {
          strcpy(sOutputFileName, "./test.out"); // Use default filename
       } else {
          strcpy(sOutputFileName, sInputChar);
-      }
-
-      if (strlen(sInputChar) > 4) {
-         lExtCheckPosition = strlen(sInputChar) - 4;
-         for (i=0; i <=3; i++)
-            {
-            sExtensionCheck[i] = toupper(sInputChar[lExtCheckPosition + i]);
-            }
-         sExtensionCheck[4] = '\0';
       }
 
       if (wInputOutputType == 3) {
@@ -1042,7 +1037,7 @@ int RunWebVersion(const char * sInputFileName)
          iNumSegments = -1,  // Default to -1 (auto-calculate when multi-threaded)
          iNumThreads = -1;  // Default -1 = auto (use hardware_concurrency(), multi-threaded)
 
-   long  lNumReps,
+   long  lNumReps = 0,
          lSeed_Init,
          lSeed_Cess,
          lSeed_Mortality,
@@ -1053,7 +1048,7 @@ int RunWebVersion(const char * sInputFileName)
    char *sFinalRngStreamSeed = strdup("12345,12345,12345,12345,12345,12345");
 
    short wValuesPerParam[4],
-         wMaxNumPerParam,
+         wMaxNumPerParam = 0,
          wCessationYear;
    
    bool  bAutoSegments = false;       // Track if segments were auto-calculated

@@ -319,12 +319,12 @@ SmokingSimulatorSharedData* Smoking_Simulator::CreateSharedData(
 //    try {
 
 //       if (gdCigarettesPerDay == 0 || gdIntensityProbs == 0 ) { // || gpIndividualRNG == 0) {
-//          throw SimException("Error", "One or more of the data components for cigarettes \nper \
-//             day calculation has not been initialized.\n");
+//          throw SimException("Error",
+//             "One or more of the data components for cigarettes per day calculation has not been initialized.\n");
 //       }
 //       if (gwPersonsInitAge == -999) {
-//          throw SimException("Error", "CalcCigarettesPerDay should not be called for \nindividuals \
-//             that do not initiate smoking.\n");
+//          throw SimException("Error",
+//             "CalcCigarettesPerDay should not be called for individuals that do not initiate smoking.\n");
 //       }
 
 //       // Get the probability for the quintile lookup
@@ -494,7 +494,7 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
             //wLookupStartAge,      // Age to start at when getting the cigarettes per day directly from the data array
             //wPersonsYOB,          // Copy of gwPersonsYOB, when the year of birth is less than 1900, 1900 is used in the equation
             i, j, l, m, n,
-            group,
+            group = static_cast<short>(-999),
             nRows,
             //finalAge,
             nColumns;
@@ -1467,7 +1467,7 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
             lNumLinesRead,
             lCurrArrayLocation;
    double   dCurrProbability;
-   short    wFirstDataLine,
+   short    wFirstDataLine = 0,
             wSexValue,
             wRaceValue,
             wAgeValue,
@@ -1527,6 +1527,7 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
                "CSV header in %s must have RACE,SEX,AGE followed by >=1 cohort column.", sDataFileName);
             throw SimException("Error", sErrorMessage);
          }
+         wFirstDataLine = 2;  // legacy field unused for CSV; line ref for error messages only
 
          // Pre-scan body rows for race/sex/age bounds, then rewind to first data row.
          const long dataStart = ftell(pProbabilityFile);
