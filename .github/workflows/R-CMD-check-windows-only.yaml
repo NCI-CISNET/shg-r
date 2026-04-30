@@ -1,7 +1,10 @@
-# Optional Windows-only R CMD check (does not run on every push; use when debugging Win CI).
-# Trigger: Actions → "R CMD check (Windows only)" → Run workflow (choose branch).
+# Windows-only R CMD check — runs automatically on ci/windows-debug; manual on any branch.
+# Remove the push trigger (or merge to feature/v6.5.0-sync) once the fix is verified.
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - ci/windows-debug
 
 name: R CMD check (Windows only)
 

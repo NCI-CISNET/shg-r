@@ -521,13 +521,12 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
    nRows = nValues / nColumns;
 
 
-   // Use thread_local vectors to avoid per-call heap allocations
-   // They persist across calls and only reallocate when size increases
-   static thread_local std::vector<long>   cpdGroupOverLife;
-   static thread_local std::vector<double> filteredCPDGroups;
-   static thread_local std::vector<double> Tij;
-   static thread_local std::vector<double> r0;
-   static thread_local std::vector<double> r1;
+   // Per-instance vectors (not thread_local): Windows + std::async + DLL thread_local is unsafe; see wrapper.cpp.
+   std::vector<long>&   cpdGroupOverLife = scratchCpdGroupOverLife;
+   std::vector<double>& filteredCPDGroups = scratchFilteredCPDGroups;
+   std::vector<double>& Tij = scratchTij;
+   std::vector<double>& r0 = scratchR0;
+   std::vector<double>& r1 = scratchR1;
    cpdGroupOverLife.resize(nRows);
    filteredCPDGroups.resize(nValues);
    Tij.resize(nColumns * nColumns);
@@ -585,7 +584,7 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
       std::memset(cpdGroupOverLife.data(), -999, nRows * sizeof(short));
 
       double term1, term2;
-      static thread_local std::vector<double> switchProbs;
+      std::vector<double>& switchProbs = scratchSwitchProbs;
       switchProbs.resize(nColumns);
       double sum;
 
@@ -2473,8 +2472,8 @@ void Smoking_Simulator::WriteAsData(FILE *pOutStream) {
       throw SimException("WriteAsData(FILE *)", "Supplied output File is not open for writing.");
    }
 
-   // Use a single buffer for all output - dramatically reduces fprintf calls
-   static thread_local char buffer[16384];  // 16KB buffer per thread
+   // Stack buffer (not thread_local): safe for std::async workers on Windows UCRT; 16KB per call is fine.
+   char buffer[16384];
    char* ptr = buffer;
    
    // Write basic fields using fast_itoa

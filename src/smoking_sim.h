@@ -230,6 +230,15 @@ class Smoking_Simulator {
 
       short gwNumSmokingGrps;
 
+      // Scratch for CalcCigarettesPerDaySwitch: per-instance storage avoids MinGW/UCRT
+      // thread_local failures when Smoking_Simulator runs on std::async worker threads (Windows).
+      std::vector<long>   scratchCpdGroupOverLife;
+      std::vector<double> scratchFilteredCPDGroups;
+      std::vector<double> scratchTij;
+      std::vector<double> scratchR0;
+      std::vector<double> scratchR1;
+      std::vector<double> scratchSwitchProbs;
+
       OutputType           geOutputType;
 
       double      gdTempIntensityProb; // Persons intensity prob, remove from final

@@ -780,13 +780,6 @@ test_that("sparse and legacy produce equivalent CPD values", {
 
 # ============================================================
 # File Output Mode Tests
-# ============================================================
-# Windows (ucrt/mingw): std::async multi-segment disk writes have aborted CI runs with a
-# truncated testthat.Rout (crash/hang between "Writing results" and "Results written").
-# Keep Unix/macOS coverage of threaded assembly; run segments sequentially on Windows.
-
-disk_output_multithread_ok <- .Platform$OS.type != "windows"
-
 test_that("output_file writes results to disk", {
   output_path <- tempfile(fileext = ".csv")
   
@@ -795,7 +788,7 @@ test_that("output_file writes results to disk", {
   shg$rng_strategy <- "RngStream"
   shg$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
   shg$number_of_segments <- 2
-  shg$num_threads <- if (disk_output_multithread_ok) 2L else 1L
+  shg$num_threads <- 2L
   shg$output_file <- output_path
   
   N <- 1000
@@ -832,7 +825,7 @@ test_that("output_file parallel execution works", {
   shg$rng_strategy <- "RngStream"
   shg$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
   shg$number_of_segments <- 10
-  shg$num_threads <- if (disk_output_multithread_ok) -1L else 1L
+  shg$num_threads <- -1L
   shg$output_file <- output_path
   
   N <- 10000

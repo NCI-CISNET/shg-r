@@ -871,8 +871,8 @@ void SHGInterface::runSimSegment(int repeat,
          else
             wYearsAsSmoker = sPersonsCessAge - sPersonsInitAge + 1;
          
-         // Use thread-local char buffer for fast formatting (avoids heap allocations)
-         static thread_local char cpdBuf[2048];
+         // Stack buffer: avoid thread_local in DLL workers on Windows (see runSimSegmentToFile note).
+         char cpdBuf[2048];
          char* ptr = cpdBuf;
          
          for (int i = 0; i < wYearsAsSmoker; i++) {
@@ -912,15 +912,18 @@ void SHGInterface::runSimSegmentToFile(int repeat,
                                        SmokingSimulatorSharedData* pSharedData,
                                        int segmentNumber) {
    
-   // Binary mode: avoid Windows CRT translating \\n -> \\r\\n (breaks line-based tests / XML tags).
+   // Binary mode: avoid Windows CRT translating \n -> \r\n (breaks line-based tests / XML tags).
    FILE* pOutFile = fopen(tempFilePath.c_str(), "wb");
    if (!pOutFile) {
-      Rcpp::stop("Could not open temp file for writing: " + tempFilePath);
+      // Throw C++ exception: Rcpp::stop() is not safe to call from std::async threads.
+      throw std::runtime_error("Could not open temp file for writing: " + tempFilePath);
    }
    
-   // Set large buffer for better I/O performance
-   static thread_local char fileBuffer[4 * 1024 * 1024];  // 4MB buffer per thread
-   setvbuf(pOutFile, fileBuffer, _IOFBF, sizeof(fileBuffer));
+   // Heap-allocated I/O buffer (4 MB) for better disk throughput.
+   // Previously a static thread_local, which crashes on Windows when called from std::async
+   // threads inside a dynamically-loaded DLL (MinGW/UCRT TLS initialisation limitation).
+   std::vector<char> fileBuffer(4 * 1024 * 1024);
+   setvbuf(pOutFile, fileBuffer.data(), _IOFBF, fileBuffer.size());
    
    // Create simulator using shared data
    short wOutputType = 1;
