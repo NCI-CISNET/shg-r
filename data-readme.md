@@ -1,6 +1,6 @@
 # Custom input datasets
 
-The Smoking History Generator requires a calibrated parameter set to run: probability tables for **initiation**, **cessation**, **mortality** (all-cause **ACM** or other-cause **OCM**, e.g. excluding lung cancer), and **cigarettes per day** (**CPD**).
+The Smoking History Generator requires a calibrated parameter set to run: probability tables for **initiation**, **cessation**, **mortality** (**ACM** or **OCM**), and **cigarettes per day** (**CPD**).
 
 ## Bundled minimal set (CRAN)
 
@@ -13,7 +13,7 @@ The CRAN package ships a **small csv-partial subset** under `inst/extdata/` (ins
 | `mortality_filename` (same as legacy `lifetable_filename`) | `ocm-excl-lung-cancer.csv` |
 | `cpd_filename` | `cpd.csv` |
 
-Use **`mortality_filename`** to point at **`acm.csv`** (all-cause mortality) or **`ocm-excl-lung-cancer.csv`** (OCM excluding lung cancer), depending on your analysis. Legacy property **`lifetable_filename`** sets the same path. Wide **`.txt`** tables (CLI / legacy web layout) remain supported when you set filenames and paths accordingly.
+Use **`mortality_filename`** to point at **`acm.csv`** or **`ocm-excl-lung-cancer.csv`**, depending on your analysis. Legacy property **`lifetable_filename`** sets the same path. Wide **`.txt`** tables (CLI / legacy web layout) remain supported when you set filenames and paths accordingly.
 
 After installation, locate the folder with:
 
@@ -30,14 +30,6 @@ The **full** calibrated NHIS-style tables are **too large for CRAN**. Download t
 `tests/testdata/NHIS-1965-2016/` (optional; large `csv-complete/` and `legacy-complete/` are excluded from the CRAN tarball via `.Rbuildignore`; `csv-partial/` ships for tests)
 
 Expected files there for a full CLI-style tree mirror the usual names (`initiation.txt`, `cessation.txt`, `cpd.txt`, `acm.txt`, `ocm-excl-lung-cancer.txt`, etc.).
-
-To refresh **`inst/extdata/*.csv`** from the repo’s `csv-complete/` fixture, run from the package root:
-
-```bash
-Rscript tools/trim-nhis-testdata.R
-```
-
-To trim **wide legacy `.txt`** inputs in a directory you control, run `Rscript tools/trim-default-inputs.R <source_dir>` (see that script’s header).
 
 ## LegacyRunWebVersion() config keys
 

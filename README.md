@@ -84,13 +84,6 @@ shg$cpd_format <- "none"    # Fastest - no CPD column returned
 shg$cpd_format <- "legacy"  # Backwards compatible: "17 (20), 18 (20), 19 (10)"
 ```
 
-**Performance comparison (1M individuals, 12 cores):**
-| Format | Time | Notes |
-|--------|------|-------|
-| `none` | ~1.1s | No CPD data |
-| `sparse` | ~1.3s | Default, recommended |
-| `legacy` | ~1.5s | For backwards compatibility |
-
 **Note:** The `sparse` format stores only CPD values. The age can be computed as `init_age + index` since values are sequential from initiation age.
 
 ## File Output Mode
@@ -142,54 +135,6 @@ shg$input_data_folder <- file.path(getwd(), "tests/testdata/NHIS-1965-2016/csv-c
 **If you installed from CRAN** (or via `devtools::install_github`) and do not have a local clone, the full tables will be published as a separate download on **Zenodo** (DOI/link to be added here when the record is public). After downloading, unpack the five CSV files (`initiation.csv`, `cessation.csv`, `cpd.csv`, `acm.csv`, `ocm-excl-lung-cancer.csv`) into a directory of your choice and set `input_data_folder` to point there.
 
 In either case, the large trees (`csv-complete/`, `legacy-complete/`) are omitted from the CRAN source tarball via `.Rbuildignore`; trimmed **`csv-partial/`** and **`legacy-partial/`** stay in the repo for CI tests and local benchmarks.
-
-From the source checkout, a benchmark on that partial CSV set (default cohort **2010**, **1,000,000** individuals per timed run, **3** runs) is:
-
-```bash
-Rscript tools/benchmark-testdata-2010.R
-```
-
-Optional arguments: `N`, `cohort_year`, number of timed `RUNS`, and input folder `csv-partial` (default), `csv-complete`, or **`legacy-complete`** (wide `*.txt` tables under `tests/testdata/NHIS-1965-2016/`; use cohort **1950** to align with `tools/benchmark-1M.R`). Pass a smaller `N` first for a quick smoke test. The script uses the **installed** package (`library()`); run `R CMD INSTALL .` from the repo root after changing C++ code, or set `SHG_BENCHMARK_USE_PKGLOAD=1` to load the source tree via `pkgload::load_all()`.
-
-To **sweep cohorts** (default: every birth year in the initiation header with `year %% 5 == 0`, one million individuals per cohort unless you pass a smaller `N`) and print min/median/max time across cohorts:
-
-```bash
-Rscript tools/benchmark-cohort-variance.R
-```
-
-Arguments: `N`, `subdir` (`csv-complete` by default), `step` (years, default 5), **`runs_per_cohort`** (repeat timed runs per cohort and average), optional `year_min` and `year_max` (use literal `NA` for an open bound), optional **`immediate_cessation_year`** (7th, default **`0`** = no mandated policy cessation year). Set `SHG_COHORT_BENCH_CSV=/path/to/out.csv` to write a per-cohort table (`immediate_cessation_year`, **`N`**, **`runs_per_cohort`**, `mean_sec`, `sd_sec`, …). To run **two** full sweeps in one go—first with **`0`**, then with a policy year such as **`2050`** (as in some legacy fixture tests)—set `SHG_COHORT_BENCH_COMPARE_IMMEDIATE_CESSATION=2050`.
-
-**HTML bar chart (paired by cohort):** after a two-phase CSV run, set **`SHG_COHORT_BENCH_HTML=/path/to/report.html`** alongside `SHG_COHORT_BENCH_CSV` to write a self-contained HTML page (table + horizontal bars: **policy `immediate_cessation_year`** vs **paired `0`**). Or render an existing CSV:
-
-```bash
-Rscript tools/render-cohort-benchmark-html.R results.csv report.html
-```
-
-**Vertical chart (SVG):** two **line** series (green = policy `immediate_cessation_year`, blue = `0`) with **dots** (mean across runs) and **whiskers** (min/max of the timed runs). **Horizontal dashed line** for the blue series cohort mean only (no green mean line). Across-cohort **min/max of mean times** for each series come from the CSV (`overall_*` columns) so the chart does not recompute them. Y-axis tick labels use **two decimal places**; axis title **Seconds**; cohort size in the title uses a short form (**1M**, **500K**, …). Set **`SHG_COHORT_BENCH_HTML_VERTICAL=/path/to/chart.html`** with `SHG_COHORT_BENCH_CSV`. Example (1M, 3 runs per cell, legacy tables, paired compare, both HTML outputs):
-
-```bash
-export SHG_COHORT_BENCH_CSV=/tmp/cohort.csv
-export SHG_COHORT_BENCH_HTML=/tmp/cohort-table.html
-export SHG_COHORT_BENCH_HTML_VERTICAL=/tmp/cohort-vertical.html
-export SHG_COHORT_BENCH_COMPARE_IMMEDIATE_CESSATION=2050
-Rscript tools/benchmark-cohort-variance.R 1000000 legacy-complete 5 3
-```
-
-Or render the vertical page from an existing CSV:
-
-```bash
-Rscript tools/render-cohort-vertical-chart.R results.csv report-vertical.html
-```
-
-**Checked-in example (1M × 3 runs, `csv-complete`, two-phase compare `2050`):** after regenerating with the env vars above, outputs live under `docs/` as `cohort-benchmark-1M.csv`, `cohort-benchmark-1M-table.html`, and `cohort-benchmark-1M-vertical.html`. HTML renderers refuse CSVs whose `N` column is below 1,000,000 unless you set `SHG_COHORT_CHART_ALLOW_SMALL_N=1` (avoids mistaking a 100K smoke sweep for 1M).
-
-To rebuild `inst/extdata/*.csv` from the package’s `tests/testdata/NHIS-1965-2016/csv-complete/` tree:
-
-```bash
-Rscript tools/trim-nhis-testdata.R
-```
-
-To trim **wide legacy `.txt`** tables in a directory you supply (not the csv-complete workflow), use `tools/trim-default-inputs.R <source_dir>` (see that script’s header).
 
 ### Custom data input files
 Please see the [data readme](data-readme.md) for filenames, mortality (**ACM** vs **OCM**), `mortality_filename`, and legacy config keys.
