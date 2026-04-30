@@ -32,9 +32,9 @@ run_fixed_cohort <- function(dir, legacy_txt) {
   }
   shg$cpd_filename <- "cpd.csv"
   shg$rng_strategy <- "RngStream"
-  shg$num_threads <- 1L
-  shg$number_of_segments <- 1L
-  shg$runSimFromFixedValues(120L, 0L, 0L, 1950L)
+  shg$num_threads <- 1
+  shg$number_of_segments <- 1
+  shg$runSimFromFixedValues(120, 0, 0, 1950)
 }
 
 test_that("NHIS csv-partial fixture exists and runs (CSV tables, no dot-only CPD rows)", {
@@ -46,7 +46,7 @@ test_that("NHIS csv-partial fixture exists and runs (CSV tables, no dot-only CPD
   csv_partial <- normalizePath(file.path(nhis_base, "csv-partial"), winslash = "/", mustWork = TRUE)
   expect_nhis_partial_files(csv_partial, "csv")
   out <- run_fixed_cohort(csv_partial, legacy_txt = FALSE)
-  expect_equal(nrow(out), 120L)
+  expect_equal(nrow(out), 120)
   expect_true(all(out$smoking_initiation_age <= 99 | out$smoking_initiation_age == -999))
 })
 
@@ -60,5 +60,5 @@ test_that("NHIS legacy-partial fixture exists and runs (wide .txt + preamble; CP
   expect_nhis_partial_files(legacy_partial, "txt")
   expect_true(file.exists(file.path(legacy_partial, "cpd.csv")))
   out <- run_fixed_cohort(legacy_partial, legacy_txt = TRUE)
-  expect_equal(nrow(out), 120L)
+  expect_equal(nrow(out), 120)
 })

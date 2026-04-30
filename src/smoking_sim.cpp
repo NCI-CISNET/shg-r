@@ -521,12 +521,15 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
    nRows = nValues / nColumns;
 
 
-   // Per-instance vectors (not thread_local): Windows + std::async + DLL thread_local is unsafe; see wrapper.cpp.
-   std::vector<long>&   cpdGroupOverLife = scratchCpdGroupOverLife;
-   std::vector<double>& filteredCPDGroups = scratchFilteredCPDGroups;
-   std::vector<double>& Tij = scratchTij;
-   std::vector<double>& r0 = scratchR0;
-   std::vector<double>& r1 = scratchR1;
+   // thread_local: avoids per-call heap allocation; safe here because runSimSegmentToFile
+   // (the only async-dispatched caller) no longer contains any thread_local of its own
+   // (see wrapper.cpp). CalcCigarettesPerDaySwitch is called from within a single
+   // Smoking_Simulator instance so per-instance state is preserved across individuals.
+   static thread_local std::vector<long>   cpdGroupOverLife;
+   static thread_local std::vector<double> filteredCPDGroups;
+   static thread_local std::vector<double> Tij;
+   static thread_local std::vector<double> r0;
+   static thread_local std::vector<double> r1;
    cpdGroupOverLife.resize(nRows);
    filteredCPDGroups.resize(nValues);
    Tij.resize(nColumns * nColumns);
@@ -584,7 +587,7 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
       std::memset(cpdGroupOverLife.data(), -999, nRows * sizeof(short));
 
       double term1, term2;
-      std::vector<double>& switchProbs = scratchSwitchProbs;
+      static thread_local std::vector<double> switchProbs;
       switchProbs.resize(nColumns);
       double sum;
 

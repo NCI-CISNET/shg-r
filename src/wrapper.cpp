@@ -395,6 +395,10 @@ Rcpp::List SHGInterface::get_data_shape() {
 //' @name runSimFromDataFrame
 //' @title runSimFromDataFrame method
 //' @description runSimFromDataFrame offers a way to configure and run a simulation from an existing R dataframe. It returns a dataframe of simulated smoking histories with the same number of rows and order as the input dataframe.
+//' @details On Windows, \code{output_file} (direct disk output) cannot be combined with
+//'          multi-threaded execution (\code{num_threads} not equal to \code{1}). The call stops with an error
+//'          before loading inputs or writing files. Use the default in-memory DataFrame return value, or set
+//'          \code{num_threads <- 1} to write a file.
 //' @param dfPopulation The input dataframe with named columns for race, sex, and birth_cohort
 //' @examples
 //' \dontrun{
@@ -434,7 +438,34 @@ Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) 
    
    // Determine if multi-threaded: num_threads == -1 (auto) or > 1
    bool bMultiThreaded = (num_threads != 1);
-   
+
+#if defined(_WIN32)
+   // Fail before CreateSharedData / any simulation — disk + MT cannot be validated on Windows.
+   if (!output_file.empty() && bMultiThreaded) {
+      Rcpp::stop(
+         "On Windows, output_file (disk output) cannot be used with multi-threaded execution "
+         "(num_threads other than 1). Use runSimFromDataFrame without output_file for an in-memory "
+         "DataFrame, or set num_threads = 1 if you must write a file."
+      );
+   }
+#endif
+
+   // Windows R package (MinGW/UCRT): std::async worker threads + thread_local scratch in the
+   // shared engine (CalcCigarettesPerDaySwitch) is unreliable in-process. Run segment work on the
+   // main thread instead; segments still split RNG substreams (same results as Linux for a given
+   // segment layout). Non-Windows keeps std::async for throughput.
+#if defined(_WIN32)
+   constexpr bool kUseAsyncWorkerThreads = false;
+#else
+   constexpr bool kUseAsyncWorkerThreads = true;
+#endif
+   const bool asyncWorkerThreads = bMultiThreaded && kUseAsyncWorkerThreads;
+   if (bMultiThreaded && !asyncWorkerThreads) {
+      Rcpp::Rcout << "[INFO] Windows: running simulation segments sequentially "
+                   << "(parallel std::async workers disabled for DLL stability).\n"
+                   << std::flush;
+   }
+
    // Auto-calculate segments if -1 (auto) and using RngStream with multi-threading
    int effectiveSegments = number_of_segments;
    if (number_of_segments == -1) {
@@ -531,7 +562,7 @@ Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) 
          int offset = seg * repeat_per_sim;
          int current_repeat = repeat_per_sim + (seg == n - 1 ? remainder : 0);
          
-         if (bMultiThreaded) {
+         if (asyncWorkerThreads) {
             futures.push_back(async(launch::async, &SHGInterface::runSimSegmentToFile, this,
                                     current_repeat,
                                     ref(wRaces),
@@ -553,7 +584,7 @@ Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) 
          }
       }
       
-      if (bMultiThreaded) {
+      if (asyncWorkerThreads) {
          for (auto& fut : futures) {
             fut.get();
          }
@@ -566,7 +597,7 @@ Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) 
       int headerYob = wYearBirths.size() > 0 ? wYearBirths[0] : 0;
       bool bAutoSegments = (number_of_segments == -1);
       assembleSegmentFiles(tempFiles, output_file, repeat, headerRace, headerSex, headerYob,
-                           n, bMultiThreaded, bAutoSegments);
+                           n, asyncWorkerThreads, bAutoSegments);
       
       delete pSharedData;
       
@@ -603,7 +634,7 @@ Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) 
          current_repeat_per_sim += remainder;
       }
 
-      if (bMultiThreaded) {
+      if (asyncWorkerThreads) {
          futures.push_back(async(launch::async, &SHGInterface::runSimSegment, this,
                                      current_repeat_per_sim,
                                      ref(wRaces),
@@ -630,7 +661,7 @@ Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) 
       }
     }
     // Wait for all simulations to complete
-    if (bMultiThreaded) {
+    if (asyncWorkerThreads) {
       for (auto& fut : futures) {
         fut.get();
       }

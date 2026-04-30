@@ -96,12 +96,21 @@ get_stats_from_df <- function(df) {
   return(list(mean_initiation = mean_initiation, mean_cessation = mean_cessation, age_at_death = age_at_death))
 }
 
+# Integer race/sex/birth_cohort columns for runSimFromDataFrame (typed literals hidden here)
+test_pop_df <- function(n, race = 0, sex = 0, birth_cohort = 1950) {
+  data.frame(
+    race = as.integer(rep(race, n)),
+    sex = as.integer(rep(sex, n)),
+    birth_cohort = as.integer(rep(birth_cohort, n))
+  )
+}
+
 # Tests
 shg <- new(SHGInterface)
 # Legacy XML fixtures were generated with ACM (all-cause) mortality tables
 shg$mortality_filename <- "acm.csv"
-shg$num_threads <- 1L
-shg$number_of_segments <- 1L
+shg$num_threads <- 1
+shg$number_of_segments <- 1
 shg$rng_strategy <- "MersenneTwister"
 N <- 10^4 # Individuals to simulate (REPEAT)
 
@@ -130,13 +139,10 @@ MT_fixture_A <- get_run_details(test_path("../fixtures/MT/yob_1950_cessation_0.t
 MT_output_B <- generate_output("MersenneTwister", 2010, 2050, outputs_folder)
 MT_fixture_B <- get_run_details(test_path("../fixtures/MT/yob_2010_cessation_2050.txt"))
 
-# Golden <RUN> bodies were captured on Unix; Windows (ucrt/mingw) can differ bitwise (RNG/FPU paths).
+# One canonical fixture per scenario: same config must produce the same <RUN> lines on every OS.
+# If a platform diverges, fix determinism in the engine — do not maintain alternate goldens or relaxed checks.
 compare_legacy_run_body <- function(actual_run, fixture_run) {
-  if (.Platform$OS.type != "windows") {
-    expect_equal(actual_run, fixture_run)
-  } else {
-    expect_equal(length(actual_run), length(fixture_run))
-  }
+  expect_equal(actual_run, fixture_run)
 }
 
 test_that("MersenneTwister simulation output in R does not differ from C++ fixtures", {
@@ -322,8 +328,8 @@ test_that("useConfig() warns on unknown fields", {
 
 test_that("Round-trip: getConfig() -> useConfig() -> verify", {
   shg1 <- new(SHGInterface)
-  shg1$num_threads <- 1L
-  shg1$number_of_segments <- 1L
+  shg1$num_threads <- 1
+  shg1$number_of_segments <- 1
   shg1$rng_strategy <- "MersenneTwister"
   shg1$immediate_cessation_year <- 2020
   
@@ -445,8 +451,8 @@ test_that("MersenneTwister: custom seeds produce different results and reverting
   N <- 1000
   shg_mt <- new(SHGInterface)
   shg_mt$input_data_folder <- data_folder
-  shg_mt$num_threads <- 1L
-  shg_mt$number_of_segments <- 1L
+  shg_mt$num_threads <- 1
+  shg_mt$number_of_segments <- 1
   shg_mt$rng_strategy <- "MersenneTwister"
   
   # Baseline: run with default seeds (no seeds set)
@@ -525,8 +531,8 @@ test_that("RngStream: custom seed produces different results and reverting to de
 
 test_that("get_current_seeds() returns correct seeds based on RNG strategy", {
   shg_mt <- new(SHGInterface)
-  shg_mt$num_threads <- 1L
-  shg_mt$number_of_segments <- 1L
+  shg_mt$num_threads <- 1
+  shg_mt$number_of_segments <- 1
   shg_mt$rng_strategy <- "MersenneTwister"
   shg_mt$mt_seeds <- c(1111111111, 2222222222, 3333333333, 4444444444)
   
@@ -549,8 +555,8 @@ test_that("reset_seeds_to_defaults() resets seeds to default values", {
   N <- 1000
   shg_mt <- new(SHGInterface)
   shg_mt$input_data_folder <- data_folder
-  shg_mt$num_threads <- 1L
-  shg_mt$number_of_segments <- 1L
+  shg_mt$num_threads <- 1
+  shg_mt$number_of_segments <- 1
   shg_mt$rng_strategy <- "MersenneTwister"
   
   # Set custom seeds
@@ -572,8 +578,8 @@ test_that("reset_seeds_to_defaults() resets seeds to default values", {
   # Create a fresh instance for comparison
   shg_baseline <- new(SHGInterface)
   shg_baseline$input_data_folder <- data_folder
-  shg_baseline$num_threads <- 1L
-  shg_baseline$number_of_segments <- 1L
+  shg_baseline$num_threads <- 1
+  shg_baseline$number_of_segments <- 1
   shg_baseline$rng_strategy <- "MersenneTwister"
   # Don't set seeds, so defaults will be used
   baseline_fresh <- shg_baseline$runSimFromFixedValues(N, 0, 0, 1940)
@@ -604,8 +610,8 @@ test_that("reset_seeds_to_defaults() resets seeds to default values", {
 test_that("get_rng_state_fingerprint() verifies seeds actually affect RNG internal state", {
   shg_mt1 <- new(SHGInterface)
   shg_mt1$input_data_folder <- data_folder
-  shg_mt1$num_threads <- 1L
-  shg_mt1$number_of_segments <- 1L
+  shg_mt1$num_threads <- 1
+  shg_mt1$number_of_segments <- 1
   shg_mt1$rng_strategy <- "MersenneTwister"
   shg_mt1$mt_seeds <- c(1111111111, 2222222222, 3333333333, 4444444444)
   
@@ -680,7 +686,7 @@ test_that("cpd_format = none produces no CPD column", {
   shg$num_threads <- 1
   
   N <- 100
-  df <- data.frame(race=rep(0L, N), sex=rep(0L, N), birth_cohort=rep(1950L, N))
+  df <- test_pop_df(N)
   result <- shg$runSimFromDataFrame(df)
   
   expect_equal(nrow(result), N)
@@ -698,7 +704,7 @@ test_that("cpd_format = sparse produces compact CPD", {
   shg$num_threads <- 1
   
   N <- 100
-  df <- data.frame(race=rep(0L, N), sex=rep(0L, N), birth_cohort=rep(1950L, N))
+  df <- test_pop_df(N)
   result <- shg$runSimFromDataFrame(df)
   
   expect_true("cigarettes_per_day" %in% names(result))
@@ -720,7 +726,7 @@ test_that("cpd_format = legacy produces age-cpd format", {
   shg$num_threads <- 1
   
   N <- 100
-  df <- data.frame(race=rep(0L, N), sex=rep(0L, N), birth_cohort=rep(1950L, N))
+  df <- test_pop_df(N)
   result <- shg$runSimFromDataFrame(df)
   
   expect_true("cigarettes_per_day" %in% names(result))
@@ -739,7 +745,7 @@ test_that("cpd_format validation rejects invalid values", {
 
 test_that("sparse and legacy produce equivalent CPD values", {
   N <- 100
-  df <- data.frame(race=rep(0L, N), sex=rep(0L, N), birth_cohort=rep(1950L, N))
+  df <- test_pop_df(N)
   
   # Sparse format
   shg_sparse <- new(SHGInterface)
@@ -780,19 +786,47 @@ test_that("sparse and legacy produce equivalent CPD values", {
 
 # ============================================================
 # File Output Mode Tests
+test_that("Windows: disk output + multi-thread fails before simulation (no output file)", {
+  skip_if_not(.Platform$OS.type == "windows")
+
+  output_path <- tempfile(fileext = ".csv")
+  on.exit(unlink(output_path), add = TRUE)
+
+  shg <- new(SHGInterface)
+  shg$input_data_folder <- data_folder
+  shg$rng_strategy <- "RngStream"
+  shg$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
+  shg$number_of_segments <- 1
+  shg$num_threads <- -1
+  shg$output_file <- output_path
+
+  df <- test_pop_df(1)
+
+  expect_error(
+    shg$runSimFromDataFrame(df),
+    "cannot be used with multi-threaded execution"
+  )
+  expect_false(file.exists(output_path), info = "must stop before creating output")
+})
+
 test_that("output_file writes results to disk", {
   output_path <- tempfile(fileext = ".csv")
-  
+
   shg <- new(SHGInterface)
   shg$input_data_folder <- data_folder
   shg$rng_strategy <- "RngStream"
   shg$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
   shg$number_of_segments <- 2
-  shg$num_threads <- 2L
+  # Windows forbids disk + num_threads != 1; Unix test still exercises 2 segments / 2 threads.
+  if (.Platform$OS.type == "windows") {
+    shg$num_threads <- 1
+  } else {
+    shg$num_threads <- 2
+  }
   shg$output_file <- output_path
   
   N <- 1000
-  df <- data.frame(race=rep(0L, N), sex=rep(0L, N), birth_cohort=rep(1950L, N))
+  df <- test_pop_df(N)
   result <- shg$runSimFromDataFrame(df)
   
   # Should return info DataFrame
@@ -817,38 +851,38 @@ test_that("output_file writes results to disk", {
   unlink(output_path)
 })
 
-test_that("output_file parallel execution works", {
+test_that("output_file parallel execution works (disk + multi-thread, non-Windows)", {
+  skip_on_os("windows")
+
   output_path <- tempfile(fileext = ".csv")
-  
+  on.exit(unlink(output_path), add = TRUE)
+
   shg <- new(SHGInterface)
   shg$input_data_folder <- data_folder
   shg$rng_strategy <- "RngStream"
   shg$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
   shg$number_of_segments <- 10
-  shg$num_threads <- -1L
+  shg$num_threads <- -1
   shg$output_file <- output_path
-  
+
   N <- 10000
-  df <- data.frame(race=rep(0L, N), sex=rep(0L, N), birth_cohort=rep(1950L, N))
-  result <- shg$runSimFromDataFrame(df)
-  
-  # File should have all rows (between <RUN> and </RUN> tags)
+  df <- test_pop_df(N)
+
+  shg$runSimFromDataFrame(df)
   lines <- read_output_lines(output_path)
   rb <- xml_run_bounds(lines)
   run_start <- rb$start
   run_end <- rb$end
   expect_true(length(run_start) > 0 && length(run_end) > 0)
-  data_lines <- lines[(run_start[1]+1):(run_end[1]-1)]
+  data_lines <- lines[(run_start[1] + 1):(run_end[1] - 1)]
   expect_equal(length(data_lines), N)
-  
-  unlink(output_path)
 })
 
 test_that("output_file produces same init/cess/ocd as memory mode", {
   output_path <- tempfile(fileext = ".csv")
   
   N <- 500
-  df <- data.frame(race=rep(0L, N), sex=rep(0L, N), birth_cohort=rep(1950L, N))
+  df <- test_pop_df(N)
   
   # Memory mode
   shg_mem <- new(SHGInterface)
