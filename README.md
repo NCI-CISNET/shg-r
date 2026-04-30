@@ -37,7 +37,7 @@ RNGSTREAM_SIM <- shg$runSimFromFixedValues(N, race, sex, cohort_year)
 
 You can also use a pre-generated population instead of using fixed values for race, sex, cohort_year:
 
-If **`birth_cohort` spans many distinct years** (as in this illustration), you need **full** NHIS-style inputs—initiation, cessation, CPD, and mortality tables that include **every cohort column** your population uses. The trimmed CSVs under **`inst/extdata`** in the installed package do **not** cover that; they only bundle a few cohorts for CRAN. Obtain the **complete** table set when it is published on **Zenodo** (link will appear in [Input data: CRAN bundle vs full NHIS set](#input-data-cran-bundle-vs-full-nhis-set)); until then, use a local **`csv-complete`** tree from your NHIS pipeline if you have one.
+If **`birth_cohort` spans many distinct years** (as in this illustration), you need **full** NHIS-style inputs—initiation, cessation, CPD, and mortality tables that include **every cohort column** your population uses. The trimmed CSVs under **`inst/extdata`** in the installed package do **not** cover that; they only bundle a few cohorts for CRAN. See [Input data: CRAN bundle vs full NHIS set](#input-data-cran-bundle-vs-full-nhis-set) below for how to obtain the complete tables.
 
 ```r
 shg <- new(SHGInterface)
@@ -131,7 +131,17 @@ This enables CPU-specific instructions (AVX2, AVX-512, etc.) which can improve p
 
 The package installs a **small, trimmed** csv-partial subset under `system.file("extdata", package = "SmokingHistoryGenerator")`: `initiation.csv`, `cessation.csv`, `cpd.csv`, `acm.csv`, and `ocm-excl-lung-cancer.csv`. That bundle is sized for **CRAN** and the bundled tests (cohorts **1940**, **1950**, **2010**; race **0**, sex **0**; CPD rows omit all-“.” / non-positive intensity padding).
 
-The **full** NHIS 1965–2016–style parameter tables are **too large for CRAN**. They will be published as a separate download on **Zenodo** (DOI/link to be added here when the record is public). After downloading, you can unpack them under `tests/testdata/NHIS-1965-2016/` for local work. Large trees (`csv-complete/`, `legacy-complete/`) are omitted from the CRAN tarball via `.Rbuildignore`; trimmed **`csv-partial/`** and **`legacy-partial/`** stay in the repo for tests and local benchmarks.
+The **full** NHIS 1965–2016–style parameter tables are **too large for CRAN**. How you get them depends on how you are working with the package:
+
+**If you have cloned this GitHub repository**, the full tables are already present under [`tests/testdata/NHIS-1965-2016/csv-complete/`](tests/testdata/NHIS-1965-2016/csv-complete/) (CSV format) and [`tests/testdata/NHIS-1965-2016/legacy-complete/`](tests/testdata/NHIS-1965-2016/legacy-complete/) (legacy `.txt` format). Point the interface at the `csv-complete` folder:
+
+```r
+shg$input_data_folder <- file.path(getwd(), "tests/testdata/NHIS-1965-2016/csv-complete")
+```
+
+**If you installed from CRAN** (or via `devtools::install_github`) and do not have a local clone, the full tables will be published as a separate download on **Zenodo** (DOI/link to be added here when the record is public). After downloading, unpack the five CSV files (`initiation.csv`, `cessation.csv`, `cpd.csv`, `acm.csv`, `ocm-excl-lung-cancer.csv`) into a directory of your choice and set `input_data_folder` to point there.
+
+In either case, the large trees (`csv-complete/`, `legacy-complete/`) are omitted from the CRAN source tarball via `.Rbuildignore`; trimmed **`csv-partial/`** and **`legacy-partial/`** stay in the repo for CI tests and local benchmarks.
 
 From the source checkout, a benchmark on that partial CSV set (default cohort **2010**, **1,000,000** individuals per timed run, **3** runs) is:
 
