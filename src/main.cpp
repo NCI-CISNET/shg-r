@@ -107,12 +107,12 @@ using namespace std;
 
 // Input file names (bundled under data/NHIS-1965-2016/)
 // DEFAULT_MORTALITY_DATA_FILE was historically OTHER_COD_DATA_FILE: the bundled default is
-// other-cause mortality excluding lung cancer; users may point configs at all-cause (acm.txt) instead.
-#define INITIATION_DATA_FILE "initiation.txt"
-#define CESSATION_DATA_FILE "cessation.txt"
-#define DEFAULT_MORTALITY_DATA_FILE "ocm-excl-lung-cancer.txt"
-#define CPD_INTENSITY_PROBS "cpd.txt"
-#define CPD_DATA_FILE "cpd.txt"
+// other-cause mortality excluding lung cancer; users may point configs at all-cause (acm.csv) instead.
+#define INITIATION_DATA_FILE "initiation.csv"
+#define CESSATION_DATA_FILE "cessation.csv"
+#define DEFAULT_MORTALITY_DATA_FILE "ocm-excl-lung-cancer.csv"
+#define CPD_INTENSITY_PROBS "cpd.csv"
+#define CPD_DATA_FILE "cpd.csv"
 
 #define MT_INIT_SEED_DEFAULT "1898587603"
 #define MT_CESS_SEED_DEFAULT "1468371936"

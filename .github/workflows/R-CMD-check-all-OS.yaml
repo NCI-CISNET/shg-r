@@ -9,7 +9,10 @@ on:
 
 name: R CMD check all OS
 
-permissions: read-all
+# Narrow scopes so reusable workflow_call works when the caller uses contents:write (e.g. draft releases).
+permissions:
+  contents: read
+  actions: write
 
 jobs:
   R-CMD-check-windows:
