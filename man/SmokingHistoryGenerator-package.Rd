@@ -9,7 +9,7 @@
 \packageDescription{SmokingHistoryGenerator}
 }
 \details{
-Details sample
+Default calibrated inputs are installed as flat CSV files under \code{system.file("extdata", package = "SmokingHistoryGenerator")}: \code{initiation.csv}, \code{cessation.csv}, \code{cpd.csv}, and (for mortality) either \code{acm.csv} or \code{ocm-excl-lung-cancer.csv}; set \code{mortality_filename} accordingly. Wide legacy \code{.txt} tables remain supported. A minimal subset is bundled for CRAN; the full NHIS-style tables are distributed separately (Zenodo; see package \code{README.md}).
 }
 \author{
 \packageAuthor{SmokingHistoryGenerator}

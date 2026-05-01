@@ -20,8 +20,8 @@ authors:
   given-names: Martin
 - family-names: Gaenko
   given-names: Alexander
-repository-code: https://github.com/NCI-CISNET/shg-rcpp
-url: https://github.com/NCI-CISNET/shg-rcpp
+repository-code: https://github.com/NCI-CISNET/shg-r
+url: https://github.com/NCI-CISNET/shg-r
 date-released: '2025-02-05'
 contact:
 - family-names: Clarke

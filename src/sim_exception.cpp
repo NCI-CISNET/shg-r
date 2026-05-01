@@ -14,7 +14,7 @@
 #include "sim_exception.h"
 #include <iostream>
 #include <cstring>
-#ifdef IS_RCPP
+#ifdef IS_R
 #include <Rcpp.h>
 // [[Rcpp::depends(Rcpp)]]
 #endif
@@ -22,7 +22,7 @@
 //------------------------------------------------------------------------------
 SimException::SimException(const char* sErrorCallPath, const char* sThrownError, eExceptType eType)
 {
-   #ifdef IS_RCPP
+   #ifdef IS_R
       Rcpp::warning("SimException: " + std::string(sErrorCallPath) + ": " + std::string(sThrownError));
    #endif
    strcpy(gsError,sThrownError);

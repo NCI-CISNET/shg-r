@@ -15,14 +15,14 @@ results1 <- benchmark(
   R_STREAM_SINGLE_SEQUENTIAL = {
     shg <- new(SHGInterface)
     shg$number_of_segments <- 1
-    shg$run_multi_threaded <- FALSE
+    shg$num_threads <- 1
     shg$rng_strategy <- "RngStream"
     STREAM_SIM_SEQUENTIAL <- shg$runSim(N, 0, 0, 1940)
   },
   R_STREAM_SINGLE_PARALLEL = {
     shg <- new(SHGInterface)
     shg$number_of_segments <- cores
-    shg$run_multi_threaded <- TRUE
+    shg$num_threads <- -1
     shg$rng_strategy <- "RngStream"
     STREAM_SIM <- shg$runSim(N, 0, 0, 1940)
   },
@@ -31,7 +31,7 @@ results1 <- benchmark(
     shg_list <- lapply(1:cores, function(x) {
       shg <- new(SHGInterface) # Class
       shg$number_of_segments <- 1
-      shg$run_multi_threaded <- FALSE
+      shg$num_threads <- 1
       shg$rng_strategy <- "RngStream"
       return(shg)
     })

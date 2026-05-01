@@ -12,11 +12,11 @@ SHGInterface Class
 \section{Fields}{
 
 \describe{
-\item{\code{number_of_segments}}{Number of segments to use for single or multi-threaded simulation (default is 1)}
+\item{\code{number_of_segments}}{Number of segments to use for simulation. Use -1 for auto-calculation (default), 1 for single segment, or N > 1 for explicit segment count. Auto-calculation uses: min(cores * 10, repeat / 1000). Note: MersenneTwister RNG is restricted to 1 segment.}
 
-\item{\code{run_multi_threaded}}{True if the simulation should be run asynchonously; False otherwise (default is False)}
+\item{\code{num_threads}}{Thread count: -1 = auto (all cores, multi-threaded), 1 = single-threaded, N = use N threads. Default: -1. Note: MersenneTwister RNG requires num_threads = 1.}
 
-\item{\code{rng_strategy}}{'RngStream' for MRG32k3a (default) or 'MersenneTwister' for Mersenne Twister RNG. 'RngStream' is recommended for reproducibility especially with multi-threaded simulations.}
+\item{\code{rng_strategy}}{'RngStream' for MRG32k3a (default) or 'MersenneTwister' for Mersenne Twister RNG. 'RngStream' is recommended for reproducibility especially with multi-threaded simulations. Note: MersenneTwister RNG is restricted to single-segment, non-parallel execution due to limitations in maintaining IID properties across segments.}
 
 \item{\code{input_data_folder}}{Set or get the base folder for input data files}
 
@@ -24,10 +24,16 @@ SHGInterface Class
 
 \item{\code{cessation_filename}}{Set or get the cessation filename}
 
-\item{\code{lifetable_filename}}{Set or get the lifetable filename}
+\item{\code{lifetable_filename}}{Set or get the mortality input filename (legacy name; same as mortality_filename)}
+
+\item{\code{mortality_filename}}{Set or get the mortality probabilities filename (e.g. acm.csv or ocm-excl-lung-cancer.csv)}
 
 \item{\code{cpd_filename}}{Set or get the cpd filename}
 
 \item{\code{immediate_cessation_year}}{Set or get Immediate Cessation Year; If 0, no immediate cessation}
+
+\item{\code{mt_seeds}}{Set or get MersenneTwister seeds. Must be a numeric vector of exactly 4 values (one for each stream: initiation, cessation, life table, individual). If not set, default seeds are used. Only used when rng_strategy is "MersenneTwister".}
+
+\item{\code{rngstream_seed}}{Set or get RngStream seed. Must be a numeric vector of exactly 6 values (a single seed vector that generates 4 substreams, one for each stream: initiation, cessation, life table, individual). If not set, default seed is used. Only used when rng_strategy is "RngStream".}
 }}
 

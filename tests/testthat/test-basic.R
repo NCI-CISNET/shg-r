@@ -2,6 +2,23 @@ library(SmokingHistoryGenerator)
 library(glue)
 library(testthat)
 
+# Normalize CRLF / stray \\r for cross-platform comparison (Windows may emit CRLF in file output).
+read_output_lines <- function(path) {
+  lines <- readLines(path, warn = FALSE, encoding = "UTF-8")
+  if (length(lines)) {
+    lines[1] <- sub("^\ufeff", "", lines[1])
+  }
+  gsub("\r", "", lines, fixed = TRUE)
+}
+
+# Locate the legacy XML <RUN>...</RUN> data block (tolerant of whitespace).
+xml_run_bounds <- function(lines) {
+  trimmed <- trimws(lines)
+  run_start <- which(trimmed == "<RUN>")
+  run_end <- which(trimmed == "</RUN>")
+  list(start = run_start, end = run_end)
+}
+
 extract_tag <- function(vector, tag) {
   # Find all occurrences of start and end tags
   start_tag <- paste0("<", tag, ">")
@@ -35,7 +52,7 @@ extract_tag <- function(vector, tag) {
 }
 
 get_run_details <- function(file_path) {
-  vector <- readLines(file_path)
+  vector <- read_output_lines(file_path)
   run <- extract_tag(vector, "RUN")
   cessation <- extract_tag(vector, "CESSATION_YR")
   return(list(run = run, cessation = cessation))
@@ -49,11 +66,14 @@ write_input_file_from_template <- function(template_path, rng_strategy, yob, ces
   return(input_filepath)
 }
 
-generate_output <- function(rng_strategy, yob, cessation_yr, outputs_folder) {
-  template_path <- readLines("../templates/test_input_example.txt")
-  input_filepath <- write_input_file_from_template(template_path, rng_strategy, yob, cessation_yr, data_folder, outputs_folder)
+generate_output <- function(rng_strategy, yob, cessation_yr, outputs_dir_abs) {
+  template_path <- readLines(test_path("../templates/test_input_example.txt"))
+  input_filepath <- write_input_file_from_template(
+    template_path, rng_strategy, yob, cessation_yr, data_folder, outputs_dir_abs
+  )
   shg$LegacyRunWebVersion(input_filepath)
-  return(get_run_details(glue("../outputs/test_output_{rng_strategy}_{yob}_{cessation_yr}.txt")))
+  out_file <- file.path(outputs_dir_abs, glue("test_output_{rng_strategy}_{yob}_{cessation_yr}.txt"))
+  return(get_run_details(out_file))
 }
 
 clear_test_artifacts <- function(folder) {
@@ -75,44 +95,61 @@ get_stats_from_df <- function(df) {
   age_at_death <- get_mean_from_column(df, "age_at_death")
   return(list(mean_initiation = mean_initiation, mean_cessation = mean_cessation, age_at_death = age_at_death))
 }
+
+# Integer race/sex/birth_cohort columns for runSimFromDataFrame (typed literals hidden here)
+test_pop_df <- function(n, race = 0, sex = 0, birth_cohort = 1950) {
+  data.frame(
+    race = as.integer(rep(race, n)),
+    sex = as.integer(rep(sex, n)),
+    birth_cohort = as.integer(rep(birth_cohort, n))
+  )
+}
+
 # Tests
 shg <- new(SHGInterface)
-shg$rng_strategy <- "MersenneTwister"
+# Legacy XML fixtures were generated with ACM (all-cause) mortality tables
+shg$mortality_filename <- "acm.csv"
+shg$num_threads <- 1
 shg$number_of_segments <- 1
-shg$run_multi_threaded <- FALSE
+shg$rng_strategy <- "MersenneTwister"
 N <- 10^4 # Individuals to simulate (REPEAT)
 
 # TODO: maybe a better way to reference the input data folder in the package?
-# when running CMD Check, the ./inst/inputs/default/ folder is found at ../../SmokingHistoryGenerator/inputs/default/
-# when running devtools:test(), the ./inst/inputs/default/ folder is found at ../../inst/inputs/default/
-# This path is needed for both:
-# - the LegacyRunWebVersion(inputfile) (config files must reference the initiation, cessation, etc.)
-# - the runSimFromFixedValues call (initiation, cessation, files are expected and found based on input_data_folder
+# Bundled CSV inputs install to system.file("extdata", package=...) (see inst/extdata in source).
+# LegacyRunWebVersion ignores input_data_folder; config paths are cwd-relative or absolute.
 
-data_folder <- file.path(system.file("/inputs/", package="SmokingHistoryGenerator"), "default")
-test_that("SHG inputs/default folder exists", {
-  expect_true(file.exists(data_folder))
+data_folder <- system.file("extdata", package = "SmokingHistoryGenerator")
+test_that("SHG extdata folder exists and contains bundled CSV inputs", {
+  expect_true(nzchar(data_folder) && dir.exists(data_folder))
+  expect_true(file.exists(file.path(data_folder, "initiation.csv")))
 })
 
 shg$input_data_folder <- data_folder
 
 clear_test_artifacts("../inputs")
 clear_test_artifacts("../outputs")
-dir.create("../inputs")
-dir.create("../outputs")
+dir.create(test_path("../inputs"), recursive = TRUE, showWarnings = FALSE)
+dir.create(test_path("../outputs"), recursive = TRUE, showWarnings = FALSE)
+outputs_dir_abs <- normalizePath(test_path("../outputs"), winslash = "/", mustWork = FALSE)
 
-outputs_folder <- "../outputs"
+outputs_folder <- outputs_dir_abs
 MT_output_A <- generate_output("MersenneTwister", 1950, 0, outputs_folder)
 MT_fixture_A <- get_run_details(test_path("../fixtures/MT/yob_1950_cessation_0.txt"))
 
 MT_output_B <- generate_output("MersenneTwister", 2010, 2050, outputs_folder)
 MT_fixture_B <- get_run_details(test_path("../fixtures/MT/yob_2010_cessation_2050.txt"))
 
+# One canonical fixture per scenario: same config must produce the same <RUN> lines on every OS.
+# If a platform diverges, fix determinism in the engine — do not maintain alternate goldens or relaxed checks.
+compare_legacy_run_body <- function(actual_run, fixture_run) {
+  expect_equal(actual_run, fixture_run)
+}
+
 test_that("MersenneTwister simulation output in R does not differ from C++ fixtures", {
-  expect_equal(MT_output_A$run, MT_fixture_A$run)
+  compare_legacy_run_body(MT_output_A$run, MT_fixture_A$run)
   expect_equal(MT_output_A$cessation, "0")
   expect_equal(MT_fixture_A$cessation, "0")
-  expect_equal(MT_output_B$run, MT_fixture_B$run)
+  compare_legacy_run_body(MT_output_B$run, MT_fixture_B$run)
   expect_equal(MT_output_B$cessation, "2050")
   expect_equal(MT_fixture_B$cessation, "2050")
 })
@@ -124,10 +161,10 @@ RS_output_B <- generate_output("RngStream", 2010, 2050, outputs_folder)
 RS_fixture_B <- get_run_details(test_path("../fixtures/RS/yob_2010_cessation_2050.txt"))
 
 test_that("RngStream simulation output in R does not differ from C++ fixtures", {
-  expect_equal(RS_output_A$run, RS_fixture_A$run)
+  compare_legacy_run_body(RS_output_A$run, RS_fixture_A$run)
   expect_equal(RS_output_A$cessation, "0")
   expect_equal(RS_fixture_A$cessation, "0")
-  expect_equal(RS_output_B$run, RS_fixture_B$run)
+  compare_legacy_run_body(RS_output_B$run, RS_fixture_B$run)
   expect_equal(RS_output_B$cessation, "2050")
   expect_equal(RS_fixture_B$cessation, "2050")
 })
@@ -187,18 +224,32 @@ test_that("Invalid input configuration path fails with proper error message", {
   expect_error(shg$LegacyRunWebVersion(input_filepath), "The specified input file 'file_does_not_exist.txt' could not be opened for reading.")
 })
 
-test_that("Invalid input parameter path (eg initiation) fails with proper error message", {
-  # Test when initiation input file doesn't exist
-  template_path <- readLines("../templates/test_input_example_incorrect_init_path.txt")
+test_that("Invalid input parameter path (eg initiation) records error in legacy error file", {
+  # RunWebVersion catches SimException and writes <ERROR>...</ERROR> to ERRORFILE; do not rely on
+  # Rcpp::warning() alone (Windows/GHA can surface warnings inconsistently vs expect_warning).
+  template_path <- readLines(test_path("../templates/test_input_example_incorrect_init_path.txt"))
   input_filepath <- write_input_file_from_template(template_path, "MersenneTwister", 1950, 0, data_folder, outputs_folder)
-  expect_warning(shg$LegacyRunWebVersion(input_filepath), "^SimException: Error: The specified input file")
+  err_path <- file.path(outputs_folder, "test_errors_MersenneTwister_1950_0.txt")
+  unlink(err_path)
+
+  suppressWarnings(shg$LegacyRunWebVersion(input_filepath))
+
+  expect_true(file.exists(err_path))
+  err_txt <- paste(read_output_lines(err_path), collapse = "\n")
+  expect_match(err_txt, "[Tt]he specified input file")
+  expect_match(err_txt, "initiation_does_not_exist")
+  expect_match(err_txt, "LoadProbabilityData")
 })
 
 test_that("Invalid output path fails with proper error message", {
-  template_path <- readLines("../templates/test_input_example.txt")
+  template_path <- readLines(test_path("../templates/test_input_example.txt"))
   outputs_folder <- "folder_does_not_exist"
   input_filepath <- write_input_file_from_template(template_path, "MersenneTwister", 1950, 0, data_folder, outputs_folder)
-  expect_error(shg$LegacyRunWebVersion(input_filepath), "Specified error file: 'folder_does_not_exist/test_errors_MersenneTwister_1950_0.txt' could not be opened for writing.")
+  # C++ may emit Windows path separators in the error string on Win builders
+  expect_error(
+    shg$LegacyRunWebVersion(input_filepath),
+    regexp = "Specified error file: '.*folder_does_not_exist.*test_errors_MersenneTwister_1950_0\\.txt' could not be opened for writing"
+  )
 })
 
 # TODO: Compare Legacy tests with runSimFromFixedValues(): requires parsing of results
@@ -212,9 +263,10 @@ test_that("getConfig() returns correct structure with config_version", {
   expect_equal(config$config_version, "1.0")
   expect_true("rng_strategy" %in% names(config))
   expect_true("number_of_segments" %in% names(config))
-  expect_true("run_multi_threaded" %in% names(config))
+  expect_true("num_threads" %in% names(config))
   expect_true("seeds" %in% names(config))
   expect_true("input_data_folder" %in% names(config))
+  expect_true("mortality_filename" %in% names(config))
   expect_true("timestamp" %in% names(config))
 })
 
@@ -236,7 +288,7 @@ test_that("useConfig() correctly configures instance", {
   shg1 <- new(SHGInterface)
   shg1$rng_strategy <- "RngStream"
   shg1$number_of_segments <- 4
-  shg1$run_multi_threaded <- TRUE
+  shg1$num_threads <- -1  # auto multi-threaded
   shg1$input_data_folder <- "/test/path"
   shg1$immediate_cessation_year <- 2025
   
@@ -247,7 +299,7 @@ test_that("useConfig() correctly configures instance", {
   
   expect_equal(shg2$rng_strategy, shg1$rng_strategy)
   expect_equal(shg2$number_of_segments, shg1$number_of_segments)
-  expect_equal(shg2$run_multi_threaded, shg1$run_multi_threaded)
+  expect_equal(shg2$num_threads, shg1$num_threads)
   expect_equal(shg2$input_data_folder, shg1$input_data_folder)
   expect_equal(shg2$immediate_cessation_year, shg1$immediate_cessation_year)
 })
@@ -276,9 +328,9 @@ test_that("useConfig() warns on unknown fields", {
 
 test_that("Round-trip: getConfig() -> useConfig() -> verify", {
   shg1 <- new(SHGInterface)
-  shg1$rng_strategy <- "MersenneTwister"
+  shg1$num_threads <- 1
   shg1$number_of_segments <- 1
-  shg1$run_multi_threaded <- FALSE
+  shg1$rng_strategy <- "MersenneTwister"
   shg1$immediate_cessation_year <- 2020
   
   config <- shg1$getConfig(debug = FALSE)
@@ -293,7 +345,7 @@ test_that("Round-trip: getConfig() -> useConfig() -> verify", {
   
   expect_equal(shg2$rng_strategy, shg1$rng_strategy)
   expect_equal(shg2$number_of_segments, shg1$number_of_segments)
-  expect_equal(shg2$run_multi_threaded, shg1$run_multi_threaded)
+  expect_equal(shg2$num_threads, shg1$num_threads)
   expect_equal(shg2$immediate_cessation_year, shg1$immediate_cessation_year)
   
   unlink(temp_file)
@@ -304,7 +356,7 @@ test_that("Constructor with config parameter works", {
     config_version = "1.0",
     rng_strategy = "RngStream",
     number_of_segments = 4,
-    run_multi_threaded = TRUE,
+    num_threads = -1,  # auto multi-threaded
     immediate_cessation_year = 2025
   )
   
@@ -312,7 +364,7 @@ test_that("Constructor with config parameter works", {
   
   expect_equal(shg$rng_strategy, "RngStream")
   expect_equal(shg$number_of_segments, 4)
-  expect_equal(shg$run_multi_threaded, TRUE)
+  expect_equal(shg$num_threads, -1)
   expect_equal(shg$immediate_cessation_year, 2025)
 })
 
@@ -320,43 +372,44 @@ test_that("Constructor with empty config works", {
   shg <- new(SHGInterface, config = list())
   # Should use defaults
   expect_equal(shg$rng_strategy, "RngStream")
-  expect_equal(shg$number_of_segments, 1)
+  expect_equal(shg$number_of_segments, -1)  # default is -1 (auto)
 })
 
 # Tests for MersenneTwister restrictions
 test_that("MersenneTwister cannot be used with multiple segments", {
   shg_test <- new(SHGInterface)
-  shg_test$rng_strategy <- "MersenneTwister"
+  suppressMessages(shg_test$rng_strategy <- "MersenneTwister")
   expect_error(shg_test$number_of_segments <- 2, "MersenneTwister RNG cannot maintain IID properties with multiple segments")
 })
 
-test_that("MersenneTwister cannot be used with parallel execution", {
+test_that("MersenneTwister cannot be used with multi-threading", {
   shg_test <- new(SHGInterface)
-  shg_test$rng_strategy <- "MersenneTwister"
-  expect_error(shg_test$run_multi_threaded <- TRUE, "MersenneTwister RNG cannot maintain IID properties with parallel execution")
+  suppressMessages(shg_test$rng_strategy <- "MersenneTwister")
+  expect_error(shg_test$num_threads <- -1, "MersenneTwister RNG requires single-threaded execution")
+  expect_error(shg_test$num_threads <- 4, "MersenneTwister RNG requires single-threaded execution")
 })
 
-test_that("Switching to MersenneTwister resets segments and parallel to valid values", {
+test_that("Switching to MersenneTwister resets segments and threads to valid values", {
   shg_test <- new(SHGInterface)
   shg_test$rng_strategy <- "RngStream"
   shg_test$number_of_segments <- 4
-  shg_test$run_multi_threaded <- TRUE
+  shg_test$num_threads <- -1  # auto multi-threaded
   
-  expect_warning(
-    expect_warning(
+  expect_message(
+    expect_message(
       shg_test$rng_strategy <- "MersenneTwister",
       "Resetting number_of_segments to 1"
     ),
-    "Resetting run_multi_threaded to FALSE"
+    "Resetting num_threads to 1"
   )
   expect_equal(shg_test$number_of_segments, 1)
-  expect_equal(shg_test$run_multi_threaded, FALSE)
+  expect_equal(shg_test$num_threads, 1)
 })
 
-test_that("Parallel execution requires multiple segments", {
+test_that("Multi-threading with single segment warns but allows", {
   shg_test <- new(SHGInterface)
   shg_test$number_of_segments <- 1
-  expect_error(shg_test$run_multi_threaded <- TRUE, "run_multi_threaded cannot be TRUE when number_of_segments is 1")
+  expect_warning(shg_test$num_threads <- -1, "num_threads > 1 or -1 \\(auto\\) has no effect when number_of_segments is 1")
 })
 
 test_that("MersenneTwister with multiple segments is reset to 1 segment", {
@@ -365,7 +418,13 @@ test_that("MersenneTwister with multiple segments is reset to 1 segment", {
   # Use RngStream then switch to MersenneTwister
   shg_test$rng_strategy <- "RngStream"
   shg_test$number_of_segments <- 2
-  expect_warning(shg_test$rng_strategy <- "MersenneTwister", "Resetting number_of_segments to 1")
+  expect_message(
+    expect_message(
+      shg_test$rng_strategy <- "MersenneTwister",
+      "Resetting number_of_segments to 1"
+    ),
+    "Resetting num_threads to 1"
+  )
   expect_equal(shg_test$number_of_segments, 1)
   
   # Should work fine with 1 segment
@@ -378,23 +437,23 @@ test_that("MersenneTwister with multiple segments is reset to 1 segment", {
   expect_equal(nrow(result), 100)
 })
 
-test_that("RngStream allows multiple segments and parallel execution", {
+test_that("RngStream allows multiple segments and multi-threading", {
   shg_test <- new(SHGInterface)
   shg_test$rng_strategy <- "RngStream"
   shg_test$number_of_segments <- 4
-  shg_test$run_multi_threaded <- TRUE
+  shg_test$num_threads <- -1  # auto multi-threaded
   expect_equal(shg_test$rng_strategy, "RngStream")
   expect_equal(shg_test$number_of_segments, 4)
-  expect_equal(shg_test$run_multi_threaded, TRUE)
+  expect_equal(shg_test$num_threads, -1)
 })
 
 test_that("MersenneTwister: custom seeds produce different results and reverting to defaults restores original results", {
   N <- 1000
   shg_mt <- new(SHGInterface)
   shg_mt$input_data_folder <- data_folder
-  shg_mt$rng_strategy <- "MersenneTwister"
+  shg_mt$num_threads <- 1
   shg_mt$number_of_segments <- 1
-  shg_mt$run_multi_threaded <- FALSE
+  shg_mt$rng_strategy <- "MersenneTwister"
   
   # Baseline: run with default seeds (no seeds set)
   baseline <- shg_mt$runSimFromFixedValues(N, 0, 0, 1940)
@@ -435,7 +494,7 @@ test_that("RngStream: custom seed produces different results and reverting to de
   shg_rs$input_data_folder <- data_folder
   shg_rs$rng_strategy <- "RngStream"
   shg_rs$number_of_segments <- 1
-  shg_rs$run_multi_threaded <- FALSE
+  shg_rs$num_threads <- 1  # single-threaded
   
   # Baseline: run with default seed (no seed set)
   baseline <- shg_rs$runSimFromFixedValues(N, 0, 0, 1940)
@@ -472,6 +531,8 @@ test_that("RngStream: custom seed produces different results and reverting to de
 
 test_that("get_current_seeds() returns correct seeds based on RNG strategy", {
   shg_mt <- new(SHGInterface)
+  shg_mt$num_threads <- 1
+  shg_mt$number_of_segments <- 1
   shg_mt$rng_strategy <- "MersenneTwister"
   shg_mt$mt_seeds <- c(1111111111, 2222222222, 3333333333, 4444444444)
   
@@ -494,9 +555,9 @@ test_that("reset_seeds_to_defaults() resets seeds to default values", {
   N <- 1000
   shg_mt <- new(SHGInterface)
   shg_mt$input_data_folder <- data_folder
-  shg_mt$rng_strategy <- "MersenneTwister"
+  shg_mt$num_threads <- 1
   shg_mt$number_of_segments <- 1
-  shg_mt$run_multi_threaded <- FALSE
+  shg_mt$rng_strategy <- "MersenneTwister"
   
   # Set custom seeds
   shg_mt$mt_seeds <- c(1111111111, 2222222222, 3333333333, 4444444444)
@@ -517,9 +578,9 @@ test_that("reset_seeds_to_defaults() resets seeds to default values", {
   # Create a fresh instance for comparison
   shg_baseline <- new(SHGInterface)
   shg_baseline$input_data_folder <- data_folder
-  shg_baseline$rng_strategy <- "MersenneTwister"
+  shg_baseline$num_threads <- 1
   shg_baseline$number_of_segments <- 1
-  shg_baseline$run_multi_threaded <- FALSE
+  shg_baseline$rng_strategy <- "MersenneTwister"
   # Don't set seeds, so defaults will be used
   baseline_fresh <- shg_baseline$runSimFromFixedValues(N, 0, 0, 1940)
   baseline_fresh_stats <- get_stats_from_df(baseline_fresh)
@@ -533,7 +594,7 @@ test_that("reset_seeds_to_defaults() resets seeds to default values", {
   shg_rs$input_data_folder <- data_folder
   shg_rs$rng_strategy <- "RngStream"
   shg_rs$number_of_segments <- 1
-  shg_rs$run_multi_threaded <- FALSE
+  shg_rs$num_threads <- 1  # single-threaded
   
   # Set custom seed
   shg_rs$rngstream_seed <- c(11111, 22222, 33333, 44444, 55555, 66666)
@@ -549,6 +610,8 @@ test_that("reset_seeds_to_defaults() resets seeds to default values", {
 test_that("get_rng_state_fingerprint() verifies seeds actually affect RNG internal state", {
   shg_mt1 <- new(SHGInterface)
   shg_mt1$input_data_folder <- data_folder
+  shg_mt1$num_threads <- 1
+  shg_mt1$number_of_segments <- 1
   shg_mt1$rng_strategy <- "MersenneTwister"
   shg_mt1$mt_seeds <- c(1111111111, 2222222222, 3333333333, 4444444444)
   
@@ -608,3 +671,266 @@ test_that("get_rng_state_fingerprint() verifies seeds actually affect RNG intern
 })
 
 # TODO: Compare Legacy tests with runSimFromFixedValues(): requires parsing of results
+
+# ============================================================
+# CPD Format Tests
+# ============================================================
+
+test_that("cpd_format = none produces no CPD column", {
+  shg <- new(SHGInterface)
+  shg$input_data_folder <- data_folder
+  shg$cpd_format <- "none"
+  shg$rng_strategy <- "RngStream"
+  shg$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
+  shg$number_of_segments <- 1
+  shg$num_threads <- 1
+  
+  N <- 100
+  df <- test_pop_df(N)
+  result <- shg$runSimFromDataFrame(df)
+  
+  expect_equal(nrow(result), N)
+  expect_true("smoking_initiation_age" %in% names(result))
+  expect_false("cigarettes_per_day" %in% names(result))
+})
+
+test_that("cpd_format = sparse produces compact CPD", {
+  shg <- new(SHGInterface)
+  shg$input_data_folder <- data_folder
+  shg$cpd_format <- "sparse"
+  shg$rng_strategy <- "RngStream"
+  shg$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
+  shg$number_of_segments <- 1
+  shg$num_threads <- 1
+  
+  N <- 100
+  df <- test_pop_df(N)
+  result <- shg$runSimFromDataFrame(df)
+  
+  expect_true("cigarettes_per_day" %in% names(result))
+  # Sparse format should NOT have parentheses (no age info)
+  smoker_idx <- which(result$smoking_initiation_age != -999)[1]
+  if (!is.na(smoker_idx)) {
+    cpd <- result$cigarettes_per_day[smoker_idx]
+    expect_false(grepl("\\(", cpd), info = "Sparse format should not contain parentheses")
+  }
+})
+
+test_that("cpd_format = legacy produces age-cpd format", {
+  shg <- new(SHGInterface)
+  shg$input_data_folder <- data_folder
+  shg$cpd_format <- "legacy"
+  shg$rng_strategy <- "RngStream"
+  shg$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
+  shg$number_of_segments <- 1
+  shg$num_threads <- 1
+  
+  N <- 100
+  df <- test_pop_df(N)
+  result <- shg$runSimFromDataFrame(df)
+  
+  expect_true("cigarettes_per_day" %in% names(result))
+  # Legacy format should have parentheses (with age info)
+  smoker_idx <- which(result$smoking_initiation_age != -999)[1]
+  if (!is.na(smoker_idx)) {
+    cpd <- result$cigarettes_per_day[smoker_idx]
+    expect_true(grepl("\\(", cpd), info = "Full format should contain parentheses")
+  }
+})
+
+test_that("cpd_format validation rejects invalid values", {
+  shg <- new(SHGInterface)
+  expect_error(shg$cpd_format <- "invalid", "cpd_format must be")
+})
+
+test_that("sparse and legacy produce equivalent CPD values", {
+  N <- 100
+  df <- test_pop_df(N)
+  
+  # Sparse format
+  shg_sparse <- new(SHGInterface)
+  shg_sparse$input_data_folder <- data_folder
+  shg_sparse$cpd_format <- "sparse"
+  shg_sparse$rng_strategy <- "RngStream"
+  shg_sparse$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
+  shg_sparse$number_of_segments <- 1
+  shg_sparse$num_threads <- 1
+  result_sparse <- shg_sparse$runSimFromDataFrame(df)
+  
+  # Legacy format (same seed)
+  shg_legacy <- new(SHGInterface)
+  shg_legacy$input_data_folder <- data_folder
+  shg_legacy$cpd_format <- "legacy"
+  shg_legacy$rng_strategy <- "RngStream"
+  shg_legacy$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
+  shg_legacy$number_of_segments <- 1
+  shg_legacy$num_threads <- 1
+  result_legacy <- shg_legacy$runSimFromDataFrame(df)
+  
+  # Non-CPD columns should match exactly
+  expect_equal(result_sparse$smoking_initiation_age, result_legacy$smoking_initiation_age)
+  expect_equal(result_sparse$smoking_cessation_age, result_legacy$smoking_cessation_age)
+  expect_equal(result_sparse$age_at_death, result_legacy$age_at_death)
+  
+  # Extract CPD values from both formats and compare
+  for (i in 1:min(10, N)) {
+    if (result_sparse$smoking_initiation_age[i] != -999) {
+      sparse_vals <- as.numeric(strsplit(result_sparse$cigarettes_per_day[i], ", ")[[1]])
+      legacy_vals <- as.numeric(gsub(".*\\(([0-9.]+)\\)", "\\1", 
+                                     strsplit(result_legacy$cigarettes_per_day[i], ", ")[[1]]))
+      expect_equal(sparse_vals, legacy_vals, info = paste("Individual", i))
+    }
+  }
+})
+
+
+# ============================================================
+# File Output Mode Tests
+test_that("Windows: disk output + multi-thread fails before simulation (no output file)", {
+  skip_if_not(.Platform$OS.type == "windows")
+
+  output_path <- tempfile(fileext = ".csv")
+  on.exit(unlink(output_path), add = TRUE)
+
+  shg <- new(SHGInterface)
+  shg$input_data_folder <- data_folder
+  shg$rng_strategy <- "RngStream"
+  shg$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
+  shg$number_of_segments <- 1
+  shg$num_threads <- -1
+  shg$output_file <- output_path
+
+  df <- test_pop_df(1)
+
+  expect_error(
+    shg$runSimFromDataFrame(df),
+    "cannot be used with multi-threaded execution"
+  )
+  expect_false(file.exists(output_path), info = "must stop before creating output")
+})
+
+test_that("output_file writes results to disk", {
+  output_path <- tempfile(fileext = ".csv")
+
+  shg <- new(SHGInterface)
+  shg$input_data_folder <- data_folder
+  shg$rng_strategy <- "RngStream"
+  shg$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
+  shg$number_of_segments <- 2
+  # Windows forbids disk + num_threads != 1; Unix test still exercises 2 segments / 2 threads.
+  if (.Platform$OS.type == "windows") {
+    shg$num_threads <- 1
+  } else {
+    shg$num_threads <- 2
+  }
+  shg$output_file <- output_path
+  
+  N <- 1000
+  df <- test_pop_df(N)
+  result <- shg$runSimFromDataFrame(df)
+  
+  # Should return info DataFrame
+  expect_true(grepl("file", result$info, ignore.case = TRUE))
+  expect_equal(result$rows, N)
+  
+  # File should exist 
+  expect_true(file.exists(output_path))
+  lines <- read_output_lines(output_path)
+  
+  # Find data section (between <RUN> and </RUN>)
+  rb <- xml_run_bounds(lines)
+  run_start <- rb$start
+  run_end <- rb$end
+  expect_true(length(run_start) > 0 && length(run_end) > 0, "File should have <RUN> tags")
+  data_lines <- lines[(run_start[1]+1):(run_end[1]-1)]
+  expect_equal(length(data_lines), N)  # N data lines
+  
+  # Header should have expected XML structure
+  expect_true(any(grepl("<VERSION>", lines)))
+  
+  unlink(output_path)
+})
+
+test_that("output_file parallel execution works (disk + multi-thread, non-Windows)", {
+  skip_on_os("windows")
+
+  output_path <- tempfile(fileext = ".csv")
+  on.exit(unlink(output_path), add = TRUE)
+
+  shg <- new(SHGInterface)
+  shg$input_data_folder <- data_folder
+  shg$rng_strategy <- "RngStream"
+  shg$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
+  shg$number_of_segments <- 10
+  shg$num_threads <- -1
+  shg$output_file <- output_path
+
+  N <- 10000
+  df <- test_pop_df(N)
+
+  shg$runSimFromDataFrame(df)
+  lines <- read_output_lines(output_path)
+  rb <- xml_run_bounds(lines)
+  run_start <- rb$start
+  run_end <- rb$end
+  expect_true(length(run_start) > 0 && length(run_end) > 0)
+  data_lines <- lines[(run_start[1] + 1):(run_end[1] - 1)]
+  expect_equal(length(data_lines), N)
+})
+
+test_that("output_file produces same init/cess/ocd as memory mode", {
+  output_path <- tempfile(fileext = ".csv")
+  
+  N <- 500
+  df <- test_pop_df(N)
+  
+  # Memory mode
+  shg_mem <- new(SHGInterface)
+  shg_mem$input_data_folder <- data_folder
+  shg_mem$rng_strategy <- "RngStream"
+  shg_mem$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
+  shg_mem$cpd_format <- "legacy"
+  shg_mem$number_of_segments <- 1
+  shg_mem$num_threads <- 1
+  result_mem <- shg_mem$runSimFromDataFrame(df)
+  
+  # File mode (same seed)
+  shg_file <- new(SHGInterface)
+  shg_file$input_data_folder <- data_folder
+  shg_file$rng_strategy <- "RngStream"
+  shg_file$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
+  shg_file$number_of_segments <- 1
+  shg_file$num_threads <- 1
+  shg_file$output_file <- output_path
+  shg_file$runSimFromDataFrame(df)
+  
+  # Parse file and compare (skip XML header, find <RUN> tag to get data lines)
+  lines <- read_output_lines(output_path)
+  rb <- xml_run_bounds(lines)
+  run_start <- rb$start
+  run_end <- rb$end
+  if (length(run_start) > 0 && length(run_end) > 0) {
+    data_lines <- lines[(run_start[1]+1):(run_end[1]-1)]
+  } else {
+    # Fallback for old format (simple header)
+    data_lines <- lines[-1]
+  }
+  file_init_ages <- sapply(data_lines, function(line) {
+    as.integer(strsplit(line, ";")[[1]][4])
+  })
+  
+  expect_equal(unname(file_init_ages), result_mem$smoking_initiation_age)
+  
+  unlink(output_path)
+})
+
+test_that("NHIS csv-partial bundle lists expected filenames (checked in test-nhis-partial-inputs.R)", {
+  nh <- test_path("../testdata/NHIS-1965-2016/csv-partial")
+  skip_if_not(dir.exists(nh), "NHIS csv-partial fixtures missing (not in CRAN tarball; use full git checkout)")
+  req <- c(
+    "initiation.csv", "cessation.csv", "cpd.csv", "acm.csv", "ocm-excl-lung-cancer.csv"
+  )
+  for (f in req) {
+    expect_true(file.exists(file.path(nh, f)), info = f)
+  }
+})

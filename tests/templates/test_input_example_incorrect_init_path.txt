@@ -13,10 +13,13 @@ YOB={yob}
 CESSATION_YR={cessation_yr}
 REPEAT=1000
 
-INIT_PROB={data_folder}/lbc_smokehist_initiation_does_not_exist.txt
-CESS_PROB={data_folder}/lbc_smokehist_cessation.txt
-OCD_PROB={data_folder}/lbc_smokehist_ac_mortality.txt
-CPD_DATA={data_folder}/lbc_smokehist_cpd.txt
+NUM_SEGMENTS=1
+NUM_THREADS=1
+
+INIT_PROB={data_folder}/initiation_does_not_exist.csv
+CESS_PROB={data_folder}/cessation.csv
+MORTALITY_PROB={data_folder}/acm.csv
+CPD_DATA={data_folder}/cpd.csv
 
 OUTPUTFILE={outputs_folder}/test_output_{rng_strategy}_{yob}_{cessation_yr}.txt
 ERRORFILE={outputs_folder}/test_errors_{rng_strategy}_{yob}_{cessation_yr}.txt

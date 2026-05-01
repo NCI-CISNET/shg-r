@@ -12,9 +12,23 @@ shg <- new(SHGInterface)
 
 wd <- getwd()
 setwd(tempdir())
-inputs_folder <- system.file("inputs", package = "SmokingHistoryGenerator")
-file.copy(from = inputs_folder, to = "./", recursive = TRUE)
-shg$LegacyRunWebVersion("./inputs/examples/test_input_example_MersenneTwister.txt")
+d <- system.file("extdata", package = "SmokingHistoryGenerator")
+tf <- tempfile("shg_legacy_", fileext = ".txt")
+writeLines(
+  c(
+    "RNGSTRATEGY=MersenneTwister",
+    "SEED_INIT=12345", "SEED_CESS=12345", "SEED_MORTALITY=12345", "SEED_MISC=12345",
+    "RACE=0", "SEX=0", "YOB=1950", "CESSATION_YR=0", "REPEAT=100",
+    paste0("INIT_PROB=", file.path(d, "initiation.csv")),
+    paste0("CESS_PROB=", file.path(d, "cessation.csv")),
+    paste0("MORTALITY_PROB=", file.path(d, "ocm-excl-lung-cancer.csv")),
+    paste0("CPD_DATA=", file.path(d, "cpd.csv")),
+    paste0("OUTPUTFILE=", tempfile("mt_out_", fileext = ".txt")),
+    paste0("ERRORFILE=", tempfile("mt_err_", fileext = ".txt"))
+  ),
+  tf
+)
+shg$LegacyRunWebVersion(tf)
 setwd(wd)
 
 # SHG legacy version; results should be the same as above.
@@ -31,7 +45,7 @@ setwd(wd)
 N <- 100
 start_time <- Sys.time()
 shg$number_of_segments <- 10
-shg$run_multi_threaded <- FALSE
+shg$num_threads <- 1
 shg$rng_strategy <- "RngStream"
 #shg$rng_strategy <- "MersenneTwister"
 RNGSTREAM_SIM <- shg$runSimFromFixedValues(N, 0, 0, 1940)
@@ -42,12 +56,12 @@ print(end_time - start_time)
 N <- 10^6
 start_time <- Sys.time()
 shg$number_of_segments <- 10
-shg$run_multi_threaded <- TRUE
+shg$num_threads <- -1
 shg$rng_strategy <- "RngStream"
 shg$immediate_cessation_year <- 2010
 
 #should fail
-shg$cessation_filename <- "lbc_smokehist_cessation.txt"
+shg$cessation_filename <- "cessation_does_not_exist.csv"
 
 RNGSTREAM_SIM <- shg$runSimFromFixedValues(N, 0, 0, 1940)
 end_time <- Sys.time()
@@ -58,7 +72,7 @@ print(end_time - start_time)
 N <- 10^6
 start_time <- Sys.time()
 shg$number_of_segments <- 10
-shg$run_multi_threaded <- TRUE
+shg$num_threads <- -1
 shg$rng_strategy <- "MersenneTwister"
 MT_SIM <- shg$runSimFromFixedValues(N, 0, 0, 1950)
 end_time <- Sys.time()
@@ -73,7 +87,7 @@ pop <- list(
 )
 shg$rng_strategy <- "RngStream"
 shg$number_of_segments <- 10
-shg$run_multi_threaded <- TRUE
+shg$num_threads <- -1
 
 test <- shg$runSimFromDataFrame(pop)
 

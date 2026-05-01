@@ -11,7 +11,7 @@ library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
 shg$rng_strategy <- "RngStream"
 shg$number_of_segments <- 4
-shg$run_multi_threaded <- TRUE
+shg$num_threads <- -1  # -1 = auto (all cores); use 1 for single-threaded
 
 # Set custom seed for RngStream (6-element seed array)
 # This seed generates 4 substreams (one for each stream: initiation, cessation, life table, individual)
@@ -29,9 +29,13 @@ saveRDS(config, "my_shg_config.rds")
 
 The configuration object includes:
 - `config_version`: Version of the config format (currently "1.0")
-- All SHG settings: `rng_strategy`, `number_of_segments`, `run_multi_threaded`, `seeds`, input file paths, `immediate_cessation_year`
+- All SHG settings: `rng_strategy`, `number_of_segments`, `num_threads`, `seeds`, `input_data_folder`, `initiation_filename`, `cessation_filename`, `mortality_filename` (same path as legacy `lifetable_filename`), `cpd_filename`, `immediate_cessation_year`
 - `timestamp`: When the configuration was captured
 - (If `debug = TRUE`) Additional debug information: RNG state fingerprint, package version, system information, memory usage
+
+## Backward compatibility: `run_multi_threaded`
+
+Older configs may list `run_multi_threaded` instead of `num_threads`. `useConfig()` maps that when `num_threads` is absent: `FALSE` → `num_threads = 1`, `TRUE` → `num_threads = -1` (auto). If both fields are present, `num_threads` is used and `run_multi_threaded` is ignored (with a warning).
 
 ## Restoring Configuration
 
@@ -56,7 +60,7 @@ config <- list(
   config_version = "1.0",
   rng_strategy = "RngStream",
   number_of_segments = 4,
-  run_multi_threaded = TRUE,
+  num_threads = -1,
   seeds = c(98765, 43210, 11111, 22222, 33333, 44444)  # RngStream seed (6 elements)
 )
 

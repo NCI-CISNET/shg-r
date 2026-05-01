@@ -2,7 +2,7 @@
 *.o
 *.dll
 inst/.DS_Store
-inst/inputs/.DS_Store
+inst/extdata/.DS_Store
 .DS_Store
 .Rproj.user
 src/SmokingHistoryGenerator.so
@@ -13,9 +13,12 @@ src/wrapper_backup.xcpp
 SHG_multi.out
 /..Rcheck
 /SmokingHistoryGenerator.Rcheck
+SmokingHistoryGenerator_*.Rcheck
 SmokingHistoryGenerator_0.0.1.tar.gz
 /tests/inputs
 /tests/outputs
 *.gz
 /.venv
 /R-sandbox
+/.R-lib
+/tmp

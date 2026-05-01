@@ -1,4 +1,4 @@
-# Agent Guidelines for shg-rcpp
+# Agent Guidelines for shg-r
 
 ## Git Workflow
 
@@ -16,9 +16,25 @@
 - Fix any linter errors before proceeding with commits
 - Do not commit code that fails linting checks
 
+### C++ / Rcpp rebuild hygiene (avoid stale-binary segfaults)
+
+Incremental compiles plus **LTO** (`-flto` in the toolchain) can leave **`src/*.o` out of sync** with regenerated **`RcppExports.cpp`** or other headers. That mismatch often crashes inside **`CppMethod__invoke`** / **`runSimFromFixedValues`** with a fault near address **`0x1`** (wrong vtable / ABI), not a logic bug in the simulator.
+
+**Do this after changing exported Rcpp methods, `RcppExports.cpp`, `wrapper.cpp`, shared engine sources, or when tests suddenly segfault:**
+
+1. **Clean rebuild:** from the package root, run **`bash tools/rebuild-package.sh`** (runs `rm -f src/*.o`, removes any stray `src/*.so`, then **`R CMD INSTALL --preclean .`**).
+2. **Or manually:** `rm -f src/*.o && R CMD INSTALL --preclean .`
+3. **From R:** delete `src/*.o` (and `src/*.so` / `src/*.dll` on some platforms)—**`pkgbuild::clean_dll()` does not remove object files**, so **`make` can still skip compile** and leave a broken `.so`. Then **`devtools::install(..., args = "--preclean")`** or **`R CMD INSTALL --preclean .`**. (The **R: Test** VS Code task now does this `unlink` step before install.)
+4. **`devtools::load_all(compile = TRUE)`** can mix **debug** (`-g -O0`) with **release** flags from **`~/.R/Makevars`** in some setups—if behavior is odd after a load-all compile, use **`--preclean`** install instead.
+
+CI usually does a clean compile; this issue is mainly **local development**.
+
+5. **`devtools::test()` always loads the package with `load_package = "source"`** (pkgload from the source tree), so a prior **`devtools::install()`** into `.R-lib` does **not** affect which `.so` runs during tests. To test the **installed** build, use **`testthat::test_local(getwd(), load_package = "installed")`** (as in the **R: Test** VS Code task) or run **`R CMD check`**.
+
 ## Shared Files with shg-cli
 
 The following `src/` files **MUST match shg-cli exactly**:
+- `main.cpp`
 - `mersenne_class.cpp`, `mersenne_class.h`
 - `rng_strategy.h`
 - `RngStream.cpp`, `RngStream.h`
@@ -26,20 +42,22 @@ The following `src/` files **MUST match shg-cli exactly**:
 - `smoking_sim.cpp`, `smoking_sim.h`
 - `version.h`
 
-**Rcpp-only files:** `wrapper.cpp`, `wrapper.h`, `RcppExports.cpp`
+**R-only glue (not synced from CLI):** `wrapper.cpp`, `wrapper.h`, `RcppExports.cpp`
 
-**DO NOT modify shared files in shg-rcpp** without first updating shg-cli. The CLI is the source of truth for shared simulation code.
+**Bundled inputs (not synced; CRAN-sized subset):** flat **`inst/extdata/*.csv`** (csv-partial style: `initiation.csv`, `cessation.csv`, `cpd.csv`, `acm.csv`, `ocm-excl-lung-cancer.csv`). Regenerate with **`tools/trim-nhis-testdata.R`** (from `csv-complete/`). For trimming wide legacy `.txt` in a custom folder, use **`tools/trim-default-inputs.R`** with that directory as the sole argument. After changing bundled inputs or CPD loading, refresh legacy XML fixtures with **`tools/refresh-legacy-fixtures.R`**. Sample Legacy web configs: `tests/testdata/legacy-web-examples/`. Full tables: Zenodo (see `README.md`).
+
+**DO NOT modify shared files in shg-r** without first updating shg-cli. The CLI is the source of truth for shared simulation code.
 
 ## Sync Script
 
 Use `tools/shg-sync.py` to manage synchronization:
 
 ```bash
-python tools/shg-sync.py check           # Check if files match
-python tools/shg-sync.py sync-to-rcpp    # Copy CLI → Rcpp (standard)
-python tools/shg-sync.py sync-to-cli     # Copy Rcpp → CLI (dev only!)
+python tools/shg-sync.py check              # Check if files match
+python tools/shg-sync.py sync-from-cli     # Copy CLI → shg-r (standard)
+python tools/shg-sync.py sync-to-cli       # Copy shg-r → CLI (dev only!)
 python tools/shg-sync.py update-description  # Update DESCRIPTION sync fields
-python tools/shg-sync.py validate        # Pre-release validation
+python tools/shg-sync.py validate          # Pre-release validation
 ```
 
 ## Version Management
@@ -68,9 +86,8 @@ Also tracks CLI sync state in `DESCRIPTION`:
 3. Update `DESCRIPTION`:
    - Bump `Version` field
    - Run `python tools/shg-sync.py update-description`
-4. Run `R CMD check .` - must pass
+4. Run `R CMD check` (or `rcmdcheck::rcmdcheck(error_on = "warning")` to match **GitHub Actions**, which fails on any WARNING, not only errors)
 5. Create PR, wait for CI
 6. Merge to master
 7. Create git tag
 8. Create GitHub release noting CLI version compatibility
-

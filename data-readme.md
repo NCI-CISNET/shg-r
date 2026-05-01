@@ -1,44 +1,47 @@
 # Custom input datasets
 
-The Smoking History Generator requires a calibrated dataset to run. The dataset includes probability tables for initiation, cessation, mortality (all or other), and cigarettes per day.
-A default dataset is included with the `SmokingHistoryGenerator` package for testing and to help users get started quickly. After the package has been installed, the default dataset will be available in a `inputs` directory inside the SmokingHistoryGenerator package folder. You can locate the default inputs directory by running
-```r
-inputs_dir <- system.file("inputs/default", package="SmokingHistoryGenerator")
-# inputs_dir will be /path/to/R/package/SmokingHistoryGenerator/inputs/default
-```
-The SHGInterface module's `input_data_folder` points to that folder by default. So if you just want to use the default dataset, you shouldn't need to update the `input_data_folder`.
+The Smoking History Generator requires a calibrated parameter set to run: probability tables for **initiation**, **cessation**, **mortality** (**ACM** or **OCM**), and **cigarettes per day** (**CPD**).
 
-## To use a different input datasets
-The easiest way to specify which input files that the SHG should use is to ensure that your input files follow the default filename conventions below and only update the `shg$input_data_folder`. Example:
-```
-shg$input_data_folder <- '/new/path/to/your/input/files/'
-```
-Note that the `input_data_folder` is reset to the default when you instantiate a new instance of the `shg` object. So be sure to either re-use the `shg` object or reset the `input_data_folder` accordingly after instantiation.
+## Bundled minimal set (CRAN)
 
-The default filenames for the inputs are as follows:
-|SHG Property   | Default filename|
+The CRAN package ships a **small csv-partial subset** under `inst/extdata/` (installed as `system.file("extdata", package = "SmokingHistoryGenerator")`). Default property values point at these **CSV** files:
+
+| SHG property | Default filename |
 | ------------- | ------------- |
-|initiation_filename | lbc_smokehist_initiation.txt |
-|cessation_filename  | lbc_smokehist_cessation.txt |
-|lifetable_filename  | lbc_smokehist_oc_mortality.txt |
-|cpd_filename        | lbc_smokehist_cpd.txt|
+| `initiation_filename` | `initiation.csv` |
+| `cessation_filename` | `cessation.csv` |
+| `mortality_filename` (same as legacy `lifetable_filename`) | `ocm-excl-lung-cancer.csv` |
+| `cpd_filename` | `cpd.csv` |
 
-## Changing the paths to data inputs when using LegacyRunWebVersion()
-If you wish to use the LegacyRunWebVersion() (see below) you will need to update the paths to the probability files
-```
-INIT_PROB=./path/to/default/lbc_smokehist_initiation.txt
-CESS_PROB=./path/to/default/lbc_smokehist_cessation.txt
-OCD_PROB=./path/to/default/lbc_smokehist_oc_mortality.txt
-CPD_DATA=./path/to/default/lbc_smokehist_cpd.txt
-```
+Use **`mortality_filename`** to point at **`acm.csv`** or **`ocm-excl-lung-cancer.csv`**, depending on your analysis. Legacy property **`lifetable_filename`** sets the same path. Wide **`.txt`** tables (CLI / legacy web layout) remain supported when you set filenames and paths accordingly.
+
+After installation, locate the folder with:
+
 ```r
-MT_config_file <- system.file("./inst/inputs/examples/test_input_example_MersenneTwister.txt", package="SmokingHistoryGenerator")
-#inputs_dir will be /path/to/R/package/SmokingHistoryGenerator/inputs/default
+inputs_dir <- system.file("extdata", package = "SmokingHistoryGenerator")
 ```
 
-```
-MT_config_file <- system.file("inputs/examples/test_input_example_MersenneTwister.txt", package="SmokingHistoryGenerator")
-file.edit(MT_config_file)
-# this will open the sample config file. You can then replace the `./inst/inputs/default/` with the value for `inputs_dir`
+`SHGInterface` uses that folder by default (`input_data_folder`). Override `input_data_folder` if your files live elsewhere.
+
+## Full NHIS 1965–2016 inputs (Zenodo)
+
+The **full** calibrated NHIS-style tables are **too large for CRAN**. Download the release archive from **Zenodo** (DOI/URL to be published) and unpack so you have a directory such as:
+
+`tests/testdata/NHIS-1965-2016/` (optional; large `csv-complete/` and `legacy-complete/` are excluded from the CRAN tarball via `.Rbuildignore`; `csv-partial/` ships for tests)
+
+Expected files there for a full CLI-style tree mirror the usual names (`initiation.txt`, `cessation.txt`, `cpd.txt`, `acm.txt`, `ocm-excl-lung-cancer.txt`, etc.).
+
+## LegacyRunWebVersion() config keys
+
+Prefer **`MORTALITY_PROB=`** and **`SEED_MORTALITY=`** in text configs. Legacy keys `OCD_PROB=` / `SEED_OCD=` are still accepted by the engine.
+
+Example (paths and extensions must match your files):
 
 ```
+INIT_PROB=./path/to/initiation.csv
+CESS_PROB=./path/to/cessation.csv
+MORTALITY_PROB=./path/to/ocm-excl-lung-cancer.csv
+CPD_DATA=./path/to/cpd.csv
+```
+
+Sample Legacy web configs live under `tests/testdata/legacy-web-examples/` in the **source** tree. Paths in those files assume the **repository root** as the working directory, or replace them with absolute paths built from `system.file("extdata", package = "SmokingHistoryGenerator")`.

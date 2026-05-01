@@ -16,7 +16,7 @@ if ("--install" %in% args) {
   if (!requireNamespace("devtools", quietly = TRUE)) {
     install.packages("devtools")
   }
-  devtools::install_github("NCI-CISNET/shg-rcpp@feature/v6.5.0-sync", force = TRUE)
+  devtools::install_github("NCI-CISNET/shg-r@feature/v6.5.0-sync", force = TRUE)
 }
 
 library(SmokingHistoryGenerator)
@@ -101,20 +101,20 @@ cat("==========================================================\n\n")
 summary_df <- data.frame(
   Configuration = c(
     "RngStream (parallel)",
-    "RngStream (single)",
-    "MersenneTwister"
+    "RngStream (single)"
   ),
   Mean_Sec = c(
     mean(results$rngstream_auto),
-    mean(results$rngstream_single),
+    mean(results$rngstream_single)
   ),
   Records_Per_Sec = c(
     N / mean(results$rngstream_auto),
-    N / mean(results$rngstream_single),
+    N / mean(results$rngstream_single)
   )
 )
 
-summary_df$Speedup <- summary_df$Records_Per_Sec[2] / summary_df$Records_Per_Sec
+baseline_rps <- summary_df$Records_Per_Sec[nrow(summary_df)]
+summary_df$Speedup <- summary_df$Records_Per_Sec / baseline_rps
 
 print(summary_df, row.names = FALSE)
 

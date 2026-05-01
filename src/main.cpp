@@ -32,13 +32,71 @@
 #include <iostream>
 #include <algorithm>
 #include <fstream>
+#include <thread>
+#include <atomic>
+#include <filesystem>
+#include <chrono>
+#include <memory>
+#include <exception>
 
 #include "smoking_sim.h"
 #include "sim_exception.h"
 #include "rng_strategy.h"
+#include "version.h"
 
-#ifdef IS_RCPP
+#ifdef IS_R
   #include <Rcpp.h>
+#endif
+
+// Windows-specific crash handler to prevent silent failures
+// SEH exceptions (divide-by-zero, access violation) bypass C++ catch blocks
+// This handler ensures we print a diagnostic message before crashing
+#ifdef _WIN32
+#include <windows.h>
+#include <excpt.h>
+
+#if !defined(IS_R)
+
+static const char* GetExceptionName(DWORD code) {
+    switch (code) {
+        case EXCEPTION_ACCESS_VIOLATION:         return "ACCESS_VIOLATION";
+        case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:    return "ARRAY_BOUNDS_EXCEEDED";
+        case EXCEPTION_INT_DIVIDE_BY_ZERO:       return "INTEGER_DIVIDE_BY_ZERO";
+        case EXCEPTION_INT_OVERFLOW:             return "INTEGER_OVERFLOW";
+        case EXCEPTION_STACK_OVERFLOW:           return "STACK_OVERFLOW";
+        case EXCEPTION_FLT_DIVIDE_BY_ZERO:       return "FLOAT_DIVIDE_BY_ZERO";
+        case EXCEPTION_FLT_OVERFLOW:             return "FLOAT_OVERFLOW";
+        case EXCEPTION_FLT_UNDERFLOW:            return "FLOAT_UNDERFLOW";
+        case EXCEPTION_ILLEGAL_INSTRUCTION:      return "ILLEGAL_INSTRUCTION";
+        default:                                 return "UNKNOWN_EXCEPTION";
+    }
+}
+
+static LONG WINAPI CrashHandler(EXCEPTION_POINTERS* pExceptionInfo) {
+    DWORD code = pExceptionInfo->ExceptionRecord->ExceptionCode;
+    SHG_STDERR("\n<FATAL_ERROR>\n");
+    SHG_STDERR("  Windows Exception: %s (code 0x%08lX / %lu)\n",
+            GetExceptionName(code), code, code);
+    SHG_STDERR("  This is an unrecoverable error in the Smoking History Generator.\n");
+    SHG_STDERR("  If using parallel processing, try reducing NUM_SEGMENTS or NUM_THREADS.\n");
+    SHG_STDERR("  Please report this issue with your input configuration.\n");
+    SHG_STDERR("</FATAL_ERROR>\n");
+#ifndef IS_R
+    fflush(stderr);
+#endif
+    return EXCEPTION_CONTINUE_SEARCH;  // Let Windows handle the crash after we've logged
+}
+
+#endif /* !IS_R */
+
+static void InstallCrashHandler() {
+#if !defined(IS_R)
+    SetUnhandledExceptionFilter(CrashHandler);
+#endif
+}
+#else
+// No-op on non-Windows platforms (they have better error reporting)
+static void InstallCrashHandler() {}
 #endif
 
 using namespace std;
@@ -47,16 +105,18 @@ using namespace std;
 #define DEFAULT_DATA_DIR const_cast<char*>("data/NHIS-1965-2016/")
 #define COUNTERFACTUAL_DATA_DIR const_cast<char*>("data/counterfactual_inputs_jan_2009/")
 
-// Input file names
-#define INITIATION_DATA_FILE "lbc_shg_initiation.txt"
-#define CESSATION_DATA_FILE "lbc_shg_cessation.txt"
-#define OTHER_COD_DATA_FILE "lbc_smokehist_oc_mortality.txt"
-#define CPD_INTENSITY_PROBS "lbc_smokehist_cpdintensityprobs.txt"
-#define CPD_DATA_FILE "lbc_shg_cpd.txt"
+// Input file names (bundled under data/NHIS-1965-2016/)
+// DEFAULT_MORTALITY_DATA_FILE was historically OTHER_COD_DATA_FILE: the bundled default is
+// other-cause mortality excluding lung cancer; users may point configs at all-cause (acm.csv) instead.
+#define INITIATION_DATA_FILE "initiation.csv"
+#define CESSATION_DATA_FILE "cessation.csv"
+#define DEFAULT_MORTALITY_DATA_FILE "ocm-excl-lung-cancer.csv"
+#define CPD_INTENSITY_PROBS "cpd.csv"
+#define CPD_DATA_FILE "cpd.csv"
 
 #define MT_INIT_SEED_DEFAULT "1898587603"
 #define MT_CESS_SEED_DEFAULT "1468371936"
-#define MT_OCD_SEED_DEFAULT "1551308340"
+#define MT_MORTALITY_SEED_DEFAULT "1551308340"
 #define MT_MISC_SEED_DEFAULT "1590227640"
 
 const unsigned long RNGSTREAM_SEED_DEFAULT[6] = {12345, 12345, 12345, 12345, 12345, 12345};
@@ -65,7 +125,6 @@ const unsigned long RNGSTREAM_SEED_DEFAULT[6] = {12345, 12345, 12345, 12345, 123
 #define MAX_NUM_REPS 10000000
 #define ERROR_MESSAGE_SIZE 1000
 
-const char* VERSION_NUM = "6.4.0";
 string gInputFileName;
 bool gWithHoldTags = false;
 
@@ -94,17 +153,88 @@ void Usage();
 short min(short, short);
 bool ValidateParameters(char*, char*, char*, char*, char*, char*, char*, char*, char*);
 bool ValidateParameters(char*, char*, char*, char*, char*, char*, char*, char*, char*, char*);
-void WriteInputTag(FILE* , char*, char*, const char*, const char*);
-void WriteRunInfoTag(FILE*, const char*, const char*, const char*, const char*,
-                     const char*, const char*, const char*, const char*, const char*,
-                     const char*, const char*, const char*, const char*, const char*, const char*);
+// CLI-specific wrappers for shared XML writing functions (pass globals gInputFileName, gWithHoldTags)
+void WriteRunInfoTagCLI(FILE*, const char*, const char*, const char*, const char*,
+                        const char*, const char*, const char*, const char*, const char*,
+                        const char*, const char*, const char*, const char*, const char*, const char*,
+                        int, int, bool, bool);
+void WriteInputTagCLI(FILE* , char*, char*, const char*, const char*);
 string RngStreamToString(unsigned long arr[], int length);
 
-// Removing the main() function for RCPP because it is unwanted
+// Segment runner for parallel processing
+// Optimized for cache alignment to reduce false sharing between threads
+struct alignas(64) SegmentParams {
+   // Hot data (accessed frequently in worker threads) - grouped together
+   SmokingSimulatorSharedData* sharedData;
+   RNG_Strategy* preCreatedRng;  // Pre-created RNG to avoid lock contention
+   long startRep;
+   long endRep;
+   int segmentIndex;
+   int race;
+   int sex;
+   int yob;
+   short outputType;
+   short cessationYear;
+   
+   // Cold data (accessed once during setup)
+   char tempFilePath[256];  // Fixed size array instead of std::string for better cache locality
+   unsigned long rngSeed[6];
+};
+
+// ==============================================================================
+// OutputBuffer: Memory buffer for batching output writes
+// Reduces I/O overhead by accumulating data in memory before flushing to disk
+// ==============================================================================
+class OutputBuffer {
+private:
+    std::vector<char> buffer;
+    FILE* output_file;
+    size_t pos;
+    static constexpr size_t BUFFER_SIZE = 4 * 1024 * 1024;  // 4 MB buffer
+    static constexpr size_t FLUSH_THRESHOLD = BUFFER_SIZE - 100000;  // Leave 100KB safety margin
+    
+public:
+    explicit OutputBuffer(FILE* file) : output_file(file), pos(0) {
+        buffer.resize(BUFFER_SIZE);
+    }
+    
+    void append(const char* data, size_t len) {
+        if (pos + len > FLUSH_THRESHOLD) {
+            flush();
+        }
+        if (len < BUFFER_SIZE) {
+            memcpy(buffer.data() + pos, data, len);
+            pos += len;
+        } else {
+            // Very large write - flush then write directly
+            flush();
+            fwrite(data, 1, len, output_file);
+        }
+    }
+    
+    void flush() {
+        if (pos > 0 && output_file) {
+            fwrite(buffer.data(), 1, pos, output_file);
+            pos = 0;
+        }
+    }
+    
+    ~OutputBuffer() {
+        flush();
+    }
+};
+
+void RunSegment(SegmentParams& params);
+void AssembleSegmentFiles(const std::vector<std::string>& tempFiles, const std::string& outputFile, bool withTags);
+
+// Removing main() when IS_R is defined (R / shg-r package build); standalone CLI needs main()
 // But we include all the other methods and variables to avoid DRY violations in the Rcpp wrapper
-#ifdef IS_RCPP
+#ifdef IS_R
 #else
 int main(int argc, char* argv[]) {
+   // Install crash handler to prevent silent failures on Windows
+   InstallCrashHandler();
+   
 	char sErrorMessage[1000];
 	int iReturnValue;
    FILE* pHelpFile = 0;
@@ -187,7 +317,7 @@ char* AssignFilename(const char* sDirectory, const char * sFilename) {
    char* sFullFilePath;
    sFullFilePath = new char[strlen(sDirectory) + strlen(sFilename) + 2];
    iCurrIndex = 0;
-   for (i=0; i <(strlen(sDirectory)); i++) {
+   for (i=0; i < static_cast<int>(strlen(sDirectory)); i++) {
       sFullFilePath[iCurrIndex] = sDirectory[i];
       iCurrIndex++;
    }
@@ -202,7 +332,7 @@ char* AssignFilename(const char* sDirectory, const char * sFilename) {
          iCurrIndex++;
       }
    #endif
-   for (i=0; i <(strlen(sFilename)); i++) {
+   for (i=0; i < static_cast<int>(strlen(sFilename)); i++) {
       sFullFilePath[iCurrIndex] = sFilename[i];
       iCurrIndex++;
    }
@@ -252,7 +382,7 @@ void LoadValue(char* sDest, char* sSource, int iValueNum) {
 
 // Run the application using the seeds and input/output stream
 bool RunFromParameters(char* sDataFileDir, char* sInitiationSeed,
-                      char* sCessationSeed, char* sOtherCODSeed,
+                      char* sCessationSeed, char* sMortalitySeed,
                       char* sIndivRndSeed, char* sInputFile,
                       char* sOutputFile, char* sOutputType,
                       char* sImmediateCess, char* sErrorMessage) {
@@ -262,11 +392,11 @@ bool RunFromParameters(char* sDataFileDir, char* sInitiationSeed,
                         wCessationYear;
 	unsigned long 			ulInitiationSeed,
 					  			ulCessationSeed,
-                        ulOtherCODSeed,
+                        ulMortalitySeed,
                         ulIndivRndSeed;
    char                *sInitiationFile = 0,
                        *sCessationFile = 0,
-                       *sOtherCODFile = 0,
+                       *sMortalityFile = 0,
                        *sCPDIntensityFile = 0,
                        *sCPDDataFile = 0;
 	Smoking_Simulator	  *pSimulator  = 0;
@@ -274,18 +404,18 @@ bool RunFromParameters(char* sDataFileDir, char* sInitiationSeed,
 	try {
       sInitiationFile = AssignFilename(sDataFileDir, INITIATION_DATA_FILE);
       sCessationFile = AssignFilename(sDataFileDir, CESSATION_DATA_FILE);
-      sOtherCODFile = AssignFilename(sDataFileDir, OTHER_COD_DATA_FILE);
+      sMortalityFile = AssignFilename(sDataFileDir, DEFAULT_MORTALITY_DATA_FILE);
       sCPDIntensityFile = AssignFilename(sDataFileDir, CPD_INTENSITY_PROBS);
       sCPDDataFile = AssignFilename(sDataFileDir, CPD_DATA_FILE);
       ulInitiationSeed = (unsigned long) atol(sInitiationSeed);
       ulCessationSeed = (unsigned long) atol(sCessationSeed);
-      ulOtherCODSeed = (unsigned long) atol(sOtherCODSeed);
+      ulMortalitySeed = (unsigned long) atol(sMortalitySeed);
       ulIndivRndSeed = (unsigned long) atol(sIndivRndSeed);
       wOutputType = (short) atoi(sOutputType);
       wCessationYear = (short) atoi(sImmediateCess);
 
-  		pSimulator = new Smoking_Simulator(sInitiationFile, sCessationFile, sOtherCODFile, sCPDIntensityFile, sCPDDataFile, 
-                                         ulInitiationSeed, ulCessationSeed, ulOtherCODSeed, ulIndivRndSeed,  
+  		pSimulator = new Smoking_Simulator(sInitiationFile, sCessationFile, sMortalityFile, sCPDIntensityFile, sCPDDataFile, 
+                                         ulInitiationSeed, ulCessationSeed, ulMortalitySeed, ulIndivRndSeed,  
                                          wOutputType, wCessationYear);
 
       pSimulator->RunSimulation(sInputFile, sOutputFile, false);
@@ -300,7 +430,7 @@ bool RunFromParameters(char* sDataFileDir, char* sInitiationSeed,
    }
 
 	delete pSimulator;
-   delete [] sInitiationFile; delete [] sCessationFile; delete [] sOtherCODFile; delete [] sCPDIntensityFile; delete [] sCPDDataFile;
+   delete [] sInitiationFile; delete [] sCessationFile; delete [] sMortalityFile; delete [] sCPDIntensityFile; delete [] sCPDDataFile;
 	return bReturnValue;
 }
 
@@ -323,7 +453,7 @@ bool IsPosLongInt(const char* sValue) {
 void GetInput(char* sInputChar, short length) {
    if (fgets(sInputChar, length, stdin) == NULL) {
       PrintError("Error reading input\n");
-      #ifndef IS_RCPP
+      #ifndef IS_R
          exit(1);
       #endif
    }
@@ -378,17 +508,16 @@ void RunInterface() {
    char           		sInputChar[101],
                   		sOutputFileName[105],
                   		sInputFileName[105],
-                  		sExtensionCheck[5],
                        *sInitiationFile = 0,
                        *sCessationFile = 0,
-                       *sOtherCODFile = 0,
+                       *sMortalityFile = 0,
                        *sCPDIntensityFile = 0,
                        *sCPDDataFile = 0;
    bool                 bValidInput,
                   		bKeepRepeating;
    unsigned long  		ulInitPRNGSeed,
                   		ulCessPRNGSeed,
-                        ulOthCODSeed,
+                        ulMortalityPRNGSeed,
                         ulIndivRndSeed;
    short                wSourceData,
                         wTempValue,
@@ -399,8 +528,7 @@ void RunInterface() {
                         wOutputFormat,
                         wCessationYear,
                   		i;
-   long           		lExtCheckPosition,
-                  		lNumRepetitions;
+   long           		lNumRepetitions;
    FILE*          		pOutputFile = 0;
 
    PrintMessage("Smoking History Simulator\n\n");
@@ -447,13 +575,13 @@ void RunInterface() {
    if (wSourceData == 2) {
       sInitiationFile = AssignFilename(COUNTERFACTUAL_DATA_DIR, INITIATION_DATA_FILE);
       sCessationFile = AssignFilename(COUNTERFACTUAL_DATA_DIR, CESSATION_DATA_FILE);
-      sOtherCODFile = AssignFilename(COUNTERFACTUAL_DATA_DIR, OTHER_COD_DATA_FILE);
+      sMortalityFile = AssignFilename(COUNTERFACTUAL_DATA_DIR, DEFAULT_MORTALITY_DATA_FILE);
       sCPDIntensityFile = AssignFilename(COUNTERFACTUAL_DATA_DIR, CPD_INTENSITY_PROBS);
       sCPDDataFile = AssignFilename(COUNTERFACTUAL_DATA_DIR, CPD_DATA_FILE);
    } else {
       sInitiationFile = AssignFilename(DEFAULT_DATA_DIR, INITIATION_DATA_FILE);
       sCessationFile = AssignFilename(DEFAULT_DATA_DIR, CESSATION_DATA_FILE);
-      sOtherCODFile = AssignFilename(DEFAULT_DATA_DIR, OTHER_COD_DATA_FILE);
+      sMortalityFile = AssignFilename(DEFAULT_DATA_DIR, DEFAULT_MORTALITY_DATA_FILE);
       sCPDIntensityFile = AssignFilename(DEFAULT_DATA_DIR, CPD_INTENSITY_PROBS);
       sCPDDataFile = AssignFilename(DEFAULT_DATA_DIR, CPD_DATA_FILE);
    }
@@ -495,7 +623,7 @@ void RunInterface() {
       GetInput(sInputChar, 20);
       if (IsPosLongInt(sInputChar))
          {
-         ulOthCODSeed = (unsigned long) atol(sInputChar);
+         ulMortalityPRNGSeed = (unsigned long) atol(sInputChar);
          bValidInput = true;
          }
       else
@@ -561,15 +689,6 @@ void RunInterface() {
          strcpy(sOutputFileName, sInputChar);
       }
 
-      if (strlen(sInputChar) > 4) {
-         lExtCheckPosition = strlen(sInputChar) - 4;
-         for (i=0; i <=3; i++)
-            {
-            sExtensionCheck[i] = toupper(sInputChar[lExtCheckPosition + i]);
-            }
-         sExtensionCheck[4] = '\0';
-      }
-
       if (wInputOutputType == 3) {
          pOutputFile = fopen(sOutputFileName, "w");
       }
@@ -597,9 +716,9 @@ void RunInterface() {
 
    try {
       pSimulator = new Smoking_Simulator( sInitiationFile,   sCessationFile,
-                                          sOtherCODFile,     sCPDIntensityFile,
+                                          sMortalityFile,     sCPDIntensityFile,
                                           sCPDDataFile,        ulInitPRNGSeed,
-                                          ulCessPRNGSeed,       ulOthCODSeed,
+                                          ulCessPRNGSeed,       ulMortalityPRNGSeed,
                                           ulIndivRndSeed,       wOutputFormat,
                                           wCessationYear);
 
@@ -659,7 +778,7 @@ void RunInterface() {
             PrintMessageFormatted("\n");
             for (long j = 1; j <= lNumRepetitions; j++) {
                pSimulator->RunSimulationSingle(wInputRace, wInputSex, wInputYOB, pOutputFile);
-               #ifndef IS_RCPP
+               #ifndef IS_R
                   pSimulator->WriteToStream(stdout);
                #endif
             }
@@ -702,7 +821,175 @@ void RunInterface() {
    }
 
    delete pSimulator;
-   delete [] sInitiationFile; delete [] sCessationFile; delete [] sOtherCODFile; delete [] sCPDIntensityFile; delete [] sCPDDataFile;
+   delete [] sInitiationFile; delete [] sCessationFile; delete [] sMortalityFile; delete [] sCPDIntensityFile; delete [] sCPDDataFile;
+}
+
+// Fast integer to string - writes backwards and returns pointer to start
+__attribute__((always_inline))
+inline char* fast_itoa(int val, char* end) {
+   bool neg = val < 0;
+   if (neg) val = -val;
+   *--end = ';';
+   if (__builtin_expect(val == 0, 0)) { *--end = '0'; }
+   else {
+      while (val) { *--end = '0' + (val % 10); val /= 10; }
+   }
+   if (neg) *--end = '-';
+   return end;
+}
+
+// Fast double to string with 2 decimal places
+__attribute__((always_inline))
+inline int fast_dtoa2(double val, char* buf) {
+   int ival = (int)(val * 100.0 + 0.5);
+   int frac = ival % 100;
+   ival /= 100;
+   char* p = buf;
+   if (__builtin_expect(ival == 0, 0)) { *p++ = '0'; }
+   else {
+      char tmp[12]; int i = 0;
+      while (ival) { tmp[i++] = '0' + (ival % 10); ival /= 10; }
+      while (i--) *p++ = tmp[i];
+   }
+   *p++ = '.';
+   *p++ = '0' + (frac / 10);
+   *p++ = '0' + (frac % 10);
+   *p++ = ';';
+   return p - buf;
+}
+
+// Runs a single segment - optimized with larger write buffer
+void RunSegment(SegmentParams& params) {
+   FILE* pTempFile = NULL;
+   try {
+      auto tSegStart = std::chrono::high_resolution_clock::now();
+      
+      // Open temp file (tempFilePath is now a char array for better cache locality)
+      pTempFile = fopen(params.tempFilePath, "w");
+      if (!pTempFile) {
+         throw SimException("Error", "Could not open temp file");
+      }
+      
+      // Use larger buffer - thread_local to avoid cache contention between threads
+      // Each thread gets its own buffer, eliminating false sharing
+      static thread_local char file_buffer[8 * 1024 * 1024];
+      setvbuf(pTempFile, file_buffer, _IOFBF, sizeof(file_buffer));
+      
+      // Create simulator using shared data
+      Smoking_Simulator simulator(params.sharedData, params.outputType, params.cessationYear);
+      
+      // Prefetch probability arrays into cache at segment start
+      // This warms up the cache before first access, reducing initial cache misses
+      // Use temporal locality hint 0 (don't pollute cache, we'll access soon)
+      if (params.sharedData->gdInitiationProbs) {
+         __builtin_prefetch(params.sharedData->gdInitiationProbs, 0, 0);
+      }
+      if (params.sharedData->gdCessationProbs) {
+         __builtin_prefetch(params.sharedData->gdCessationProbs, 0, 0);
+      }
+      if (params.sharedData->gdMortalityProbs) {
+         __builtin_prefetch(params.sharedData->gdMortalityProbs, 0, 0);
+      }
+      
+      // Performance optimizations (reproducibility-safe)
+      // NOTE: gbSkipOversampling disabled - affects reproducibility across different NUM_SEGMENTS
+      simulator.gbSkipValidation = true;     // Skip input validation (pre-validated)
+      
+      // Use pre-created RNG if available (avoids lock contention during parallel init)
+      // Otherwise create one (fallback for legacy code paths)
+      if (params.preCreatedRng) {
+         simulator.setRNGStrategy(params.preCreatedRng);
+         params.preCreatedRng = nullptr;
+      } else {
+         unsigned long seed[6];
+         memcpy(seed, params.rngSeed, sizeof(seed));
+         RngStreamRNG* rng = new RngStreamRNG(seed);
+         for (int i = 0; i < params.segmentIndex; i++) {
+            rng->incrementSubstreams();
+         }
+         simulator.setRNGStrategy(rng);
+      }
+      
+      auto tAfterSetup = std::chrono::high_resolution_clock::now();
+      
+      long numReps = params.endRep - params.startRep;
+      
+      // Run simulations and write using WriteAsData (DRY - same code path as R wrapper)
+      for (long j = 0; j < numReps; j++) {
+         simulator.RunSimulationSingle(params.race, params.sex, params.yob, pTempFile);
+      }
+      
+      auto tAfterSim = std::chrono::high_resolution_clock::now();
+      
+      if (pTempFile) {
+         fclose(pTempFile);
+         pTempFile = NULL;
+      }
+      
+      auto tSegEnd = std::chrono::high_resolution_clock::now();
+      
+      if (params.segmentIndex == 0) {
+         SHG_STDERR( "    [SEG0] Setup: %lld ms, Sim+Write: %lld ms, Close: %lld ms\n",
+            static_cast<long long>(std::chrono::duration_cast<std::chrono::milliseconds>(tAfterSetup-tSegStart).count()),
+            static_cast<long long>(std::chrono::duration_cast<std::chrono::milliseconds>(tAfterSim-tAfterSetup).count()),
+            static_cast<long long>(std::chrono::duration_cast<std::chrono::milliseconds>(tSegEnd-tAfterSim).count()));
+      }
+   } catch (SimException& ex) {
+      if (pTempFile) {
+         fclose(pTempFile);
+         pTempFile = NULL;
+      }
+      PrintError("Segment %d error: %s\n", params.segmentIndex, ex.GetError());
+      throw;  // Re-throw to propagate error to caller
+   } catch (std::exception& ex) {
+      if (pTempFile) {
+         fclose(pTempFile);
+         pTempFile = NULL;
+      }
+      PrintError("Segment %d std::exception: %s\n", params.segmentIndex, ex.what());
+      throw;  // Re-throw to propagate error to caller
+   } catch (...) {
+      if (pTempFile) {
+         fclose(pTempFile);
+         pTempFile = NULL;
+      }
+      PrintError("Segment %d unknown exception\n", params.segmentIndex);
+      throw;  // Re-throw to propagate error to caller
+   }
+}
+
+// Assembles text segment files by concatenating them in order
+void AssembleSegmentFiles(const std::vector<std::string>& tempFiles, const std::string& outputFile, bool withTags) {
+   // Use larger buffer for more efficient I/O
+   constexpr size_t BUFFER_SIZE = 256 * 1024;  // 256KB buffer
+   
+   FILE* pOutFile = fopen(outputFile.c_str(), "a");
+   if (!pOutFile) {
+      PrintError("Could not open output file: %s\n", outputFile.c_str());
+      return;
+   }
+   
+   // Set large buffer on output file
+   setvbuf(pOutFile, NULL, _IOFBF, BUFFER_SIZE);
+   
+   // Pre-allocate buffer
+   std::vector<char> buffer(BUFFER_SIZE);
+   
+   for (const auto& tempPath : tempFiles) {
+      FILE* pIn = fopen(tempPath.c_str(), "r");
+      if (pIn) {
+         // Set large buffer on input file too
+         setvbuf(pIn, NULL, _IOFBF, BUFFER_SIZE);
+         
+         size_t n;
+         while ((n = fread(buffer.data(), 1, BUFFER_SIZE, pIn)) > 0) {
+            fwrite(buffer.data(), 1, n, pOutFile);
+         }
+         fclose(pIn);
+         std::filesystem::remove(tempPath);
+      }
+   }
+   fclose(pOutFile);
 }
 
 // Runs the application using a single data file containing all necessary information.
@@ -721,12 +1008,12 @@ int RunWebVersion(const char * sInputFileName)
         *sRngStreamSeed = 0,
         *sFILE_InitProb  = 0, // Datafile - Initiation Probabilities
         *sFILE_CessProb  = 0, // Datafile - Cessation Probabilities
-        *sFILE_OCDProb   = 0, // Datafile - Life Table (Probability of Dying from Cause other than Lung Cancer)
+        *sFILE_MortalityProb   = 0, // Mortality probabilities file (all-cause or other-cause, depending on file)
         *sFILE_Quintiles = 0, // Datafile - Smoking Intensity Quintile Placement Probabilites
         *sFILE_CPDData   = 0, // Datafile - Smoking Intensity - Cigarettes per Day by Quintile
         *sSEED_Init      = 0, // Seed - For PRNG that generates Initiation Probabilities
         *sSEED_Cess      = 0, // Seed - For PRNG that generates Cessation Probabilities
-        *sSEED_OCD       = 0, // Seed - For PRNG that generates Death from Other OCD probabilities
+        *sSEED_Mortality       = 0, // Seed for PRNG stream used when sampling death times from mortality inputs
         *sSEED_Misc      = 0, // Seed - For PRNG that generates miscellaneous random numbers that are needed for 1 time use for a person
         *sOutputFile     = 0,
         *sImmediateCess  = 0, // Immediate Cessation Year, 0 = do not do immediate cessation
@@ -734,6 +1021,8 @@ int RunWebVersion(const char * sInputFileName)
         *sPARAM_Race     = 0, // Run Parameter - Race
         *sPARAM_YOB      = 0, // Run Parameter - Year of Birth
         *sPARAM_NumReps  = 0, // Run Parameter - Number of time to repeat current set of parameters
+        *sNumSegments    = 0, // Number of segments for parallel processing
+        *sNumThreads     = 0, // Number of threads: -1=auto, 1=single, N=N threads
         sVecValues[4][20];
 
    FILE *pInputFile   = 0,
@@ -744,12 +1033,14 @@ int RunWebVersion(const char * sInputFileName)
          iIndexLength,
          iReturnValue,
          iStringLength,
-         i;
+         i,
+         iNumSegments = -1,  // Default to -1 (auto-calculate when multi-threaded)
+         iNumThreads = -1;  // Default -1 = auto (use hardware_concurrency(), multi-threaded)
 
-   long  lNumReps,
+   long  lNumReps = 0,
          lSeed_Init,
          lSeed_Cess,
-         lSeed_OCD,
+         lSeed_Mortality,
          lSeed_Misc,
          j;
    unsigned long rngStreamSeed[6];
@@ -757,8 +1048,12 @@ int RunWebVersion(const char * sInputFileName)
    char *sFinalRngStreamSeed = strdup("12345,12345,12345,12345,12345,12345");
 
    short wValuesPerParam[4],
-         wMaxNumPerParam,
+         wMaxNumPerParam = 0,
          wCessationYear;
+   
+   bool  bAutoSegments = false;       // Track if segments were auto-calculated
+   bool  bUserSpecifiedSegments = false;  // Track if user explicitly set NUM_SEGMENTS
+   bool  bRunMultiThreaded = true;    // Derived from iNumThreads != 1 (set after parsing)
 
    Smoking_Simulator *pSimulator = 0;
 
@@ -768,7 +1063,7 @@ int RunWebVersion(const char * sInputFileName)
    if (pInputFile == NULL) {
       // Config input file
       snprintf(sErrorMessage, sizeof(sErrorMessage), "The specified input file '%s' could not be opened for reading.\n", sInputFileName);
-      #ifdef IS_RCPP 
+      #ifdef IS_R 
         Rcpp::stop(sErrorMessage); // Warning in R?
       #else
         PrintError(sErrorMessage);
@@ -819,17 +1114,44 @@ int RunWebVersion(const char * sInputFileName)
             sSEED_Cess[iCurrIndex] = '\0';
          }
 
+         // Legacy keys still accepted: SEED_OCD=, SEED_LIFETABLE=; preferred: SEED_MORTALITY=
          if (strncmp(Str_toupper(sInputBuffer), "SEED_OCD=", strlen("SEED_OCD=")) == 0) {
             iIndexLength = strlen("SEED_OCD=");
-            sSEED_OCD = new char[(iStringLength - iIndexLength)+1];
+            sSEED_Mortality = new char[(iStringLength - iIndexLength)+1];
             iCurrIndex = 0;
             for (i = 0; i < (iStringLength - iIndexLength); i++) {
                if (sInputBuffer[i + iIndexLength]!= ' ') {
-                  sSEED_OCD[iCurrIndex] = sInputBuffer[i + iIndexLength];
+                  sSEED_Mortality[iCurrIndex] = sInputBuffer[i + iIndexLength];
                   iCurrIndex++;
                }
             }
-            sSEED_OCD[iCurrIndex]='\0';
+            sSEED_Mortality[iCurrIndex]='\0';
+         }
+
+         if (strncmp(Str_toupper(sInputBuffer), "SEED_LIFETABLE=", strlen("SEED_LIFETABLE=")) == 0) {
+            iIndexLength = strlen("SEED_LIFETABLE=");
+            sSEED_Mortality = new char[(iStringLength - iIndexLength)+1];
+            iCurrIndex = 0;
+            for (i = 0; i < (iStringLength - iIndexLength); i++) {
+               if (sInputBuffer[i + iIndexLength]!= ' ') {
+                  sSEED_Mortality[iCurrIndex] = sInputBuffer[i + iIndexLength];
+                  iCurrIndex++;
+               }
+            }
+            sSEED_Mortality[iCurrIndex]='\0';
+         }
+
+         if (strncmp(Str_toupper(sInputBuffer), "SEED_MORTALITY=", strlen("SEED_MORTALITY=")) == 0) {
+            iIndexLength = strlen("SEED_MORTALITY=");
+            sSEED_Mortality = new char[(iStringLength - iIndexLength)+1];
+            iCurrIndex = 0;
+            for (i = 0; i < (iStringLength - iIndexLength); i++) {
+               if (sInputBuffer[i + iIndexLength]!= ' ') {
+                  sSEED_Mortality[iCurrIndex] = sInputBuffer[i + iIndexLength];
+                  iCurrIndex++;
+               }
+            }
+            sSEED_Mortality[iCurrIndex]='\0';
          }
 
          if (strncmp(Str_toupper(sInputBuffer), "SEED_MISC=", strlen("SEED_MISC=")) == 0) {
@@ -931,17 +1253,44 @@ int RunWebVersion(const char * sInputFileName)
             sFILE_CessProb[iCurrIndex]='\0';
          }
 
+         // Legacy keys still accepted: OCD_PROB=, LIFETABLE_PROB=; preferred: MORTALITY_PROB=
          if (strstr(Str_toupper(sInputBuffer), "OCD_PROB=") != NULL) {
             iIndexLength = strlen("OCD_PROB=");
-            sFILE_OCDProb = new char[(iStringLength - iIndexLength)+1];
+            sFILE_MortalityProb = new char[(iStringLength - iIndexLength)+1];
             iCurrIndex = 0;
             for (i = 0; i < (iStringLength - iIndexLength); i++) {
                if (sInputLine[i + iIndexLength]!= ' ') {
-                  sFILE_OCDProb[iCurrIndex] = sInputLine[i + iIndexLength];
+                  sFILE_MortalityProb[iCurrIndex] = sInputLine[i + iIndexLength];
                   iCurrIndex++;
                }
             }
-            sFILE_OCDProb[iCurrIndex]='\0';
+            sFILE_MortalityProb[iCurrIndex]='\0';
+         }
+
+         if (strstr(Str_toupper(sInputBuffer), "LIFETABLE_PROB=") != NULL) {
+            iIndexLength = strlen("LIFETABLE_PROB=");
+            sFILE_MortalityProb = new char[(iStringLength - iIndexLength)+1];
+            iCurrIndex = 0;
+            for (i = 0; i < (iStringLength - iIndexLength); i++) {
+               if (sInputLine[i + iIndexLength]!= ' ') {
+                  sFILE_MortalityProb[iCurrIndex] = sInputLine[i + iIndexLength];
+                  iCurrIndex++;
+               }
+            }
+            sFILE_MortalityProb[iCurrIndex]='\0';
+         }
+
+         if (strstr(Str_toupper(sInputBuffer), "MORTALITY_PROB=") != NULL) {
+            iIndexLength = strlen("MORTALITY_PROB=");
+            sFILE_MortalityProb = new char[(iStringLength - iIndexLength)+1];
+            iCurrIndex = 0;
+            for (i = 0; i < (iStringLength - iIndexLength); i++) {
+               if (sInputLine[i + iIndexLength]!= ' ') {
+                  sFILE_MortalityProb[iCurrIndex] = sInputLine[i + iIndexLength];
+                  iCurrIndex++;
+               }
+            }
+            sFILE_MortalityProb[iCurrIndex]='\0';
          }
 
          if (strstr(Str_toupper(sInputBuffer), "CPD_QUINTILES=") != NULL) {
@@ -1060,6 +1409,55 @@ int RunWebVersion(const char * sInputFileName)
             gWithHoldTags = true;
          }
 
+         if (strstr(Str_toupper(sInputBuffer), "NUM_SEGMENTS=") != NULL) {
+            iIndexLength = strlen("NUM_SEGMENTS=");
+            sNumSegments = new char[(iStringLength - iIndexLength)+1];
+            iCurrIndex = 0;
+            for (i = 0; i < (iStringLength - iIndexLength); i++) {
+               if (sInputBuffer[i + iIndexLength]!= ' ') {
+                  sNumSegments[iCurrIndex] = sInputBuffer[i + iIndexLength];
+                  iCurrIndex++;
+               }
+            }
+            sNumSegments[iCurrIndex]='\0';
+            // Accept -1 as "auto" or positive integers
+            if (strcmp(sNumSegments, "-1") == 0) {
+               iNumSegments = -1;  // Explicit auto-calculate
+               // Note: bUserSpecifiedSegments stays false for -1 (auto)
+            } else if (IsPosShortInt(sNumSegments)) {
+               iNumSegments = atoi(sNumSegments);
+               if (iNumSegments < 1) {
+                  iNumSegments = 1;
+               }
+               bUserSpecifiedSegments = true;
+            }
+         }
+
+         if (strstr(Str_toupper(sInputBuffer), "NUM_THREADS=") != NULL) {
+            iIndexLength = strlen("NUM_THREADS=");
+            sNumThreads = new char[(iStringLength - iIndexLength)+1];
+            iCurrIndex = 0;
+            for (i = 0; i < (iStringLength - iIndexLength); i++) {
+               if (sInputBuffer[i + iIndexLength]!= ' ') {
+                  sNumThreads[iCurrIndex] = sInputBuffer[i + iIndexLength];
+                  iCurrIndex++;
+               }
+            }
+            sNumThreads[iCurrIndex]='\0';
+            // Accept -1 (auto), 1 (single-threaded), or N > 1 (N threads)
+            if (strcmp(sNumThreads, "-1") == 0) {
+               iNumThreads = -1;  // Explicit auto
+            } else if (IsPosShortInt(sNumThreads)) {
+               iNumThreads = atoi(sNumThreads);
+               if (iNumThreads < 1) {
+                  iNumThreads = -1;  // Default to auto
+               }
+            }
+         }
+
+         // Note: RUN_MULTI_THREADED removed in v6.5.0 - use NUM_THREADS instead
+         // NUM_THREADS: -1 = auto (multi-threaded), 1 = single-threaded, N = N threads
+
          delete [] sInputBuffer;
          sInputBuffer = 0;
       } // end While
@@ -1093,14 +1491,34 @@ int RunWebVersion(const char * sInputFileName)
          bRunApp = false;
       }
 
+      // Note: Auto-segment calculation moved to after lNumReps is known (see below)
+
       if (bRunApp && pErrorStream == NULL) {
          // Due to Rcpp not allowing variadic functions, we use snprintf to do substitution ***
          PrintError(sErrorMessage);
          snprintf(sErrorMessage, 1000, "Specified error file: '%s' could not be opened for writing.\n", sErrorFile);
-         #ifdef IS_RCPP 
+         #ifdef IS_R 
            Rcpp::stop(sErrorMessage); // Warning in R?
          #endif
          bRunApp = false;
+      }
+
+      // Validate RNG strategy restrictions for parallel processing (after error stream is opened)
+      // Multi-threaded = iNumThreads != 1 (either -1 auto or N > 1)
+      bRunMultiThreaded = (iNumThreads != 1);
+      
+      if (bRunApp && pErrorStream != NULL) {
+         if (strcmp(sRNGStrategy, "MersenneTwister") == 0) {
+            if (iNumSegments > 1) {
+               WriteToFile(pErrorStream, "\n<ERROR>\nMersenneTwister RNG cannot maintain IID properties with multiple segments. MersenneTwister is restricted to 1 segment. Use RngStream for multiple segments.\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n");
+               bRunApp = false;
+            }
+            if (bRunMultiThreaded) {
+               WriteToFile(pErrorStream, "\n<ERROR>\nMersenneTwister RNG cannot maintain IID properties with parallel execution. MersenneTwister is restricted to NUM_THREADS=1. Use RngStream for parallel execution.\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n");
+               bRunApp = false;
+            }
+         }
+         // Note: Auto-segment calculation happens earlier if needed
       }
    } 
    if (bRunApp) {
@@ -1126,13 +1544,13 @@ int RunWebVersion(const char * sInputFileName)
                   sSEED_Cess,sInputFileName);
             bRunApp = false;
          }
-         if (sSEED_OCD == NULL) {
-            sSEED_OCD = strdup(MT_OCD_SEED_DEFAULT);
+         if (sSEED_Mortality == NULL) {
+            sSEED_Mortality = strdup(MT_MORTALITY_SEED_DEFAULT);
 
          }
-         if (!IsValidSeed(sSEED_OCD)) {
-            WriteToFile(pErrorStream,"\n<ERROR>\nInvalid OCD Seed: '%s' found in input file: '%s'\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
-                  sSEED_OCD,sInputFileName);
+         if (!IsValidSeed(sSEED_Mortality)) {
+            WriteToFile(pErrorStream,"\n<ERROR>\nInvalid mortality seed (SEED_MORTALITY or legacy SEED_LIFETABLE / SEED_OCD): '%s' found in input file: '%s'\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
+                  sSEED_Mortality,sInputFileName);
             bRunApp = false;
          }
          if (sSEED_Misc == NULL) {
@@ -1156,8 +1574,8 @@ int RunWebVersion(const char * sInputFileName)
                  sInputFileName);
          bRunApp = false;
       }
-      if (sFILE_OCDProb == NULL) {
-         WriteToFile(pErrorStream,"\n<ERROR>\nOCD Probabilities file was not found in input file: '%s'\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
+      if (sFILE_MortalityProb == NULL) {
+         WriteToFile(pErrorStream,"\n<ERROR>\nMortality probabilities file (MORTALITY_PROB or legacy LIFETABLE_PROB / OCD_PROB) was not found in input file: '%s'\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
                  sInputFileName);
          bRunApp = false;
       }
@@ -1202,6 +1620,62 @@ int RunWebVersion(const char * sInputFileName)
          bUseNumReps = true;
       } else {
          bUseNumReps = false;
+      }
+
+      // Auto-calculate segments if RngStream, segments not set (-1), and multi-threaded
+      // Smart formula considers both cores AND repeat count
+      if (strcmp(sRNGStrategy, "RngStream") == 0 && iNumSegments == -1 && bRunMultiThreaded) {
+         // Get actual thread count (-1 means auto = hardware_concurrency)
+         int numCores = (iNumThreads == -1) ? std::thread::hardware_concurrency() : iNumThreads;
+         if (numCores < 1) numCores = 1;
+         
+         // Get repeat count for smart segment calculation
+         long repeatCount = (sPARAM_NumReps != NULL) ? atol(sPARAM_NumReps) : 1000;
+         
+         // Smart formula: consider both cores and workload
+         const int MIN_INDIVIDUALS_PER_SEGMENT = 1000;  // Don't over-segment small runs
+         const int SEGMENT_MULTIPLIER = 10;             // ~10 segments per core for load balancing
+         
+         int maxSegmentsFromCores = numCores * SEGMENT_MULTIPLIER;
+         int maxSegmentsFromRepeat = (int)(repeatCount / MIN_INDIVIDUALS_PER_SEGMENT);
+         if (maxSegmentsFromRepeat < 1) maxSegmentsFromRepeat = 1;
+         
+         iNumSegments = std::min(maxSegmentsFromCores, maxSegmentsFromRepeat);
+         if (iNumSegments < 1) iNumSegments = 1;
+         
+         bAutoSegments = true;
+         SHG_STDERR( "  [INFO] Auto-calculated NUM_SEGMENTS=%d (cores=%d, repeat=%ld, min_per_seg=%d)\n", 
+            iNumSegments, numCores, repeatCount, MIN_INDIVIDUALS_PER_SEGMENT);
+         SHG_STDERR( "  [INFO] For exact reproduction on other machines, add: NUM_SEGMENTS=%d\n", iNumSegments);
+      }
+      
+      // If still -1 (not auto-calculated), default to 1 (single segment)
+      // This happens when: MersenneTwister, or RngStream without multi-threading
+      if (iNumSegments == -1) {
+         iNumSegments = 1;
+      }
+      
+      // Warn if user explicitly set low segment count for large workloads
+      if (bUserSpecifiedSegments && bRunMultiThreaded && strcmp(sRNGStrategy, "RngStream") == 0) {
+         long repeatCount = (sPARAM_NumReps != NULL) ? atol(sPARAM_NumReps) : 1000;
+         int numCores = (iNumThreads == -1) ? std::thread::hardware_concurrency() : iNumThreads;
+         if (numCores < 1) numCores = 1;
+         
+         // Warn if segments seem too low for the workload
+         const int INDIVIDUALS_PER_SEGMENT_THRESHOLD = 100000;  // Warn if >100k per segment
+         long individualsPerSegment = repeatCount / iNumSegments;
+         
+         if (iNumSegments == 1 && repeatCount > 10000) {
+            SHG_STDERR( "  [WARNING] NUM_SEGMENTS=1 with REPEAT=%ld and NUM_THREADS=%d.\n", repeatCount, iNumThreads);
+            SHG_STDERR( "            Single segment means no parallel execution. Consider NUM_SEGMENTS=-1\n");
+            SHG_STDERR( "            for auto-calculation, or set NUM_SEGMENTS=%d for better performance.\n", 
+               std::min(numCores * 10, (int)(repeatCount / 1000)));
+         } else if (individualsPerSegment > INDIVIDUALS_PER_SEGMENT_THRESHOLD && iNumSegments < numCores) {
+            SHG_STDERR( "  [WARNING] NUM_SEGMENTS=%d may be suboptimal for REPEAT=%ld on %d cores.\n", 
+               iNumSegments, repeatCount, numCores);
+            SHG_STDERR( "            Consider NUM_SEGMENTS=%d for better load balancing.\n",
+               std::min(numCores * 10, (int)(repeatCount / 1000)));
+         }
       }
 
    }  // end if (bRunApp)
@@ -1255,10 +1729,10 @@ int RunWebVersion(const char * sInputFileName)
       else
          lSeed_Cess = atol(sSEED_Cess);
 
-      if (sSEED_OCD == NULL || atol(sSEED_OCD) == -1)
-         lSeed_OCD = time(0);
+      if (sSEED_Mortality == NULL || atol(sSEED_Mortality) == -1)
+         lSeed_Mortality = time(0);
       else
-         lSeed_OCD = atol(sSEED_OCD);
+         lSeed_Mortality = atol(sSEED_Mortality);
 
       if (sSEED_Misc == NULL || atol(sSEED_Misc) == -1)
          lSeed_Misc = time(0);
@@ -1274,7 +1748,7 @@ int RunWebVersion(const char * sInputFileName)
       try {
          short wOutputType = 1; // OUT_DataOnly=1
          pSimulator = new Smoking_Simulator(sFILE_InitProb,  sFILE_CessProb,
-                                            sFILE_OCDProb,   sFILE_Quintiles,
+                                            sFILE_MortalityProb,   sFILE_Quintiles,
                                             sFILE_CPDData,   wOutputType,
                                             wCessationYear);
 
@@ -1283,16 +1757,17 @@ int RunWebVersion(const char * sInputFileName)
             pSimulator->setRNGStrategy(new RngStreamRNG(rngStreamSeed));
          }
          else if (strcmp(sRNGStrategy, "MersenneTwister") == 0){
-            pSimulator->setRNGStrategy(new MersenneTwisterRNG(lSeed_Init, lSeed_Cess, lSeed_OCD, lSeed_Misc));
+            pSimulator->setRNGStrategy(new MersenneTwisterRNG(lSeed_Init, lSeed_Cess, lSeed_Mortality, lSeed_Misc));
          }
          else {
             WriteToFile(pErrorStream, "\n<ERROR>\nInvalid RNG Strategy: '%s'\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n", sRNGStrategy);
             bRunApp = false;
          }
          if (!gWithHoldTags) {
-            WriteRunInfoTag(pOutStream, VERSION_NUM, sSEED_Init, sSEED_Cess, sSEED_OCD,
-                         sSEED_Misc, sImmediateCess, sFILE_InitProb, sFILE_CessProb, sFILE_OCDProb,
-                         sFILE_Quintiles, sFILE_CPDData, sOutputFile, sErrorFile, sRNGStrategy, sFinalRngStreamSeed);
+            WriteRunInfoTagCLI(pOutStream, SHG_CORE_VERSION, sSEED_Init, sSEED_Cess, sSEED_Mortality,
+                         sSEED_Misc, sImmediateCess, sFILE_InitProb, sFILE_CessProb, sFILE_MortalityProb,
+                         sFILE_Quintiles, sFILE_CPDData, sOutputFile, sErrorFile, sRNGStrategy, sFinalRngStreamSeed,
+                         iNumSegments, iNumThreads, bRunMultiThreaded, bAutoSegments);
          }
 
       } catch (SimException ex) {
@@ -1328,7 +1803,7 @@ int RunWebVersion(const char * sInputFileName)
             if (!gWithHoldTags) {
                WriteToFile(pOutStream, "<SIMULATION>\n");
             }
-            WriteInputTag(pOutStream, sVecValues[0], sVecValues[1], sVecValues[2], sVecValues[3]);
+            WriteInputTagCLI(pOutStream, sVecValues[0], sVecValues[1], sVecValues[2], sVecValues[3]);
             if (!gWithHoldTags) {
                WriteToFile(pOutStream, "<RUN>\n");
             }
@@ -1367,17 +1842,288 @@ int RunWebVersion(const char * sInputFileName)
       } else if (bUseNumReps) {
          if (!gWithHoldTags) 
             WriteToFile(pOutStream,"<SIMULATION>\n");
-         WriteInputTag(pOutStream,sPARAM_Race,sPARAM_Sex,sPARAM_YOB,sPARAM_NumReps);
+         WriteInputTagCLI(pOutStream,sPARAM_Race,sPARAM_Sex,sPARAM_YOB,sPARAM_NumReps);
          if (!gWithHoldTags) 
             WriteToFile(pOutStream,"<RUN>\n");
-         for (j=0; j<lNumReps && bRunApp; j++) {
+         
+         // Use parallel processing if iNumSegments > 1 and using RngStream
+         // (Auto-calculation of segments happened earlier if needed)
+         if (iNumSegments > 1 && strcmp(sRNGStrategy, "RngStream") == 0) {
+            auto tStart = std::chrono::high_resolution_clock::now();
+            
+            // Close output stream temporarily for parallel processing
+            fclose(pOutStream);
+            pOutStream = NULL;
+            
+            SmokingSimulatorSharedData* pSharedData = nullptr;
+            std::vector<std::string> tempFiles;
+            std::vector<SegmentParams> segmentParams;
+            
+            auto cleanupParallelAllocations = [&]() {
+               for (auto& p : segmentParams) {
+                  delete p.preCreatedRng;
+                  p.preCreatedRng = nullptr;
+               }
+               if (pSharedData) {
+                  pSharedData->release();
+                  pSharedData = nullptr;
+               }
+            };
+            
             try {
-               pSimulator->RunSimulationSingle(atoi(sPARAM_Race),atoi(sPARAM_Sex),atoi(sPARAM_YOB),pOutStream);
-            } catch(SimException ex) {
-        	      WriteToFile(pErrorStream,"\n<ERROR>%s</ERROR>\n",ex.GetError());
-               WriteToFile(pErrorStream,"<CALLPATH>%s</CALLPATH>",ex.GetCallPath());
+            // Create shared data for all segments
+            // Note: Full data loading (~32ms) is faster than cohort-specific (~53ms)
+            // because filtering overhead exceeds the memory bandwidth benefit for this workload
+            auto t1 = std::chrono::high_resolution_clock::now();
+            pSharedData = Smoking_Simulator::CreateSharedData(
+               sFILE_InitProb, sFILE_CessProb, sFILE_MortalityProb, sFILE_CPDData);
+            auto t2 = std::chrono::high_resolution_clock::now();
+            SHG_STDERR( "  [TIMING] Shared data creation: %lld ms\n", 
+               static_cast<long long>(std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count()));
+            
+            if (iNumSegments < 1) {
+               WriteToFile(pErrorStream, "\n<ERROR>\nInvalid NUM_SEGMENTS=%d. Must be >= 1.\n</ERROR>\n<CALLPATH>\nMain:ParallelProcessing()\n</CALLPATH>\n", iNumSegments);
+               throw SimException("Invalid NUM_SEGMENTS", "Main:ParallelProcessing()");
+            }
+            // Calculate reps per segment
+            long repsPerSegment = lNumReps / iNumSegments;
+            long remainder = lNumReps % iNumSegments;
+            
+            // Create temp file paths (use filesystem path for cross-platform compatibility)
+            std::filesystem::path outputPath(sOutputFile);
+            std::filesystem::path outputDir = outputPath.parent_path();
+            if (outputDir.empty()) outputDir = ".";
+            
+            for (int seg = 0; seg < iNumSegments; seg++) {
+               std::filesystem::path tempPath = outputDir / ("shg_segment_" + std::to_string(seg) + ".tmp");
+               tempFiles.push_back(tempPath.string());
+            }
+            
+            // Prepare segment parameters
+            long currentStart = 0;
+            for (int seg = 0; seg < iNumSegments; seg++) {
+               SegmentParams params;
+               params.segmentIndex = seg;
+               params.startRep = currentStart;
+               params.endRep = currentStart + repsPerSegment + (seg < remainder ? 1 : 0);
+               params.race = atoi(sPARAM_Race);
+               params.sex = atoi(sPARAM_Sex);
+               params.yob = atoi(sPARAM_YOB);
+               strncpy(params.tempFilePath, tempFiles[seg].c_str(), sizeof(params.tempFilePath) - 1);
+               params.tempFilePath[sizeof(params.tempFilePath) - 1] = '\0';  // Ensure null termination
+               params.sharedData = pSharedData;
+               memcpy(params.rngSeed, rngStreamSeed, sizeof(params.rngSeed));
+               params.outputType = 1; // OUT_DataOnly
+               params.cessationYear = wCessationYear;
+               params.preCreatedRng = nullptr;  // Will be set below for RngStream
+               
+               segmentParams.push_back(params);
+               currentStart = params.endRep;
+            }
+            
+            // Pre-create RNG objects with buffering (performance optimization)
+            // This eliminates mutex contention AND reduces function call overhead
+            auto tRngStart = std::chrono::high_resolution_clock::now();
+            if (strcmp(sRNGStrategy, "RngStream") == 0) {
+               for (int seg = 0; seg < iNumSegments; seg++) {
+                  // Create base RNG with proper substream
+                  RngStreamRNG* rng = new RngStreamRNG(rngStreamSeed);
+                  for (int i = 0; i < seg; i++) {
+                     rng->incrementSubstreams();
+                  }
+                  
+                  // Wrap with buffering (10000 values per buffer - reduces refill overhead)
+                  // This maintains exact sequence but batches generation calls
+                  // Larger buffer = fewer refills, better cache utilization
+                  BufferedRngStreamRNG* bufferedRng = new BufferedRngStreamRNG(rng, 10000, true);
+                  segmentParams[seg].preCreatedRng = bufferedRng;
+               }
+            }
+            auto tRngEnd = std::chrono::high_resolution_clock::now();
+            SHG_STDERR( "  [TIMING] RNG pre-creation: %lld ms\n",
+               static_cast<long long>(std::chrono::duration_cast<std::chrono::milliseconds>(tRngEnd-tRngStart).count()));
+            
+            // Run segments (parallel or sequential)
+            auto t3 = std::chrono::high_resolution_clock::now();
+            bool parallelWorkersHadErrors = false;
+            if (bRunMultiThreaded) {
+               // Determine number of threads to use (-1 = auto)
+               int availableCores = std::thread::hardware_concurrency();
+               if (availableCores < 1) availableCores = 1;
+               
+               int maxThreads;
+               if (iNumThreads == -1) {
+                  // Auto mode: use all available cores
+                  maxThreads = availableCores;
+               } else if (iNumThreads > availableCores) {
+                  // User requested more threads than available cores - cap and warn
+                  SHG_STDERR( "  [WARNING] NUM_THREADS=%d exceeds available cores (%d). Using %d threads.\n",
+                     iNumThreads, availableCores, availableCores);
+                  SHG_STDERR( "            Using more threads than cores provides no benefit and may cause instability.\n");
+                  maxThreads = availableCores;
+               } else {
+                  maxThreads = iNumThreads;
+               }
+               
+               if (maxThreads < 1) maxThreads = 1;
+               // Don't create more threads than segments
+               if (maxThreads > iNumSegments) maxThreads = iNumSegments;
+               
+               SHG_STDERR( "  [INFO] Running %d segments on %d threads\n", iNumSegments, maxThreads);
+               
+               // Use a thread pool pattern to limit concurrent threads
+               // This prevents resource exhaustion with many segments
+               std::vector<std::exception_ptr> exceptions(segmentParams.size());
+               std::atomic<bool> hasError(false);
+               std::atomic<size_t> nextSegment(0);
+               
+               // Per-thread timing
+               std::vector<std::chrono::high_resolution_clock::time_point> threadStartTimes(maxThreads);
+               std::vector<std::chrono::high_resolution_clock::time_point> threadEndTimes(maxThreads);
+               std::vector<int> segmentsPerThread(maxThreads, 0);
+               
+               // Worker function that processes segments from the queue
+               // Uses relaxed memory ordering for better performance on the hot path
+               auto worker = [&](int threadId) {
+                  threadStartTimes[threadId] = std::chrono::high_resolution_clock::now();
+                  while (true) {
+                     // Atomically get the next segment to process
+                     // Use memory_order_relaxed for better performance (order doesn't matter here)
+                     size_t segIdx = nextSegment.fetch_add(1, std::memory_order_relaxed);
+                     if (segIdx >= segmentParams.size()) {
+                        break;  // No more segments
+                     }
+                     segmentsPerThread[threadId]++;
+                     try {
+                        RunSegment(segmentParams[segIdx]);
+                     } catch (...) {
+                        exceptions[segIdx] = std::current_exception();
+                        hasError.store(true, std::memory_order_relaxed);
+                     }
+                  }
+                  threadEndTimes[threadId] = std::chrono::high_resolution_clock::now();
+               };
+               
+               // Launch worker threads (limited to maxThreads)
+               std::vector<std::thread> threads;
+               for (int t = 0; t < maxThreads; t++) {
+                  threads.emplace_back(worker, t);
+               }
+               
+               // Wait for all threads to complete
+               for (auto& t : threads) {
+                  if (t.joinable()) {
+                     t.join();
+                  }
+               }
+               
+               // Print thread timing summary
+               for (int t = 0; t < maxThreads; t++) {
+                  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+                     threadEndTimes[t] - threadStartTimes[t]).count();
+                  if (t == 0) {
+                     SHG_STDERR( "    [Thread 0] %d segments in %lld ms\n", 
+                        segmentsPerThread[t], static_cast<long long>(duration));
+                  }
+               }
+               
+               // Check for exceptions and collect error messages
+               std::vector<std::string> segmentErrors;
+               if (hasError) {
+                  for (size_t i = 0; i < exceptions.size(); i++) {
+                     if (exceptions[i]) {
+                        try {
+                           std::rethrow_exception(exceptions[i]);
+                        } catch (SimException& ex) {
+                           segmentErrors.push_back("Segment " + std::to_string(i) + ": " + std::string(ex.GetError()));
+                        } catch (std::exception& ex) {
+                           segmentErrors.push_back("Segment " + std::to_string(i) + ": " + std::string(ex.what()));
+                        } catch (...) {
+                           segmentErrors.push_back("Segment " + std::to_string(i) + ": Unknown exception");
+                        }
+                     }
+                  }
+               }
+               
+               if (!segmentErrors.empty()) {
+                  std::string errorMsg = "Parallel execution failed:\n";
+                  for (const auto& err : segmentErrors) {
+                     errorMsg += "  " + err + "\n";
+                  }
+                  WriteToFile(pErrorStream, "\n<ERROR>\n%s</ERROR>\n<CALLPATH>\nMain:ParallelProcessing()\n</CALLPATH>\n", errorMsg.c_str());
+                  parallelWorkersHadErrors = true;
+               }
+            } else {
+               // Run segments sequentially
+               for (auto& params : segmentParams) {
+                  RunSegment(params);
+               }
+            }
+            auto t4 = std::chrono::high_resolution_clock::now();
+            SHG_STDERR( "  [TIMING] Segment execution: %lld ms\n",
+               static_cast<long long>(std::chrono::duration_cast<std::chrono::milliseconds>(t4-t3).count()));
+            
+            if (parallelWorkersHadErrors) {
+               cleanupParallelAllocations();
+               pOutStream = fopen(sOutputFile, "a");
+               if (pOutStream) {
+                  WriteToFile(pOutStream, "<RESULT>\nERROR\n</RESULT>\n");
+               }
+               bRunApp = false;
+            } else {
+               // Reopen output file and assemble results
+               auto t5 = std::chrono::high_resolution_clock::now();
+               pOutStream = fopen(sOutputFile, "a");
+               AssembleSegmentFiles(tempFiles, sOutputFile, !gWithHoldTags);
+               auto t6 = std::chrono::high_resolution_clock::now();
+               SHG_STDERR( "  [TIMING] File assembly: %lld ms\n",
+                  static_cast<long long>(std::chrono::duration_cast<std::chrono::milliseconds>(t6-t5).count()));
+               
+               cleanupParallelAllocations();
+               
+               auto tEnd = std::chrono::high_resolution_clock::now();
+               SHG_STDERR( "  [TIMING] Total parallel section: %lld ms\n",
+                  static_cast<long long>(std::chrono::duration_cast<std::chrono::milliseconds>(tEnd-tStart).count()));
+            }
+            
+            } catch (SimException& ex) {
+               cleanupParallelAllocations();
+               pOutStream = fopen(sOutputFile, "a");
+               if (pOutStream) {
+                  WriteToFile(pErrorStream, "\n<ERROR>%s</ERROR>\n", ex.GetError());
+                  WriteToFile(pErrorStream, "<CALLPATH>%s</CALLPATH>", ex.GetCallPath());
+                  WriteToFile(pOutStream, "<RESULT>\nERROR\n</RESULT>\n");
+               }
                bRunApp = (ex.GetType() == SimException::NON_FATAL);
-               WriteToFile(pOutStream,"<RESULT>\nERROR\n</RESULT>\n");
+            } catch (std::exception& ex) {
+               cleanupParallelAllocations();
+               pOutStream = fopen(sOutputFile, "a");
+               if (pOutStream) {
+                  WriteToFile(pErrorStream, "\n<ERROR>%s</ERROR>\n<CALLPATH>\nMain:ParallelProcessing()\n</CALLPATH>\n", ex.what());
+                  WriteToFile(pOutStream, "<RESULT>\nERROR\n</RESULT>\n");
+               }
+               bRunApp = false;
+            } catch (...) {
+               cleanupParallelAllocations();
+               pOutStream = fopen(sOutputFile, "a");
+               if (pOutStream) {
+                  WriteToFile(pErrorStream, "\n<ERROR>\nUnknown error during parallel segment execution.\n</ERROR>\n<CALLPATH>\nMain:ParallelProcessing()\n</CALLPATH>\n");
+                  WriteToFile(pOutStream, "<RESULT>\nERROR\n</RESULT>\n");
+               }
+               bRunApp = false;
+            }
+            
+         } else {
+            // Original single-segment code path
+            for (j=0; j<lNumReps && bRunApp; j++) {
+               try {
+                  pSimulator->RunSimulationSingle(atoi(sPARAM_Race),atoi(sPARAM_Sex),atoi(sPARAM_YOB),pOutStream);
+               } catch(SimException ex) {
+                  WriteToFile(pErrorStream,"\n<ERROR>%s</ERROR>\n",ex.GetError());
+                  WriteToFile(pErrorStream,"<CALLPATH>%s</CALLPATH>",ex.GetCallPath());
+                  bRunApp = (ex.GetType() == SimException::NON_FATAL);
+                  WriteToFile(pOutStream,"<RESULT>\nERROR\n</RESULT>\n");
+               }
             }
          }
          if (!gWithHoldTags) 
@@ -1385,7 +2131,7 @@ int RunWebVersion(const char * sInputFileName)
       } else {
          try {
             WriteToFile(pOutStream,"<SIMULATION>\n");
-            WriteInputTag(pOutStream,sPARAM_Race,sPARAM_Sex,sPARAM_YOB,sPARAM_NumReps);
+            WriteInputTagCLI(pOutStream,sPARAM_Race,sPARAM_Sex,sPARAM_YOB,sPARAM_NumReps);
             WriteToFile(pOutStream,"<RUN>\n");
             pSimulator->RunSimulationSingle(atoi(sPARAM_Race),atoi(sPARAM_Sex),atoi(sPARAM_YOB),pOutStream);
             if (!gWithHoldTags)
@@ -1426,12 +2172,12 @@ int RunWebVersion(const char * sInputFileName)
    delete [] sInputBuffer;
    delete [] sFILE_InitProb;
    delete [] sFILE_CessProb;
-   delete [] sFILE_OCDProb;
+   delete [] sFILE_MortalityProb;
    delete [] sFILE_Quintiles;
    delete [] sFILE_CPDData;
    free(sSEED_Init);
    free(sSEED_Cess);
-   free(sSEED_OCD);
+   free(sSEED_Mortality);
    free(sSEED_Misc);
    delete [] sOutputFile;
    delete [] sImmediateCess;
@@ -1439,6 +2185,8 @@ int RunWebVersion(const char * sInputFileName)
    delete [] sPARAM_Race;
    delete [] sPARAM_YOB;
    delete [] sPARAM_NumReps;
+   if (sNumSegments != NULL) delete [] sNumSegments;
+   if (sNumThreads != NULL) delete [] sNumThreads;
    delete pSimulator;
 
    return iReturnValue;
@@ -1469,14 +2217,14 @@ void Usage(void) {
    PrintMessage(" Smoking_Initiation\n");
    PrintMessage("        Runs a user interface version of program.\n\n");
    PrintMessage("Or\n\n");
-   PrintMessage(" Smoking_Initiation DATA_DIR INIT_SEED CESS_SEED OTH_COD_SEED INPUT_FILE OUTPUT_FILE OUTPUT_TYPE CESS_YEAR\n");
+   PrintMessage(" Smoking_Initiation DATA_DIR INIT_SEED CESS_SEED MORTALITY_SEED INPUT_FILE OUTPUT_FILE OUTPUT_TYPE CESS_YEAR\n");
    PrintMessageFormatted("\nOr\n\n");
-   PrintMessage(" Smoking_Initiation INIT_SEED CESS_SEED OTH_COD_SEED INPUT_FILE OUTPUT_FILE OUTPUT_TYPE CESS_YEAR\n");
+   PrintMessage(" Smoking_Initiation INIT_SEED CESS_SEED MORTALITY_SEED INPUT_FILE OUTPUT_FILE OUTPUT_TYPE CESS_YEAR\n");
    PrintMessage(" Where:\n");
    PrintMessage("    DATA_DIR     - Directory that contains the input files used by the application \n");
    PrintMessage("    INIT_SEED    - An integer seed for the Initiation Probability PRNG (>= 0)\n");
    PrintMessage("    CESS_SEED    - An integer seed for the Cessation Probability PRNG (>= 0)\n");
-   PrintMessage("    OTH_COD_SEED - An integer seed for the Other Cause of Death Probability PRNG (>= 0)\n");
+   PrintMessage("    MORTALITY_SEED - An integer seed for the mortality PRNG (>= 0); config files use SEED_MORTALITY (legacy: SEED_LIFETABLE / SEED_OCD / OTH_COD_SEED)\n");
    PrintMessage("    INDIV_SEED   - An integer seed for the PRNG that will be used for defining characteristics of the individual(>= 0)\n");
    PrintMessage("    INPUT_FILE   - Name of file containing co-variates to use in simulation\n");
    PrintMessage("    OUTPUT_FILE  - Path where output will be written\n");
@@ -1489,7 +2237,7 @@ void Usage(void) {
 
 // Validate the parameters necessary to run application
 bool ValidateParameters(char* sDataFileDir, 
-                        char* sInitiationSeed, char* sCessationSeed, char* sOtherCODSeed, char* sIndivRndSeed, 
+                        char* sInitiationSeed, char* sCessationSeed, char* sMortalitySeed, char* sIndivRndSeed, 
                         char* sInputFile, char* sOutputFile,
                         char* sOutputType, char* sImmediateCess, char* sErrorMessage) {
 
@@ -1508,7 +2256,7 @@ bool ValidateParameters(char* sDataFileDir,
       fclose(pTestInputStream);
    }
    if (bReturnValue) {
-      bReturnValue = ValidateParameters(sInitiationSeed, sCessationSeed, sOtherCODSeed, sIndivRndSeed,
+      bReturnValue = ValidateParameters(sInitiationSeed, sCessationSeed, sMortalitySeed, sIndivRndSeed,
                                         sInputFile, sOutputFile, 
                                         sOutputType, sImmediateCess, sErrorMessage);
    }
@@ -1517,7 +2265,7 @@ bool ValidateParameters(char* sDataFileDir,
 
 
 // Validate the parameters necessary to run application
-bool ValidateParameters(char* sInitiationSeed, char* sCessationSeed, char* sOtherCODSeed, char* sIndivRndSeed,
+bool ValidateParameters(char* sInitiationSeed, char* sCessationSeed, char* sMortalitySeed, char* sIndivRndSeed,
                         char* sInputFile, char* sOutputFile,
                         char* sOutputType, char* sImmediateCess, char* sErrorMessage) {
 
@@ -1533,9 +2281,9 @@ bool ValidateParameters(char* sInitiationSeed, char* sCessationSeed, char* sOthe
 		snprintf(sErrorMessage, ERROR_MESSAGE_SIZE,"Invalid Seed %s for Cessation Probability PRNG.\nValid Range id 0 to %ld.\n", 
          sCessationSeed, MAX(long));
 		bReturnValue = false;
-  	} else if (!IsPosLongInt(sOtherCODSeed)) {
-		snprintf(sErrorMessage, ERROR_MESSAGE_SIZE,"Invalid Seed %s for Other Cause of Death Probability PRNG.\nValid Range id 0 to %ld.\n", 
-         sOtherCODSeed, MAX(long));
+  	} else if (!IsPosLongInt(sMortalitySeed)) {
+		snprintf(sErrorMessage, ERROR_MESSAGE_SIZE,"Invalid Seed %s for mortality probability PRNG.\nValid Range id 0 to %ld.\n", 
+         sMortalitySeed, MAX(long));
 		bReturnValue = false;
   	} else if (!IsPosLongInt(sIndivRndSeed)) {
 		snprintf(sErrorMessage, ERROR_MESSAGE_SIZE,"Invalid Seed %s for Indivdual's Random Numbers PRNG.\nValid Range id 0 to %ld.\n", 
@@ -1578,79 +2326,24 @@ bool ValidateParameters(char* sInitiationSeed, char* sCessationSeed, char* sOthe
 	return bReturnValue;
 }
 
-//Writes out tagged information about the program to pOutStream
-void WriteRunInfoTag(FILE* pOutStream, const char* sVersion, const char* sInitiationSeed,
-                     const char* sCessSeed, const char* sOCDSeed, const char* sMiscSeed,
-                     const char* sImmediateCessYear, const char* sInitFile, const char* sCessFile,
-                     const char* sOCDProbFile, const char* sQuintilesFile, const char* sCPDDataFile,
-                     const char* sOutputFile, const char* sErrorFile, const char* sRNGStrategy, 
-                     const char* sRngStreamSeed) {
-   if (pOutStream == NULL)
-      throw SimException("WriteRunInfoTag()::ERROR","Output stream is not initialized.\n");
-
-   WriteToFile(pOutStream,"<RUNINFO>\n");
-   WriteToFile(pOutStream,"<VERSION>%s</VERSION>\n", sVersion);
-   WriteToFile(pOutStream,"<RNGSTRATEGY>%s</RNGSTRATEGY>\n", sRNGStrategy);
-   WriteToFile(pOutStream,"<SEEDS>\n");
-   if (strcmp(sRNGStrategy, "MersenneTwister") == 0) {
-      WriteToFile(pOutStream,"<INIT_PRNG_SEED>%s</INIT_PRNG_SEED>\n", sInitiationSeed);
-      WriteToFile(pOutStream,"<CESS_PRNG_SEED>%s</CESS_PRNG_SEED>\n", sCessSeed);
-      WriteToFile(pOutStream,"<OCD_PRNG_SEED>%s</OCD_PRNG_SEED>\n", sOCDSeed);
-      WriteToFile(pOutStream,"<MISC_PRNG_SEED>%s</MISC_PRNG_SEED>\n", sMiscSeed);
-   } else {
-      WriteToFile(pOutStream,"<RNGSTREAM_SEED>%s</RNGSTREAM_SEED>\n", sRngStreamSeed);
-   }
-   WriteToFile(pOutStream,"</SEEDS>\n");
-   WriteToFile(pOutStream,"<DATAFILES>\n");
-   WriteToFile(pOutStream,"<INPUT_FILE>%s</INPUT_FILE>\n", gInputFileName.c_str());
-   WriteToFile(pOutStream,"<INITIATION>%s</INITIATION>\n", sInitFile);
-   WriteToFile(pOutStream,"<CESSATION>%s</CESSATION>\n", sCessFile);
-   WriteToFile(pOutStream,"<OCD>%s<OCD>\n", sOCDProbFile);
-   WriteToFile(pOutStream,"<CIG_PER_DAY>%s</CIG_PER_DAY>\n</DATAFILES>\n", sCPDDataFile);
-   WriteToFile(pOutStream,"<OUTFILES>\n<OUTPUT>%s</OUTPUT>\n", sOutputFile);
-   WriteToFile(pOutStream,"<ERRORS>%s</ERRORS>\n</OUTFILES>\n", sErrorFile);
-   WriteToFile(pOutStream,"<OPTIONS>\n<CESSATION_YR>%s</CESSATION_YR>\n", sImmediateCessYear);
-   WriteToFile(pOutStream,"</OPTIONS>\n</RUNINFO>\n");
+// WriteRunInfoTag and WriteInputTag are now in smoking_sim.cpp (shared with R wrapper)
+// CLI-specific wrapper that passes the global gInputFileName
+void WriteRunInfoTagCLI(FILE* pOutStream, const char* sVersion, const char* sInitiationSeed,
+                        const char* sCessSeed, const char* sMortalitySeed, const char* sMiscSeed,
+                        const char* sImmediateCessYear, const char* sInitFile, const char* sCessFile,
+                        const char* sMortalityProbFile, const char* sQuintilesFile, const char* sCPDDataFile,
+                        const char* sOutputFile, const char* sErrorFile, const char* sRNGStrategy, 
+                        const char* sRngStreamSeed,
+                        int numSegments, int numThreads, bool multiThreaded, bool autoSegments) {
+   WriteRunInfoTag(pOutStream, sVersion, sInitiationSeed, sCessSeed, sMortalitySeed, sMiscSeed,
+                   sImmediateCessYear, sInitFile, sCessFile, sMortalityProbFile, sQuintilesFile, 
+                   sCPDDataFile, sOutputFile, sErrorFile, sRNGStrategy, sRngStreamSeed,
+                   gInputFileName.c_str(), numSegments, numThreads, multiThreaded, autoSegments);
 }
 
-//Writes out tagged information about the current run to pOutStream
-void WriteInputTag(FILE* pOutStream, char* sRace, char* sSex, const char* sYearOfBirth, const char* sNumReps) {
-
-   int iSex, iRace;
-
-   try {
-      if (pOutStream == NULL) {
-         throw SimException("ERROR","Output stream is not initialized.\n");
-      }
-
-      iSex = atoi(sSex);
-      iRace = atoi(sRace);
-
-      if (!gWithHoldTags) {
-         WriteToFile(pOutStream, "<INPUTS>\n");
-
-         if (iRace >= 0 && iRace < Smoking_Simulator::NUM_RACES) {
-            WriteToFile(pOutStream, "<RACE>%s</RACE>\n", sRACE_LABELS[iRace]);
-         } else {
-            WriteToFile(pOutStream, "<RACE>\n%d\n</RACE>\n", iRace);
-         }
-
-         if (iSex >= 0 && iSex < Smoking_Simulator::NUM_SEXES) {
-            WriteToFile(pOutStream,"<SEX>%s</SEX>\n", sSEX_LABELS[iSex]);
-         } else {
-            WriteToFile(pOutStream,"<SEX>\n%d\n</SEX>\n", iSex);
-         }
-
-         WriteToFile(pOutStream,"<YOB>%s</YOB>\n",sYearOfBirth);
-         if (sNumReps != NULL && (strcmp(sNumReps,"\0") != 0)) {
-            WriteToFile(pOutStream,"<REPEAT>%s</REPEAT>\n", sNumReps);
-   	   }
-         WriteToFile(pOutStream,"</INPUTS>\n");
-      }
-   } catch (SimException ex) {
-      ex.AddCallPath("WriteInputTag(FILE*,char*...)");
-      throw ex;
-   }
+// CLI-specific wrapper that uses gWithHoldTags
+void WriteInputTagCLI(FILE* pOutStream, char* sRace, char* sSex, const char* sYearOfBirth, const char* sNumReps) {
+   WriteInputTag(pOutStream, sRace, sSex, sYearOfBirth, sNumReps, gWithHoldTags);
 }
 
 void ModifyCutoffYear(char* newCutoff) {
@@ -1683,7 +2376,7 @@ bool CreateDataFile(const char *sNumToSimulate, const char* sOutFileName, char* 
       try {
          short wCessationYear = 0;
          pSimulator = new Smoking_Simulator(INITIATION_DATA_FILE, CESSATION_DATA_FILE,
-                                            OTHER_COD_DATA_FILE,  CPD_INTENSITY_PROBS,
+                                            DEFAULT_MORTALITY_DATA_FILE,  CPD_INTENSITY_PROBS,
                                             CPD_DATA_FILE,        0,
                                             0,                    0,
                                             0,                    Smoking_Simulator::OUT_DataOnly,
