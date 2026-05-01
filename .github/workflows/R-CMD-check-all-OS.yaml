@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
     branches:
       - '**'
+  workflow_call:
 
 name: R CMD check all OS
 

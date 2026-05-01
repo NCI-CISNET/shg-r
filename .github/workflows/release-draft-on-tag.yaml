@@ -1,0 +1,27 @@
+# When a semver tag vX.Y.Z is pushed, run full R CMD check (all OS) then open a draft GitHub Release.
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+name: Tag checks and draft release
+
+permissions:
+  contents: write
+
+jobs:
+  rcmd-check-all-os:
+    uses: ./.github/workflows/R-CMD-check-all-OS.yaml
+    secrets: inherit
+
+  draft-release:
+    needs: rcmd-check-all-os
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: SmokingHistoryGenerator ${{ github.ref_name }}
+          draft: true
+          generate_release_notes: true
