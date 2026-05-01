@@ -113,7 +113,8 @@ summary_df <- data.frame(
   )
 )
 
-summary_df$Speedup <- summary_df$Records_Per_Sec[1] / summary_df$Records_Per_Sec[2]
+baseline_rps <- summary_df$Records_Per_Sec[nrow(summary_df)]
+summary_df$Speedup <- summary_df$Records_Per_Sec / baseline_rps
 
 print(summary_df, row.names = FALSE)
 
