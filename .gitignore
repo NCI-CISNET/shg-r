@@ -20,5 +20,6 @@ SmokingHistoryGenerator_0.0.1.tar.gz
 *.gz
 /.venv
 /R-sandbox
-/.R-lib
+# Local library (e.g. VS Code R: Test task); must never be committed
+.R-lib/
 /tmp
