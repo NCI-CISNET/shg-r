@@ -51,6 +51,9 @@ extract_tag <- function(vector, tag) {
   return(vector[first_start:first_end])
 }
 
+# Legacy XML goldens: compare only tags that define the simulation rows, not <RUNINFO>.
+# <RUNINFO>/<DATAFILES> paths differ by machine, cwd, and devtools vs R CMD check; goldens
+# use portable inst/extdata + tests/... strings. extract_tag(..., "RUN") ignores all of that.
 get_run_details <- function(file_path) {
   vector <- read_output_lines(file_path)
   run <- extract_tag(vector, "RUN")
@@ -141,6 +144,7 @@ MT_fixture_B <- get_run_details(test_path("../fixtures/MT/yob_2010_cessation_205
 
 # One canonical fixture per scenario: same config must produce the same <RUN> lines on every OS.
 # If a platform diverges, fix determinism in the engine — do not maintain alternate goldens or relaxed checks.
+# Path-agnostic: we pass only the <RUN>...</RUN> line vectors from get_run_details(), never whole-file XML.
 compare_legacy_run_body <- function(actual_run, fixture_run) {
   expect_equal(actual_run, fixture_run)
 }
