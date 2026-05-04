@@ -18,8 +18,10 @@ on:
         type: string
 
 name: Create draft release
-# Actions UI otherwise labels the run as the workflow branch (e.g. master), not the tag under test.
-run-name: Create draft release — ${{ github.event.inputs.version || github.ref_name }}
+# GitHub's Actions run list always shows the branch you picked under "Use workflow from" (github.ref /
+# github.ref_name, e.g. master). That is only which copy of this YAML runs — not the checkout ref.
+# run-name is the part you control: it includes the tag so the run title matches what you released.
+run-name: ${{ format('{0} — draft release (workflow file from {1})', github.event.inputs.version || github.ref_name, github.ref_name) }}
 
 permissions:
   contents: write
@@ -30,7 +32,8 @@ jobs:
   release-ref:
     runs-on: ubuntu-latest
     outputs:
-      ref: ${{ steps.resolve.outputs.ref }}
+      # Avoid naming this output "ref" — pass-through into workflow_call has been flaky in practice.
+      release_tag: ${{ steps.resolve.outputs.release_tag }}
     steps:
       - id: resolve
         shell: bash
@@ -49,17 +52,17 @@ jobs:
             echo "Empty release ref" >&2
             exit 1
           fi
-          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+          echo "release_tag=$REF" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
         with:
-          ref: ${{ steps.resolve.outputs.ref }}
+          ref: ${{ steps.resolve.outputs.release_tag }}
           fetch-depth: 1
 
   rcmd-check-all-os:
     needs: release-ref
     uses: ./.github/workflows/R-CMD-check-all-OS.yaml
     with:
-      ref: ${{ needs.release-ref.outputs.ref }}
+      ref: ${{ needs.release-ref.outputs.release_tag }}
     secrets: inherit
 
   draft-release:
@@ -69,7 +72,7 @@ jobs:
       - name: Create draft release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.release-ref.outputs.ref }}
-          name: SmokingHistoryGenerator ${{ needs.release-ref.outputs.ref }}
+          tag_name: ${{ needs.release-ref.outputs.release_tag }}
+          name: SmokingHistoryGenerator ${{ needs.release-ref.outputs.release_tag }}
           draft: true
           generate_release_notes: true
