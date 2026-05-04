@@ -1,7 +1,10 @@
 # Same idea as shg-cli/.github/workflows/shg-create-release.yml:
-# - "Use workflow from" picks which branch supplies this workflow file (e.g. master with CI fixes).
-# - checkout ref is inputs.version || github.ref_name so builds/tests run on the tag commit,
-#   not on the workflow branch.
+# - "Use workflow from" only selects which branch supplies *this workflow file* (e.g. master with CI fixes).
+# - The tag you type (manual) or the tag you pushed is what we check out and release — never HEAD of that branch.
+# - A tiny job resolves the ref from github.event (dispatch) or github.ref (tag push), checks out that ref to
+#   prove it exists, then passes needs.*.outputs.ref into the reusable R CMD check workflow. Mapping
+#   workflow_dispatch inputs straight into workflow_call `with` can drop the tag ref so checkout falls back
+#   to the branch you picked in the UI.
 # When a semver tag vX.Y.Z is pushed, runs R CMD check (all OS) then opens a draft GitHub Release.
 on:
   push:
@@ -16,7 +19,7 @@ on:
 
 name: Create draft release
 # Actions UI otherwise labels the run as the workflow branch (e.g. master), not the tag under test.
-run-name: Create draft release — ${{ inputs.version || github.ref_name }}
+run-name: Create draft release — ${{ github.event.inputs.version || github.ref_name }}
 
 permissions:
   contents: write
@@ -24,21 +27,49 @@ permissions:
   actions: write
 
 jobs:
+  release-ref:
+    runs-on: ubuntu-latest
+    outputs:
+      ref: ${{ steps.resolve.outputs.ref }}
+    steps:
+      - id: resolve
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            REF="$INPUT_VERSION"
+          else
+            REF="$REF_NAME"
+          fi
+          if [[ -z "$REF" ]]; then
+            echo "Empty release ref" >&2
+            exit 1
+          fi
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.resolve.outputs.ref }}
+          fetch-depth: 1
+
   rcmd-check-all-os:
+    needs: release-ref
     uses: ./.github/workflows/R-CMD-check-all-OS.yaml
     with:
-      # Same ref for checkout and job-name suffix in R-CMD-check-all-OS (see inputs.ref there).
-      ref: ${{ inputs.version || github.ref_name }}
+      ref: ${{ needs.release-ref.outputs.ref }}
     secrets: inherit
 
   draft-release:
-    needs: rcmd-check-all-os
+    needs: [release-ref, rcmd-check-all-os]
     runs-on: ubuntu-latest
     steps:
       - name: Create draft release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.version || github.ref_name }}
-          name: SmokingHistoryGenerator ${{ inputs.version || github.ref_name }}
+          tag_name: ${{ needs.release-ref.outputs.ref }}
+          name: SmokingHistoryGenerator ${{ needs.release-ref.outputs.ref }}
           draft: true
           generate_release_notes: true
