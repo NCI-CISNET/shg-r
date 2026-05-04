@@ -15,6 +15,8 @@ on:
         type: string
 
 name: Create draft release
+# Actions UI otherwise labels the run as the workflow branch (e.g. master), not the tag under test.
+run-name: Create draft release — ${{ inputs.version || github.ref_name }}
 
 permissions:
   contents: write
@@ -25,6 +27,7 @@ jobs:
   rcmd-check-all-os:
     uses: ./.github/workflows/R-CMD-check-all-OS.yaml
     with:
+      # Same ref for checkout and job-name suffix in R-CMD-check-all-OS (see inputs.ref there).
       ref: ${{ inputs.version || github.ref_name }}
     secrets: inherit
 
