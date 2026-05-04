@@ -1,5 +1,6 @@
 # Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
 # Windows runs first; macOS/Ubuntu start only after Windows passes (saves time when Windows fails).
+# Core check steps live in .github/actions/r-cmd-check-shg-r (also used by release-draft-on-tag).
 # Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
 on:
   workflow_dispatch:
@@ -14,18 +15,10 @@ on:
   push:
     branches:
       - ci/windows-debug
-  workflow_call:
-    inputs:
-      ref:
-        description: "Optional ref to checkout; empty uses the triggering ref (e.g. pushed tag)."
-        required: false
-        type: string
-        default: ""
 
 name: R CMD check (all OS)
 run-name: R CMD check (all OS) — ${{ inputs.ref || github.ref_name }}
 
-# Narrow scopes so reusable workflow_call works when the caller uses contents:write (e.g. draft releases).
 permissions:
   contents: read
   actions: write
@@ -33,7 +26,6 @@ permissions:
 jobs:
   R-CMD-check-windows:
     runs-on: windows-latest
-    # When caller passes inputs.ref (e.g. release workflow), show tag in the check name.
     name: windows-latest${{ inputs.ref && format(' [{0}]', inputs.ref) || ' (release)' }}
 
     env:
@@ -41,8 +33,6 @@ jobs:
       R_KEEP_PKG_SOURCE: yes
 
     steps:
-      # Do not use `inputs.ref != '' && inputs.ref || github.ref`: when workflow_call leaves
-      # inputs.ref null (not ''), the middle operand is falsy and checkout wrongly uses github.ref (branch).
       - id: pick_checkout_ref
         shell: bash
         env:
@@ -57,27 +47,11 @@ jobs:
           fi
           echo "Resolved checkout ref: ${out}"
           echo "ref=${out}" >> "${GITHUB_OUTPUT}"
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ steps.pick_checkout_ref.outputs.ref }}
 
-      - uses: r-lib/actions/setup-pandoc@v2
-
-      - uses: r-lib/actions/setup-r@v2
+      - uses: ./.github/actions/r-cmd-check-shg-r
         with:
-          r-version: release
-          use-public-rspm: true
-
-      - uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          extra-packages: any::rcmdcheck
-          needs: check
-
-      - uses: r-lib/actions/check-r-package@v2
-        with:
-          upload-snapshots: true
-          build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
-          error-on: '"warning"'
+          checkout_ref: ${{ steps.pick_checkout_ref.outputs.ref }}
+          r_version: release
 
       - name: Upload Rcheck tests (full testthat output) on failure
         if: failure()
@@ -120,27 +94,11 @@ jobs:
           fi
           echo "Resolved checkout ref: ${out}"
           echo "ref=${out}" >> "${GITHUB_OUTPUT}"
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ steps.pick_checkout_ref.outputs.ref }}
 
-      - uses: r-lib/actions/setup-pandoc@v2
-
-      - uses: r-lib/actions/setup-r@v2
+      - uses: ./.github/actions/r-cmd-check-shg-r
         with:
-          r-version: ${{ matrix.config.r }}
-          use-public-rspm: true
-
-      - uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          extra-packages: any::rcmdcheck
-          needs: check
-
-      - uses: r-lib/actions/check-r-package@v2
-        with:
-          upload-snapshots: true
-          build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
-          error-on: '"warning"'
+          checkout_ref: ${{ steps.pick_checkout_ref.outputs.ref }}
+          r_version: ${{ matrix.config.r }}
 
       - name: Upload Rcheck tests (full testthat output) on failure
         if: failure()

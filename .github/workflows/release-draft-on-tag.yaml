@@ -1,10 +1,8 @@
 # Same idea as shg-cli/.github/workflows/shg-create-release.yml:
 # - "Use workflow from" only selects which branch supplies *this workflow file* (e.g. master with CI fixes).
 # - The tag you type (manual) or the tag you pushed is what we check out and release — never HEAD of that branch.
-# - A tiny job resolves the ref from github.event (dispatch) or github.ref (tag push), checks out that ref to
-#   prove it exists, then passes needs.*.outputs.ref into the reusable R CMD check workflow. Mapping
-#   workflow_dispatch inputs straight into workflow_call `with` can drop the tag ref so checkout falls back
-#   to the branch you picked in the UI.
+# - R CMD check runs in this workflow via ./.github/actions/r-cmd-check-shg-r (not workflow_call): GitHub does not
+#   reliably pass caller `with.ref` into reusable workflows, so checkout could stay on the UI branch.
 # When a semver tag vX.Y.Z is pushed, runs R CMD check (all OS) then opens a draft GitHub Release.
 on:
   push:
@@ -18,21 +16,17 @@ on:
         type: string
 
 name: Create draft release
-# GitHub's Actions run list always shows the branch you picked under "Use workflow from" (github.ref /
-# github.ref_name, e.g. master). That is only which copy of this YAML runs — not the checkout ref.
-# run-name is the part you control: it includes the tag so the run title matches what you released.
+# GitHub's Actions run list shows the branch you picked under "Use workflow from"; run-name carries the tag.
 run-name: ${{ format('{0} — draft release (workflow file from {1})', github.event.inputs.version || github.ref_name, github.ref_name) }}
 
 permissions:
   contents: write
-  # Reusable R-CMD-check-all-OS.yaml requests actions:write (e.g. check-r-package snapshots).
   actions: write
 
 jobs:
   release-ref:
     runs-on: ubuntu-latest
     outputs:
-      # Avoid naming this output "ref" — pass-through into workflow_call has been flaky in practice.
       release_tag: ${{ steps.resolve.outputs.release_tag }}
     steps:
       - id: resolve
@@ -58,15 +52,63 @@ jobs:
           ref: ${{ steps.resolve.outputs.release_tag }}
           fetch-depth: 1
 
-  rcmd-check-all-os:
+  rcmd-check-windows:
     needs: release-ref
-    uses: ./.github/workflows/R-CMD-check-all-OS.yaml
-    with:
-      ref: ${{ needs.release-ref.outputs.release_tag }}
-    secrets: inherit
+    runs-on: windows-latest
+    name: windows-latest [${{ needs.release-ref.outputs.release_tag }}]
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+
+    steps:
+      - uses: ./.github/actions/r-cmd-check-shg-r
+        with:
+          checkout_ref: ${{ needs.release-ref.outputs.release_tag }}
+          r_version: release
+
+      - name: Upload Rcheck tests (full testthat output) on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rcheck-tests-windows
+          if-no-files-found: ignore
+          path: |
+            **/*.Rcheck/tests/
+
+  rcmd-check-unix:
+    needs: [release-ref, rcmd-check-windows]
+    runs-on: ${{ matrix.config.os }}
+    name: ${{ matrix.config.os }} [${{ needs.release-ref.outputs.release_tag }}]
+
+    strategy:
+      fail-fast: true
+      matrix:
+        config:
+          - {os: macos-latest, r: 'release'}
+          - {os: ubuntu-latest, r: 'release'}
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+
+    steps:
+      - uses: ./.github/actions/r-cmd-check-shg-r
+        with:
+          checkout_ref: ${{ needs.release-ref.outputs.release_tag }}
+          r_version: ${{ matrix.config.r }}
+
+      - name: Upload Rcheck tests (full testthat output) on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rcheck-tests-${{ matrix.config.os }}
+          if-no-files-found: ignore
+          path: |
+            **/*.Rcheck/tests/
 
   draft-release:
-    needs: [release-ref, rcmd-check-all-os]
+    needs: [release-ref, rcmd-check-windows, rcmd-check-unix]
     runs-on: ubuntu-latest
     steps:
       - name: Create draft release
