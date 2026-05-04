@@ -1,9 +1,8 @@
 # When a semver tag vX.Y.Z is pushed, run full R CMD check (all OS) then open a draft GitHub Release.
 #
 # Re-runs: GitHub reuses the workflow *at the commit the tag points to* for tag-triggered runs.
-# To use an updated workflow (e.g. permissions) while still checking out a release tag, use
-# "Run workflow": pick the branch that contains this file under "Use workflow from", then enter
-# the semver tag once below (same ref is used for R CMD check and for the draft release).
+# Manual run: under "Use workflow from" pick the branch that contains this workflow (e.g. master).
+# R CMD check checks out that branch. Enter the existing semver tag only for the draft release target.
 on:
   push:
     tags:
@@ -11,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Semver tag for R CMD check and draft release (e.g. v6.5.2). Workflow file comes from the branch you select above."
+        description: "Existing semver tag for the draft release (e.g. v6.5.2). R CMD check uses the branch selected above."
         required: true
         type: string
 
@@ -25,8 +24,6 @@ permissions:
 jobs:
   rcmd-check-all-os:
     uses: ./.github/workflows/R-CMD-check-all-OS.yaml
-    with:
-      ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || '' }}
     secrets: inherit
 
   draft-release:
@@ -36,7 +33,7 @@ jobs:
       - name: Create draft release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
-          name: SmokingHistoryGenerator ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name }}
+          name: SmokingHistoryGenerator ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name }}
           draft: true
           generate_release_notes: true
