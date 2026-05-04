@@ -2,21 +2,16 @@
 #
 # Re-runs: GitHub reuses the workflow *at the commit the tag points to* for tag-triggered runs.
 # To use an updated workflow (e.g. permissions) while still checking out a release tag, use
-# "Run workflow" below: choose the branch that contains this file, set `ref` to the tag or SHA
-# to check, and `release_tag` for the draft release name.
+# "Run workflow": pick the branch that contains this file under "Use workflow from", then enter
+# the semver tag once below (same ref is used for R CMD check and for the draft release).
 on:
   push:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
   workflow_dispatch:
     inputs:
-      ref:
-        description: "Git ref for R CMD check (tag e.g. v6.5.2, branch, or SHA)."
-        required: true
-        default: "master"
-        type: string
-      release_tag:
-        description: "Tag for the draft GitHub Release (e.g. v6.5.2)."
+      tag:
+        description: "Semver tag for R CMD check and draft release (e.g. v6.5.2). Workflow file comes from the branch you select above."
         required: true
         type: string
 
@@ -31,7 +26,7 @@ jobs:
   rcmd-check-all-os:
     uses: ./.github/workflows/R-CMD-check-all-OS.yaml
     with:
-      ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || '' }}
+      ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || '' }}
     secrets: inherit
 
   draft-release:
@@ -41,7 +36,7 @@ jobs:
       - name: Create draft release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
-          name: SmokingHistoryGenerator ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          name: SmokingHistoryGenerator ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
           draft: true
           generate_release_notes: true
