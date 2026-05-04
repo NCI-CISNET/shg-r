@@ -2,7 +2,7 @@ Package: SmokingHistoryGenerator
 Type: Package
 Title: R wrapper for the Smoking History Generator
 Version: 6.5.2
-SHGMostRecentTag: v6.5.1
+SHGMostRecentTag: v6.5.2
 SHGCommitHash: 2bfe81c
 SHGsrcHash: 6e6a8fff8ea3314e35b65e7d72804e9b
 Date: 2026-05-04
