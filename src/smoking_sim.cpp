@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <cstdarg>
 #include <cstring>  // for memset
+#include <algorithm>
 #include <mutex>
 #include <vector>
 #include "rng_strategy.h"
@@ -582,24 +583,25 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
       else
          wYearsAsSmoker = gwPersonsCessAge - gwPersonsInitAge + 1;
 
-      // Set up the array for storing the number of cigarettes smoked per day for ages 0 - 99 regardless?
-      // Use memset for faster initialization (cpdGroupOverLife is a vector)
-      std::memset(cpdGroupOverLife.data(), -999, nRows * sizeof(short));
+      // cpdGroupOverLife[rowOff] holds the intensity group for calendar age (gwCpdMinAge + rowOff).
+      // Loop in calendar age — table rows do not start at age 0 when CSV omits young ages (gwCpdMinAge > 0).
+      std::fill(cpdGroupOverLife.begin(), cpdGroupOverLife.end(), static_cast<long>(-999));
 
       double term1, term2;
       static thread_local std::vector<double> switchProbs;
       switchProbs.resize(nColumns);
       double sum;
 
-      for (i = 0; i < nRows ; i++) {
+      for (long calAge = gwCpdMinAge; calAge <= gwCpdMaxAge; calAge++) {
+         const long rowOff = calAge - gwCpdMinAge;
 
-         if (i < gwPersonsInitAge) {               // if not a smoker yet
+         if (calAge < gwPersonsInitAge) {               // if not a smoker yet
             group = -999;
 
-         } else if (i == gwPersonsInitAge) {       // if just inititiating
+         } else if (calAge == gwPersonsInitAge) {       // if just inititiating
             // Cumulative sum for first smoking year (typically nColumns=6)
             sum = 0;
-            const long row_offset = i * nColumns;
+            const long row_offset = rowOff * nColumns;
             #pragma GCC unroll 6
             for (j = 0; j < nColumns; j++) {
                sum += filteredCPDGroups[row_offset + j];
@@ -616,14 +618,14 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
             // Clamp to valid range (branchless)
             group = (group >= nColumns) ? nColumns - 1 : group;
 
-         } else if (i > gwPersonsInitAge) {        // if already a smoker
+         } else if (calAge > gwPersonsInitAge) {        // if already a smoker
 
             // (Re)initialize Tij = 0 - use memset for better performance
             std::memset(Tij.data(), 0, nColumns * nColumns * sizeof(double));
 
             // Find source and target proportionality vectors for the age of interest
-            const long prev_row_offset = (i - 1) * nColumns;
-            const long curr_row_offset = i * nColumns;
+            const long prev_row_offset = (calAge - 1 - gwCpdMinAge) * nColumns;
+            const long curr_row_offset = rowOff * nColumns;
             
             #if defined(__clang__)
                #pragma clang loop unroll_count(6)
@@ -695,7 +697,7 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
             group = (group >= nColumns) ? nColumns - 1 : group;
          } 
 
-         cpdGroupOverLife[i] = group;
+         cpdGroupOverLife[rowOff] = group;
       }
 
       // Convert to cigarettes per day rather than category
@@ -715,9 +717,16 @@ void Smoking_Simulator::CalcCigarettesPerDaySwitch() {
       else
          endAge = gwPersonsCessAge;
 
+      const long lastCpdRow = nRows - 1;
       for (i = gwPersonsInitAge; i <= endAge; i++) {
          m = i - gwPersonsInitAge;
-         short group = cpdGroupOverLife[i];
+         long rowIdx = static_cast<long>(i) - gwCpdMinAge;
+         if (rowIdx < 0) {
+            rowIdx = 0;
+         } else if (rowIdx > lastCpdRow) {
+            rowIdx = lastCpdRow;
+         }
+         short group = static_cast<short>(cpdGroupOverLife[rowIdx]);
          // Bounds check and lookup (much faster than cascading if-else)
          gdPersonsCPDbyAge[m] = (group >= 0 && group < 6) ? cpd_lookup[group] : 3.0;
          dSumOfCpd += gdPersonsCPDbyAge[m];
