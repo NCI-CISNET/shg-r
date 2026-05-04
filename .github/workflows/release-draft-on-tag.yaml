@@ -8,6 +8,8 @@ name: Tag checks and draft release
 
 permissions:
   contents: write
+  # Reusable R-CMD-check-all-OS.yaml requests actions:write (e.g. check-r-package snapshots).
+  actions: write
 
 jobs:
   rcmd-check-all-os:
