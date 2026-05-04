@@ -11,6 +11,9 @@ on:
         required: false
         type: string
         default: ""
+  push:
+    branches:
+      - ci/windows-debug
   workflow_call:
     inputs:
       ref:
@@ -19,7 +22,7 @@ on:
         type: string
         default: ""
 
-name: R CMD check all OS
+name: R CMD check (all OS)
 
 # Narrow scopes so reusable workflow_call works when the caller uses contents:write (e.g. draft releases).
 permissions:

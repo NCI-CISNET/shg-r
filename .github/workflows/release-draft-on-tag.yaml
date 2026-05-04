@@ -20,7 +20,7 @@ on:
         required: true
         type: string
 
-name: Tag checks and draft release
+name: Create draft release
 
 permissions:
   contents: write
