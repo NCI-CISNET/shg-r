@@ -7,9 +7,9 @@
 This is a description.
 }
 \section{Extends}{
-Class \code{"\link[Rcpp:C++Object-class]{C++Object}"}, directly.
+Class \code{"C++Object"} (Rcpp base class; see \pkg{Rcpp}), directly.
 
-All reference classes extend and inherit methods from \code{"\linkS4class{envRefClass}"}.
+All reference classes extend the S4 virtual class \code{envRefClass}; see \pkg{methods}.
 
 }
 \references{

@@ -1,9 +1,17 @@
 # Same idea as shg-cli/.github/workflows/shg-create-release.yml:
 # - "Use workflow from" only selects which branch supplies *this workflow file* (e.g. master with CI fixes).
 # - The tag you type (manual) or the tag you pushed is what we check out and release — never HEAD of that branch.
-# - R CMD check runs in this workflow via ./.github/actions/r-cmd-check-shg-r (not workflow_call): GitHub does not
-#   reliably pass caller `with.ref` into reusable workflows, so checkout could stay on the UI branch.
+# - R CMD check steps are inlined here (no local composite): a composite that checks out the tag can delete
+#   .github/actions from the workspace if the tag predates that folder, breaking later composite steps.
 # When a semver tag vX.Y.Z is pushed, runs R CMD check (all OS) then opens a draft GitHub Release.
+# R CMD check matches .github/workflows/R-CMD-check-all-OS.yaml: --as-cran with --no-manual (no PDF
+# manual / no TinyTeX). CRAN builds the reference manual when you submit the source tarball.
+#
+# Release assets:
+# (1) CRAN *source* Package_Version_CRAN_source.tar.gz (renamed from R CMD build output) — upload at
+#     https://cran.r-project.org/submit.html (not OS-specific; not the same as any *_R_* binary).
+# (2–4) Per-OS *binary* bundles from `R CMD INSTALL --build .` (Windows .zip, macOS .tgz, Linux *_R_*…)
+#     for local install.packages(..., repos=NULL, type="binary")-style use; filenames include OS + arch.
 on:
   push:
     tags:
@@ -16,7 +24,6 @@ on:
         type: string
 
 name: Create draft release
-# GitHub's Actions run list shows the branch you picked under "Use workflow from"; run-name carries the tag.
 run-name: ${{ format('{0} — draft release (workflow file from {1})', github.event.inputs.version || github.ref_name, github.ref_name) }}
 
 permissions:
@@ -62,15 +69,94 @@ jobs:
       R_KEEP_PKG_SOURCE: yes
 
     steps:
-      # Local composite is read from disk before any step runs; checkout must exist first (error otherwise:
-      # "Did you forget to run actions/checkout before running your local action?").
       - uses: actions/checkout@v4
         with:
+          ref: ${{ needs.release-ref.outputs.release_tag }}
           fetch-depth: 1
-      - uses: ./.github/actions/r-cmd-check-shg-r
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
         with:
-          checkout_ref: ${{ needs.release-ref.outputs.release_tag }}
-          r_version: release
+          r-version: release
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::rcmdcheck
+          needs: check
+
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          args: 'c("--no-manual", "--as-cran")'
+          upload-snapshots: true
+          build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
+          error-on: '"warning"'
+
+      # rcmdcheck already ran R CMD build with build_args; stage that .tar.gz (CRAN submission source).
+      # Source tarball is identical across OS — only the Windows job uploads it (single artifact name for draft-release).
+      - name: Stage CRAN source tarball from rcmdcheck
+        if: success()
+        shell: Rscript {0}
+        run: |
+          desc <- read.dcf("DESCRIPTION", fields = c("Package", "Version"))
+          want <- paste0(desc[1, "Package"], "_", desc[1, "Version"], ".tar.gz")
+          dirs <- unique(c(".", "check", if (dir.exists("check")) list.dirs("check", recursive = FALSE)))
+          cand <- character()
+          for (d in dirs) {
+            if (!nzchar(d) || !dir.exists(d)) next
+            cand <- c(cand, list.files(d, pattern = "[.]tar[.]gz$", full.names = TRUE))
+          }
+          cand <- unique(normalizePath(cand[file.exists(cand)]))
+          hit <- cand[basename(cand) == want]
+          if (!length(hit)) hit <- cand
+          if (!length(hit)) {
+            message("No .tar.gz found. Top-level listing:")
+            print(list.files(".", all.files = TRUE))
+            stop("rcmdcheck did not leave a source tarball to attach")
+          }
+          dir.create("release-assets", FALSE, TRUE)
+          dest_name <- paste0(desc[1, "Package"], "_", desc[1, "Version"], "_CRAN_source.tar.gz")
+          dest <- file.path("release-assets", dest_name)
+          stopifnot(file.copy(hit[[1]], dest, overwrite = TRUE))
+          message("Staged for release: ", dest)
+
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: cran-source-tarball
+          path: release-assets/*.tar.gz
+
+      - name: Build Windows binary package (.zip)
+        if: success()
+        shell: bash
+        run: R CMD INSTALL --build .
+
+      - name: Stage Windows binary for artifact
+        if: success()
+        shell: bash
+        env:
+          RUNNER_ARCH: ${{ runner.arch }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-binaries
+          shopt -s nullglob
+          n=0
+          for f in *.zip; do mv -- "$f" release-binaries/; n=$((n+1)); done
+          [[ "$n" -ge 1 ]] || { echo "Expected a .zip from R CMD INSTALL --build"; ls -la; exit 1; }
+          arch=x64
+          [[ "${RUNNER_ARCH}" == "ARM64" ]] && arch=arm64
+          for f in release-binaries/*.zip; do
+            base=$(basename "$f" .zip)
+            mv -- "$f" "release-binaries/${base}_windows-${arch}.zip"
+          done
+          ls -la release-binaries/
+
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: r-pkg-binary-windows
+          path: release-binaries/*
 
       - name: Upload Rcheck tests (full testthat output) on failure
         if: failure()
@@ -82,7 +168,7 @@ jobs:
             **/*.Rcheck/tests/
 
   rcmd-check-unix:
-    needs: [release-ref, rcmd-check-windows]
+    needs: release-ref
     runs-on: ${{ matrix.config.os }}
     name: ${{ matrix.config.os }} [${{ needs.release-ref.outputs.release_tag }}]
 
@@ -100,11 +186,71 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ needs.release-ref.outputs.release_tag }}
           fetch-depth: 1
-      - uses: ./.github/actions/r-cmd-check-shg-r
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
         with:
-          checkout_ref: ${{ needs.release-ref.outputs.release_tag }}
-          r_version: ${{ matrix.config.r }}
+          r-version: ${{ matrix.config.r }}
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::rcmdcheck
+          needs: check
+
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          args: 'c("--no-manual", "--as-cran")'
+          upload-snapshots: true
+          build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
+          error-on: '"warning"'
+
+      - name: Build binary package for this OS
+        if: success()
+        shell: bash
+        run: R CMD INSTALL --build .
+
+      - name: Stage binary for artifact (macOS .tgz vs Linux *_R_*.tar.gz)
+        if: success()
+        shell: bash
+        env:
+          MATRIX_OS: ${{ matrix.config.os }}
+          RUNNER_ARCH: ${{ runner.arch }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-binaries
+          shopt -s nullglob
+          arch=x64
+          [[ "${RUNNER_ARCH}" == "ARM64" ]] && arch=arm64
+          if [[ "$MATRIX_OS" == macos-latest ]]; then
+            for f in *.tgz; do mv -- "$f" release-binaries/; done
+            for f in release-binaries/*.tgz; do
+              base=$(basename "$f" .tgz)
+              mv -- "$f" "release-binaries/${base}_macos-${arch}.tgz"
+            done
+          else
+            for f in *.tar.gz; do
+              [[ "$f" == *_R_* ]] && mv -- "$f" release-binaries/
+            done
+            for f in release-binaries/*.tar.gz; do
+              bn=$(basename "$f")
+              # R binary layout: <pkg>_<version>_R_<platform>.tar.gz
+              if [[ "$bn" =~ ^(.+)_R_(.+)$ ]]; then
+                mv -- "$f" "release-binaries/${BASH_REMATCH[1]}_linux-${arch}_R_${BASH_REMATCH[2]}"
+              fi
+            done
+          fi
+          [[ -n "$(ls -A release-binaries)" ]] || { echo "No binary bundle found"; ls -la; exit 1; }
+          ls -la release-binaries/
+
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: r-pkg-binary-${{ matrix.config.os == 'macos-latest' && 'macos' || 'ubuntu' }}
+          path: release-binaries/*
 
       - name: Upload Rcheck tests (full testthat output) on failure
         if: failure()
@@ -119,10 +265,35 @@ jobs:
     needs: [release-ref, rcmd-check-windows, rcmd-check-unix]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: cran-source-tarball
+          path: release-assets
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: r-pkg-binary-windows
+          path: release-assets
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: r-pkg-binary-macos
+          path: release-assets
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: r-pkg-binary-ubuntu
+          path: release-assets
+
+      - name: List release files
+        run: ls -la release-assets
+
       - name: Create draft release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.release-ref.outputs.release_tag }}
-          name: SmokingHistoryGenerator ${{ needs.release-ref.outputs.release_tag }}
+          name: ${{ needs.release-ref.outputs.release_tag }}
           draft: true
           generate_release_notes: true
+          files: |
+            release-assets/*
