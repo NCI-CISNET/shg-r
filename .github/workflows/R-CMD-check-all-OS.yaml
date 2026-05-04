@@ -5,7 +5,19 @@ on:
   workflow_dispatch:
     branches:
       - '**'
+    inputs:
+      ref:
+        description: "Git ref to checkout (branch, tag e.g. v1.2.3, or SHA). Leave empty to use the branch you selected in 'Use workflow from'."
+        required: false
+        type: string
+        default: ""
   workflow_call:
+    inputs:
+      ref:
+        description: "Optional ref to checkout; empty uses the triggering ref (e.g. pushed tag)."
+        required: false
+        type: string
+        default: ""
 
 name: R CMD check all OS
 
@@ -25,6 +37,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref != '' && inputs.ref || github.ref }}
 
       - uses: r-lib/actions/setup-pandoc@v2
 
@@ -72,6 +86,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref != '' && inputs.ref || github.ref }}
 
       - uses: r-lib/actions/setup-pandoc@v2
 
