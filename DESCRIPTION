@@ -23,6 +23,7 @@ Description: An efficient R wrapper for the CISNET Smoking History Generator.
     where the first part tracks the bundled C++ engine (SHGMostRecentTag) and the
     second part is the independent R wrapper release (RWrapperVersion).
 RoxygenNote: 7.3.3
+Roxygen: list(markdown = TRUE)
 URL: https://github.com/NCI-CISNET/shg-r
 Imports: methods, Rcpp (>= 1.0.2), yaml
 Suggests: testthat (>= 3.0.0), glue, httr2

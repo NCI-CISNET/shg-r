@@ -21,7 +21,7 @@ A named list with nested sections \code{initiation},
 \description{
 Returns a compact "shape" summary of the currently configured parameter files
 (races, sexes, cohorts, age ranges, and CPD coverage). This works after
-either [shg_load_params()] or manual file-path configuration on an
+either \code{\link{shg_load_params}} or manual file-path configuration on an
 \code{SHGInterface} instance.
 }
 \examples{
