@@ -73,11 +73,12 @@ shg2 <- new(SHGInterface)
 config <- shg2$load_config(config_path)
 sim2 <- shg2$runSim(config)
 
-identical_results <- isTRUE(all.equal(sim1, sim2))
+comparison <- all.equal(sim1, sim2)
+identical_results <- isTRUE(comparison)
 cat("Results identical:", identical_results, "\n")
 if (!identical_results) {
   cat("Differences detected.\n")
-  print(summary(abs(sim1 - sim2)))
+  print(comparison)
 } else {
   cat("Success: platform-agnostic reproducibility check passed.\n")
 }

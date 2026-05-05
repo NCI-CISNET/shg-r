@@ -14,37 +14,37 @@ shg_load_params(
 )
 }
 \arguments{
-\item{shg}{An `SHGInterface` instance.  When called as a method
-(`shg$load_params(...)`) this argument is bound automatically.}
+\item{shg}{An \code{SHGInterface} instance.  When called as a method
+(\code{shg$load_params(...)}) this argument is bound automatically.}
 
-\item{url}{Full URL to the `.zip` parameter bundle.}
+\item{url}{Full URL to the \code{.zip} parameter bundle.}
 
-\item{base_url}{Base URL; combined with `snapshot` or `path`.}
+\item{base_url}{Base URL; combined with \code{snapshot} or \code{path}.}
 
-\item{snapshot}{Snapshot identifier appended to `base_url` as
-`<base_url>/<snapshot>.zip`.}
+\item{snapshot}{Snapshot identifier appended to \code{base_url} as
+\code{<base_url>/<snapshot>.zip}.}
 
-\item{path}{Explicit path appended to `base_url`.}
+\item{path}{Explicit path appended to \code{base_url}.}
 
-\item{mortality}{`"acm"` (all-cause mortality, **default**) or `"ocm"`
+\item{mortality}{\code{"acm"} (all-cause mortality, \strong{default}) or \code{"ocm"}
   (other-cause mortality excluding lung cancer).  Controls which file in
-  `mortality/` is assigned to `shg$mortality_filename`.
+  \code{mortality/} is assigned to \code{shg$mortality_filename}.
 
 For private GitHub-hosted zips, set the \code{GITHUB_PAT} environment variable
 before downloading (used automatically when needed).}
 }
 \value{
-The `SHGInterface` instance, invisibly (allows chaining).
+The \code{SHGInterface} instance, invisibly (allows chaining).
 }
 \description{
 Downloads (or reuses a locally cached copy of) a zipped SHG parameter set,
-unzips it, and sets `input_data_folder` plus relative input filenames on the
-`SHGInterface` instance (the engine joins folder + filename in C++; do not
+unzips it, and sets \code{input_data_folder} plus relative input filenames on the
+\code{SHGInterface} instance (the engine joins folder + filename in C++; do not
 use absolute paths in the filename fields).
 
 The parameter bundle is expected to contain the layout produced by the
-**shg-params** releases (GitHub or Zenodo):
-```
+\strong{shg-params} releases (GitHub or Zenodo):
+\preformatted{
 <snapshot-id>/
   smoking/
     initiation.csv
@@ -55,17 +55,18 @@ The parameter bundle is expected to contain the layout produced by the
     ocm-excl-lung-cancer.csv
   metadata.yml      (optional, informational)
   inventory.yml     (optional, informational)
-```
+}
 }
 \section{URL forms}{
 
-Exactly one of `url` or `base_url` must be supplied:
+Exactly one of \code{url} or \code{base_url} must be supplied:
 
-| Arguments | Resolved URL |
-|-----------|--------------|
-| `url = "https://.../snap.zip"` | used as-is |
-| `base_url = ".../files", snapshot = "snap-id"` | `.../files/snap-id.zip` |
-| `base_url = ".../download", path = "v1/snap.zip"` | `.../download/v1/snap.zip` |
+\tabular{ll}{
+\strong{Arguments} \tab \strong{Resolved URL} \cr
+\code{url = "https://.../snap.zip"} \tab used as-is \cr
+\code{base_url = ".../files", snapshot = "snap-id"} \tab \code{.../files/snap-id.zip} \cr
+\code{base_url = ".../download", path = "v1/snap.zip"} \tab \code{.../download/v1/snap.zip} \cr
+}
 }
 
 \examples{
@@ -106,6 +107,6 @@ shg$load_params(url = "https://.../snapshot-id.zip")
 
 }
 \seealso{
-[shg_clear_params_cache()], [shg_params_cache_dir()],
-  [shg_config_bundle()], [shg_load_config()], [shg_use_config_bundle()]
+\code{\link{shg_clear_params_cache}}, \code{\link{shg_params_cache_dir}},
+\code{\link{shg_config_bundle}}, \code{\link{shg_load_config}}, \code{\link{shg_use_config_bundle}}
 }
