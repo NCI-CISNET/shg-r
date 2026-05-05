@@ -23,6 +23,30 @@ devtools::install_github("NCI-CISNET/shg-r")
 # OR
 devtools::install_github("NCI-CISNET/shg-r@[optional-branch-of-your-choice]")
 ```
+## Loading parameter sets
+
+The SHG needs calibrated input files (initiation, cessation, CPD, and mortality tables).
+The package ships a small CRAN-sized subset under `inst/extdata/`; full NHIS-style tables
+are distributed as **parameter bundles** via Zenodo (and GitHub Releases).
+
+Use `shg$load_params()` to download, cache, and configure a bundle in one call:
+
+```r
+library(SmokingHistoryGenerator)
+shg <- new(SHGInterface)
+
+# Download from Zenodo (replace xxxx with the record id when published)
+shg$load_params(
+  base_url = "https://zenodo.org/records/xxxx/files",
+  snapshot  = "usa-national@smok-2016"
+)
+```
+
+The bundle is downloaded once and cached locally; subsequent calls reuse the cache.
+See [`data-readme.md`](data-readme.md) for all supported URL forms, the mortality toggle (ACM vs OCM), private-repo authentication, and cache management.
+
+---
+
 ## Basic usage
 Relying on the default values for input filepaths, RNG strategy, multi-threading, immediate cessation, segments you can launch a smoking history simulation as follows: 
 ```r
@@ -37,7 +61,7 @@ RNGSTREAM_SIM <- shg$runSimFromFixedValues(N, race, sex, cohort_year)
 
 You can also use a pre-generated population instead of using fixed values for race, sex, cohort_year:
 
-If **`birth_cohort` spans many distinct years** (as in this illustration), you need **full** NHIS-style inputs—initiation, cessation, CPD, and mortality tables that include **every cohort column** your population uses. The trimmed CSVs under **`inst/extdata`** in the installed package do **not** cover that; they only bundle a few cohorts for CRAN. See [Input data: CRAN bundle vs full NHIS set](#input-data-cran-bundle-vs-full-nhis-set) below for how to obtain the complete tables.
+If `birth_cohort` spans many distinct years (as in this illustration), you need **full** NHIS-style inputs—initiation, cessation, CPD, and mortality tables that include every cohort column your population uses. The trimmed CSVs under `inst/extdata` in the installed package do **not** cover that; they only bundle a few cohorts for CRAN. See [Input data: CRAN bundle vs full NHIS set](#input-data-cran-bundle-vs-full-nhis-set) below for how to obtain the complete tables.
 
 ```r
 shg <- new(SHGInterface)
@@ -134,7 +158,7 @@ shg$input_data_folder <- file.path(getwd(), "tests/testdata/NHIS-1965-2016/csv-c
 
 **If you installed from CRAN** (or via `devtools::install_github`) and do not have a local clone, the full tables will be published as a separate download on **Zenodo** (DOI/link to be added here when the record is public). After downloading, unpack the five CSV files (`initiation.csv`, `cessation.csv`, `cpd.csv`, `acm.csv`, `ocm-excl-lung-cancer.csv`) into a directory of your choice and set `input_data_folder` to point there.
 
-In either case, the large trees (`csv-complete/`, `legacy-complete/`) are omitted from the CRAN source tarball via `.Rbuildignore`; trimmed **`csv-partial/`** and **`legacy-partial/`** stay in the repo for CI tests and local benchmarks.
+In either case, the large trees (`csv-complete/`, `legacy-complete/`) are omitted from the CRAN source tarball via `.Rbuildignore`; trimmed `csv-partial/` and `legacy-partial/` stay in the repo for CI tests and local benchmarks.
 
 ### Custom data input files
 Please see the [data readme](data-readme.md) for filenames, mortality (**ACM** vs **OCM**), `mortality_filename`, and legacy config keys.

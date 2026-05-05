@@ -13,8 +13,10 @@
 #' @field input_data_folder Set or get the base folder for input data files
 #' @field initiation_filename Set or get the initiation filename
 #' @field cessation_filename Set or get the cessation filename
-#' @field lifetable_filename Set or get the mortality input filename (legacy name; same as mortality_filename)
 #' @field mortality_filename Set or get the mortality probabilities filename (e.g. acm.csv or ocm-excl-lung-cancer.csv)
+#' @field params_bundle_source URL or local path of the last load_params() zip (empty if unset)
+#' @field params_mortality Mortality choice from last load_params(): acm or ocm (empty if unset)
+#' @field params_cache_dir Read-only. Directory where load_params() stores extracted bundles (same as shg_params_cache_dir()). Delete this folder to clear the cache manually.
 #' @field cpd_filename Set or get the cpd filename
 #' @field immediate_cessation_year Set or get Immediate Cessation Year; If 0, no immediate cessation
 #' @field mt_seeds Set or get MersenneTwister seeds. Must be a numeric vector of exactly 4 values (one for each stream: initiation, cessation, life table, individual). If not set, default seeds are used. Only used when rng_strategy is "MersenneTwister".
@@ -23,9 +25,9 @@ NULL
 
 #' @name get_data_shape
 #' @title get_data_shape method
-#' @description Returns a list containing information about the shape/dimensions of the loaded input data.
-#'              This is populated after a simulation is run and shows the structure of the parameter files.
-#' @return A list with data shape information including races, sexes, cohorts, age ranges, and CPD statistics.
+#' @description Returns a list containing information about the shape/dimensions of the current input data files.
+#'              It reads the configured parameter files directly and does not require running a simulation first.
+#' @return A list with data shape information including races, sexes, cohorts, age ranges, cohort boundaries, and CPD statistics.
 NULL
 
 #' @name runSimFromDataFrame
@@ -113,7 +115,7 @@ NULL
 #' @title Get SHG Configuration
 #' @description Returns the current configuration of the SHG instance as an R list. Can include debug information when debug=TRUE.
 #' @param debug Logical. If TRUE, includes additional debug information such as RNG state fingerprint, package version, system info, and memory usage. If not provided, defaults to FALSE.
-#' @return A list containing the current configuration including: config_version, rng_strategy, number_of_segments, num_threads, seeds, input file paths, immediate_cessation_year, and timestamp. If debug=TRUE, also includes rng_state_fingerprint, package_version, package_source, r_version, platform, and memory_usage.
+#' @return A list containing the current configuration including: config_version, rng_strategy, number_of_segments, num_threads, seeds, input file paths (including mortality_filename), params_bundle_source and params_mortality (from load_params, else NA), immediate_cessation_year, inferred cohort_year (single-cohort runs; otherwise NA), repeat/race/sex after runSimFromFixedValues (otherwise NA), and timestamp. After a simulation has run, number_of_segments and num_threads reflect the effective runtime values used (not unresolved -1 auto settings). seeds always returns concrete values (explicit user seeds or defaults). If debug=TRUE, also includes rng_state_fingerprint, package_version, package_source, r_version, platform, and memory_usage.
 #' @examples
 #' \dontrun{
 #' library(SmokingHistoryGenerator)
@@ -133,7 +135,7 @@ NULL
 #' @title Use SHG Configuration
 #' @description Configures an existing SHG instance from a configuration object (typically obtained from getConfig()).
 #' @param config A list containing configuration parameters. Must include config_version. All parameters are validated.
-#' @details This method validates the config_version and all parameters before setting them. Unknown fields are warned about but allowed for future compatibility. Missing optional fields use defaults. Fields are applied in an order suitable for round-trips from getConfig(): number_of_segments and num_threads are set before rng_strategy (so switching to Mersenne Twister does not message when the saved list already has single-threaded settings), then seeds, then paths and other options. If the list has deprecated \code{run_multi_threaded} but no \code{num_threads}, it is mapped: FALSE -> \code{num_threads = 1}, TRUE -> \code{num_threads = -1}. If both are present, \code{num_threads} wins.
+#' @details This method validates the config_version and all parameters before setting them. Unknown fields are warned about but allowed for future compatibility. Missing optional fields use defaults. Fields are applied in an order suitable for round-trips from getConfig(): number_of_segments and num_threads are set before rng_strategy (so switching to Mersenne Twister does not message when the saved list already has single-threaded settings), then seeds, then paths and other options. If the list has deprecated \code{run_multi_threaded} but no \code{num_threads}, it is mapped: FALSE -> \code{num_threads = 1}, TRUE -> \code{num_threads = -1}. If both are present, \code{num_threads} wins. Old saved lists may contain \code{lifetable_filename} instead of \code{mortality_filename}; that key is still accepted and applied as the mortality table path.
 #' @examples
 #' \dontrun{
 #' library(SmokingHistoryGenerator)

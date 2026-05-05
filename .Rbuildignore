@@ -31,3 +31,4 @@
 ^SmokingHistoryGenerator\.Rcheck$
 ^SmokingHistoryGenerator_.*\.tar\.gz$
 ^tests/testdata/NHIS-1965-2016/(csv-complete|legacy-complete)(?:/|$)
+^tests/testdata/.*\.zip$

@@ -259,6 +259,15 @@ test_that("Invalid output path fails with proper error message", {
 # TODO: Compare Legacy tests with runSimFromFixedValues(): requires parsing of results
 
 # Tests for configuration management
+test_that("getConfig() with no arguments works (R does not apply C++ default args)", {
+  shg <- new(SHGInterface)
+  cfg <- shg$getConfig()
+  expect_type(cfg, "list")
+  expect_equal(cfg$config_version, "1.0")
+  cfg_named <- shg$getConfig(debug = FALSE)
+  expect_equal(sort(names(cfg)), sort(names(cfg_named)))
+})
+
 test_that("getConfig() returns correct structure with config_version", {
   shg_test <- new(SHGInterface)
   config <- shg_test$getConfig(debug = FALSE)
@@ -271,7 +280,60 @@ test_that("getConfig() returns correct structure with config_version", {
   expect_true("seeds" %in% names(config))
   expect_true("input_data_folder" %in% names(config))
   expect_true("mortality_filename" %in% names(config))
+  expect_true("params_bundle_source" %in% names(config))
+  expect_true("params_mortality" %in% names(config))
+  expect_true("cohort_year" %in% names(config))
+  expect_true("repeat" %in% names(config))
+  expect_true("race" %in% names(config))
+  expect_true("sex" %in% names(config))
   expect_true("timestamp" %in% names(config))
+})
+
+test_that("getConfig() returns concrete default seeds", {
+  shg_rs <- new(SHGInterface)
+  shg_rs$rng_strategy <- "RngStream"
+  cfg_rs <- shg_rs$getConfig(debug = FALSE)
+  expect_equal(cfg_rs$seeds, c(12345, 12345, 12345, 12345, 12345, 12345))
+
+  shg_mt <- new(SHGInterface)
+  shg_mt$rng_strategy <- "MersenneTwister"
+  cfg_mt <- shg_mt$getConfig(debug = FALSE)
+  expect_equal(cfg_mt$seeds, c(1898587603, 1468371936, 1551308340, 1590227640))
+})
+
+test_that("getConfig() captures effective runtime segments/threads after simulation", {
+  shg_rt <- new(SHGInterface)
+  shg_rt$input_data_folder <- data_folder
+  shg_rt$rng_strategy <- "RngStream"
+  shg_rt$number_of_segments <- -1
+  shg_rt$num_threads <- -1
+  shg_rt$runSimFromFixedValues(5000, 0, 0, 1950)
+
+  cfg <- shg_rt$getConfig(debug = FALSE)
+  expect_true(cfg$number_of_segments >= 1)
+  expect_true(cfg$num_threads >= 1)
+  expect_false(identical(cfg$number_of_segments, -1L))
+  expect_false(identical(cfg$num_threads, -1L))
+})
+
+test_that("getConfig() records cohort_year for single-cohort runs", {
+  shg_rt <- new(SHGInterface)
+  shg_rt$input_data_folder <- data_folder
+  shg_rt$runSimFromFixedValues(500, 0, 0, 1950)
+
+  cfg <- shg_rt$getConfig(debug = FALSE)
+  expect_equal(cfg$cohort_year, 1950L)
+})
+
+test_that("getConfig() records repeat/race/sex after runSimFromFixedValues", {
+  shg_rt <- new(SHGInterface)
+  shg_rt$input_data_folder <- data_folder
+  shg_rt$runSimFromFixedValues(500L, 1L, 0L, 1940L)
+
+  cfg <- shg_rt$getConfig(debug = FALSE)
+  expect_equal(cfg[["repeat"]], 500L)
+  expect_equal(cfg[["race"]], 1L)
+  expect_equal(cfg[["sex"]], 0L)
 })
 
 test_that("getConfig(debug=TRUE) includes debug info", {
@@ -330,6 +392,17 @@ test_that("useConfig() warns on unknown fields", {
   expect_warning(shg_test$useConfig(config), "Unknown config field")
 })
 
+test_that("useConfig() accepts legacy lifetable_filename key", {
+  shg <- new(SHGInterface)
+  cfg <- list(
+    config_version = "1.0",
+    rng_strategy = "RngStream",
+    lifetable_filename = "mortality/acm.csv"
+  )
+  expect_silent(shg$useConfig(cfg))
+  expect_equal(shg$mortality_filename, "mortality/acm.csv")
+})
+
 test_that("Round-trip: getConfig() -> useConfig() -> verify", {
   shg1 <- new(SHGInterface)
   shg1$num_threads <- 1
@@ -346,12 +419,17 @@ test_that("Round-trip: getConfig() -> useConfig() -> verify", {
   
   shg2 <- new(SHGInterface)
   shg2$useConfig(config_loaded)
+  cfg2 <- shg2$getConfig(debug = FALSE)
   
   expect_equal(shg2$rng_strategy, shg1$rng_strategy)
   expect_equal(shg2$number_of_segments, shg1$number_of_segments)
   expect_equal(shg2$num_threads, shg1$num_threads)
   expect_equal(shg2$immediate_cessation_year, shg1$immediate_cessation_year)
-  
+  expect_equal(cfg2$cohort_year, config_loaded$cohort_year)
+  expect_equal(cfg2[["repeat"]], config_loaded[["repeat"]])
+  expect_equal(cfg2[["race"]], config_loaded[["race"]])
+  expect_equal(cfg2[["sex"]], config_loaded[["sex"]])
+
   unlink(temp_file)
 })
 

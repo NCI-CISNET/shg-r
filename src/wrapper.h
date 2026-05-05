@@ -52,8 +52,12 @@ public:
     string input_data_folder = find_default_data_path();
     string initiation_filename = R_INITIATION_DATA_FILE;
     string cessation_filename = R_CESSATION_DATA_FILE;
-    string lifetable_filename = R_OTHER_COD_DATA_FILE;
-    string cpd_filename = R_CPD_DATA_FILE;    
+    string mortality_filename_ = R_OTHER_COD_DATA_FILE;
+    string cpd_filename = R_CPD_DATA_FILE;
+    /** Last load_params() source URL or local zip path (R package only; empty if unset). */
+    string params_bundle_source_ = "";
+    /** Last load_params() mortality choice: "acm" or "ocm" (empty if unset). */
+    string params_mortality_ = "";
     int immediate_cessation_year = 0;
 
     bool fileExists(const char* filename);
@@ -69,6 +73,23 @@ public:
     // Seed storage for RNG strategies (store MT seeds as double for exact R round-trip on all platforms).
     vector<double> mt_seeds;  // 4 seeds for MersenneTwister (initiation, cessation, life table, individual)
     vector<unsigned long> rngstream_seed;  // 6-element seed array for RngStream
+    // Effective runtime settings captured from the most recent simulation call.
+    bool has_effective_runtime_config_ = false;
+    int last_effective_number_of_segments_ = -1;
+    int last_effective_num_threads_ = -1;
+    // Last inferred single-cohort simulation context (if available).
+    bool has_last_cohort_year_ = false;
+    int last_cohort_year_ = 0;
+    // Last runSimFromFixedValues request (if available).
+    bool has_last_fixed_run_ = false;
+    int last_fixed_repeat_ = 0;
+    short last_fixed_race_ = 0;
+    short last_fixed_sex_ = 0;
+    /** runSimFromFixedValues sets this true immediately before delegating to runSimFromDataFrame. */
+    bool next_dataframe_call_is_fixed_cohort_ = false;
+    bool last_completed_sim_was_fixed_cohort_ = false;
+
+    bool last_completed_sim_was_fixed_cohort() const { return last_completed_sim_was_fixed_cohort_; }
 
     // Getters and Setters
     int get_number_of_segments() {return number_of_segments;};
@@ -95,11 +116,16 @@ public:
     string get_cessation_filename() {return cessation_filename;};
     void set_cessation_filename(string filename) {cessation_filename = filename;};
 
-    string get_lifetable_filename() {return lifetable_filename;};
-    void set_lifetable_filename(string filename) {lifetable_filename = filename;};
-    /** Same backing field as lifetable_filename; preferred name (mortality / ACM vs OCM). */
-    string get_mortality_filename() {return lifetable_filename;};
-    void set_mortality_filename(string filename) {lifetable_filename = filename;};
+    string get_mortality_filename() {return mortality_filename_;};
+    void set_mortality_filename(string filename) {mortality_filename_ = filename;};
+
+    string get_params_bundle_source() { return params_bundle_source_; };
+    void set_params_bundle_source(string s) { params_bundle_source_ = s; };
+    string get_params_mortality() { return params_mortality_; };
+    void set_params_mortality(string s) { params_mortality_ = s; };
+
+    /** Root directory for load_params() zip cache (R tools::R_user_dir); read-only from R. */
+    std::string get_params_cache_dir();
 
     string get_cpd_filename() { return cpd_filename;};
     void set_cpd_filename(string filename) {cpd_filename = filename;};

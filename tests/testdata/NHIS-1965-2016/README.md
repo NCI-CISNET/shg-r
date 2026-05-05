@@ -1,6 +1,6 @@
 # NHIS 1965–2016 full inputs (local / optional)
 
-Subfolders **`csv-complete/`** and **`legacy-complete/`** are **excluded from the CRAN source tarball** (see `.Rbuildignore`) because the full calibrated tables are too large for CRAN. **`csv-partial/`** and **`legacy-partial/`** are kept for tests and benchmarks.
+Subfolders `csv-complete/` and `legacy-complete/` are **excluded from the CRAN source tarball** (see `.Rbuildignore`) because the full calibrated tables are too large for CRAN. `csv-partial/` and `legacy-partial/` are kept for tests and benchmarks.
 
 ## Obtaining the files
 
@@ -22,7 +22,7 @@ shg <- new(SHGInterface)
 shg$input_data_folder <- "/path/to/shg-r/tests/testdata/NHIS-1965-2016"
 ```
 
-The **trimmed csv-partial** tables shipped with the package for CRAN checks live as flat **`inst/extdata/*.csv`**. Regenerate them from this tree’s **`csv-complete/`** with:
+The **trimmed csv-partial** tables shipped with the package for CRAN checks live as flat `inst/extdata/*.csv`. Regenerate them from this tree’s `csv-complete/` with:
 
 ```bash
 Rscript tools/trim-nhis-testdata.R
