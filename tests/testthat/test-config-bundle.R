@@ -1,6 +1,29 @@
 library(SmokingHistoryGenerator)
 library(testthat)
 
+test_that(".shg_params_paths_exist is false when any core table file is missing", {
+  skip_on_cran()
+  zip_path <- testthat::test_path("../testdata/usa-national@smok-2016.zip")
+  skip_if_not(file.exists(zip_path))
+
+  tmp_cache <- tempfile("shg_cfg_paths_exist_")
+  dir.create(tmp_cache)
+  old <- Sys.getenv("R_USER_CACHE_DIR", "")
+  Sys.setenv(R_USER_CACHE_DIR = tmp_cache)
+  on.exit({
+    if (nzchar(old)) Sys.setenv(R_USER_CACHE_DIR = old)
+    else Sys.unsetenv("R_USER_CACHE_DIR")
+    unlink(tmp_cache, recursive = TRUE)
+  }, add = TRUE)
+
+  shg <- new(SHGInterface)
+  shg$load_params(url = zip_path)
+  expect_true(SmokingHistoryGenerator:::.shg_params_paths_exist(shg))
+
+  unlink(file.path(shg$input_data_folder, shg$cessation_filename))
+  expect_false(SmokingHistoryGenerator:::.shg_params_paths_exist(shg))
+})
+
 test_that("shg_config_bundle adds NA provenance without load_params", {
   shg <- new(SHGInterface)
   b <- shg_config_bundle(shg)

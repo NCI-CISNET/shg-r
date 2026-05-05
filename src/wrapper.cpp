@@ -1587,6 +1587,11 @@ void SHGInterface::useConfig(Rcpp::List config) {
          last_fixed_race_ = 0;
          last_fixed_sex_ = 0;
       }
+   } else {
+      has_last_fixed_run_ = false;
+      last_fixed_repeat_ = 0;
+      last_fixed_race_ = 0;
+      last_fixed_sex_ = 0;
    }
 
    // Provenance is only updated when keys are present; if the caller retargets local

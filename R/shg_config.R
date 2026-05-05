@@ -68,13 +68,13 @@ shg_save_config <- function(shg, path, quiet = FALSE) {
   }
   cfg <- shg$getReproConfig(FALSE)
   portable <- .shg_portable_config_list(cfg)
+  yaml::write_yaml(portable, path)
   if (!isTRUE(quiet)) {
     message(
       "Portable YAML saved: configuration reflects the last completed runSimFromFixedValues() ",
       "(repeat, race, sex, cohort year, and effective engine settings)."
     )
   }
-  yaml::write_yaml(portable, path)
   invisible(path)
 }
 
@@ -339,6 +339,16 @@ shg_run <- function(shg, config) {
   root <- shg$input_data_folder
   if (!nzchar(root) || !dir.exists(root))
     return(FALSE)
-  f <- file.path(root, shg$initiation_filename)
-  file.exists(f)
+  rel <- trimws(
+    c(
+      as.character(shg$initiation_filename),
+      as.character(shg$cessation_filename),
+      as.character(shg$cpd_filename),
+      as.character(shg$mortality_filename)
+    )
+  )
+  if (length(rel) != 4L || any(is.na(rel)) || any(!nzchar(rel)))
+    return(FALSE)
+  paths <- file.path(root, rel)
+  isTRUE(all(file.exists(paths)))
 }
