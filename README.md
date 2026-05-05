@@ -127,7 +127,7 @@ For information on specifying custom seeds for reproducibility, see [RNG-SEEDS.m
 
 ## Configuration Management
 
-The SHG package provides functions to capture and restore configuration settings, making it easy to reproduce simulations and share configurations. For detailed documentation and examples, see [CONFIG-MANAGEMENT.md](CONFIG-MANAGEMENT.md).
+The SHG package provides both intent-oriented config APIs (`getConfig()` / `useConfig()`) and reproducibility-focused YAML export (`save_config()`), making it easier to tune runs locally while still sharing exact portable reruns. For detailed documentation and examples, see [CONFIG-MANAGEMENT.md](CONFIG-MANAGEMENT.md).
 
 ## Additional documentation
 

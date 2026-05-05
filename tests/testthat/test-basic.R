@@ -301,7 +301,7 @@ test_that("getConfig() returns concrete default seeds", {
   expect_equal(cfg_mt$seeds, c(1898587603, 1468371936, 1551308340, 1590227640))
 })
 
-test_that("getConfig() captures effective runtime segments/threads after simulation", {
+test_that("getConfig() keeps intent values after simulation", {
   shg_rt <- new(SHGInterface)
   shg_rt$input_data_folder <- data_folder
   shg_rt$rng_strategy <- "RngStream"
@@ -310,10 +310,31 @@ test_that("getConfig() captures effective runtime segments/threads after simulat
   shg_rt$runSimFromFixedValues(5000, 0, 0, 1950)
 
   cfg <- shg_rt$getConfig(debug = FALSE)
+  expect_equal(cfg$number_of_segments, -1)
+  expect_equal(cfg$num_threads, -1)
+})
+
+test_that("getReproConfig() captures effective runtime segments/threads after simulation", {
+  shg_rt <- new(SHGInterface)
+  shg_rt$input_data_folder <- data_folder
+  shg_rt$rng_strategy <- "RngStream"
+  shg_rt$number_of_segments <- -1
+  shg_rt$num_threads <- -1
+  shg_rt$runSimFromFixedValues(5000, 0, 0, 1950)
+
+  cfg <- shg_rt$getReproConfig(debug = FALSE)
   expect_true(cfg$number_of_segments >= 1)
   expect_true(cfg$num_threads >= 1)
   expect_false(identical(cfg$number_of_segments, -1))
   expect_false(identical(cfg$num_threads, -1))
+})
+
+test_that("getReproConfig() errors before any completed simulation", {
+  shg_rt <- new(SHGInterface)
+  expect_error(
+    shg_rt$getReproConfig(),
+    "No completed simulation is available"
+  )
 })
 
 test_that("getConfig() records cohort_year for single-cohort runs", {
@@ -408,6 +429,33 @@ test_that("useConfig() correctly configures instance", {
   expect_equal(shg2$num_threads, shg1$num_threads)
   expect_equal(shg2$input_data_folder, shg1$input_data_folder)
   expect_equal(shg2$immediate_cessation_year, shg1$immediate_cessation_year)
+})
+
+test_that("useConfig() clears stale effective runtime cache", {
+  shg_rt <- new(SHGInterface)
+  shg_rt$input_data_folder <- data_folder
+  shg_rt$rng_strategy <- "RngStream"
+  shg_rt$number_of_segments <- -1
+  shg_rt$num_threads <- -1
+  shg_rt$runSimFromFixedValues(500, 0, 0, 1950)
+
+  cfg_repro <- shg_rt$getReproConfig()
+  expect_true(cfg_repro$number_of_segments >= 1)
+
+  shg_rt$useConfig(list(
+    config_version = "1.0",
+    number_of_segments = -1,
+    num_threads = -1,
+    rng_strategy = "RngStream"
+  ))
+
+  cfg_intent <- shg_rt$getConfig()
+  expect_equal(cfg_intent$number_of_segments, -1)
+  expect_equal(cfg_intent$num_threads, -1)
+  expect_error(
+    shg_rt$getReproConfig(),
+    "No completed simulation is available"
+  )
 })
 
 test_that("useConfig() validates config_version", {

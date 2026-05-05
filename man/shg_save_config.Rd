@@ -28,7 +28,7 @@ per-table filenames) so the bundle stays portable; those paths are restored by
 \strong{Prefer the method form} \code{shg$save_config(path)} (same implementation).
 The functional form \code{shg_save_config(shg, path)} is a convenience wrapper.
 
-Saving reads \code{shg$getConfig(debug = FALSE)} after your workflow. Portable
+Saving reads \code{shg$getReproConfig(debug = FALSE)} after your workflow. Portable
 save is allowed only when the \strong{last completed simulation} on this instance
 was \code{\link{runSimFromFixedValues}} — a subsequent \code{runSimFromDataFrame}
 (population run) clears that until you run \code{runSimFromFixedValues} again.

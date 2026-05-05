@@ -27,7 +27,7 @@ shg_config_bundle <- function(shg) {
 #' \strong{Prefer the method form} \code{shg$save_config(path)} (same implementation).
 #' The functional form \code{shg_save_config(shg, path)} is a convenience wrapper.
 #'
-#' Saving reads \code{shg$getConfig(debug = FALSE)} after your workflow. Portable
+#' Saving reads \code{shg$getReproConfig(debug = FALSE)} after your workflow. Portable
 #' save is allowed only when the \strong{last completed simulation} on this instance
 #' was \code{\link{runSimFromFixedValues}} — a subsequent \code{runSimFromDataFrame}
 #' (population run) clears that until you run \code{runSimFromFixedValues} again.
@@ -66,7 +66,7 @@ shg_save_config <- function(shg, path, quiet = FALSE) {
       call. = FALSE
     )
   }
-  cfg <- shg$getConfig(FALSE)
+  cfg <- shg$getReproConfig(FALSE)
   portable <- .shg_portable_config_list(cfg)
   if (!isTRUE(quiet)) {
     message(

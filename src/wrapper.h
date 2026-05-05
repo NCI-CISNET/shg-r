@@ -194,7 +194,10 @@ public:
     // Configuration management
     Rcpp::List getConfig(bool debug);
     Rcpp::List getConfig();  // Wrapper without debug parameter (defaults to false)
+    Rcpp::List getReproConfig(bool debug);
+    Rcpp::List getReproConfig();  // Wrapper without debug parameter (defaults to false)
     void useConfig(Rcpp::List config);
+    Rcpp::List buildConfig(bool debug, bool use_effective_runtime, bool require_effective_runtime);
 
 };
 

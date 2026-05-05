@@ -216,6 +216,42 @@ test_that("SHGInterface$save_config matches shg_save_config output", {
   expect_equal(readLines(yml1), readLines(yml2))
 })
 
+test_that("shg_save_config writes repro-effective engine settings", {
+  skip_on_cran()
+  zip_path <- testthat::test_path("../testdata/usa-national@smok-2016.zip")
+  skip_if_not(file.exists(zip_path))
+
+  tmp_cache <- tempfile("shg_cfg_repro_effective_")
+  dir.create(tmp_cache)
+  old <- Sys.getenv("R_USER_CACHE_DIR", "")
+  Sys.setenv(R_USER_CACHE_DIR = tmp_cache)
+  on.exit({
+    if (nzchar(old)) Sys.setenv(R_USER_CACHE_DIR = old)
+    else Sys.unsetenv("R_USER_CACHE_DIR")
+    unlink(tmp_cache, recursive = TRUE)
+  }, add = TRUE)
+
+  yml <- tempfile(fileext = ".yml")
+  on.exit(unlink(yml), add = TRUE)
+
+  shg <- new(SHGInterface)
+  shg$number_of_segments <- -1
+  shg$num_threads <- -1
+  shg$load_params(url = zip_path)
+  shg$runSimFromFixedValues(5000, 0, 0, 1950)
+
+  cfg_intent <- shg$getConfig()
+  expect_equal(cfg_intent$number_of_segments, -1)
+  expect_equal(cfg_intent$num_threads, -1)
+
+  shg_save_config(shg, yml, quiet = TRUE)
+  cfg_saved <- yaml::read_yaml(yml)
+  expect_true(cfg_saved$number_of_segments >= 1)
+  expect_true(cfg_saved$num_threads >= 1)
+  expect_false(identical(cfg_saved$number_of_segments, -1))
+  expect_false(identical(cfg_saved$num_threads, -1))
+})
+
 test_that("shg_save_config errors after population run following fixed cohort run", {
   skip_on_cran()
   zip_path <- testthat::test_path("../testdata/usa-national@smok-2016.zip")

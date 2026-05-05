@@ -44,6 +44,9 @@ evalqOnLoad({
         quiet = quiet
       )
     },
+    repro_config = function(debug = FALSE) {
+      .self$getReproConfig(debug)
+    },
     runSim = function(config) {
       get(".shg_run_sim",
           envir     = asNamespace("SmokingHistoryGenerator"),

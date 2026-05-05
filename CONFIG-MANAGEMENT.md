@@ -53,9 +53,9 @@ Portable saves include:
 
 They **omit** derived filesystem paths (`input_data_folder`, table filenames). Those are rebuilt when `shg_load_params()` unpacks the zip referenced by `params_bundle_source`.
 
-## Low-level API: `getConfig()` / `useConfig()`
+## Low-level API: intent config vs repro config
 
-You can still snapshot or restore engine state as an R list:
+Use `getConfig()` / `useConfig()` for **intent config** (current applied settings):
 
 ```r
 config <- shg$getConfig(debug = FALSE)
@@ -63,7 +63,18 @@ shg2 <- new(SHGInterface)
 shg2$useConfig(config)
 ```
 
-`getConfig()` includes paths on disk as well as provenance and run metadata (when available). For sharing between collaborators, prefer `shg$save_config()` / `shg_save_config()` so paths are not baked into the file.
+`getConfig()` includes paths on disk as well as provenance and run metadata (when available). It reports the current configured `number_of_segments` / `num_threads` values exactly as set (including `-1` auto intent values).
+
+Use `getReproConfig()` for **repro config** (effective last-run settings):
+
+```r
+shg$runSimFromFixedValues(1e5, 0, 0, 2010)
+repro <- shg$getReproConfig(debug = FALSE)
+```
+
+`getReproConfig()` returns effective runtime segments/threads from the last completed simulation and errors if no simulation has completed on that instance.
+
+For sharing between collaborators, prefer `shg$save_config()` / `shg_save_config()` so paths are not baked into the file and the output stays portability-focused.
 
 With `debug = TRUE`, extra diagnostics are included (RNG fingerprint, package version, platform, memory, etc.) — these are not written by `save_config`.
 
@@ -79,7 +90,7 @@ config <- list(
   rng_strategy = "RngStream",
   number_of_segments = 4,
   num_threads = -1,
-  immediate_cessation_year = 0L
+  immediate_cessation_year = 0
 )
 shg <- new(SHGInterface, config = config)
 ```

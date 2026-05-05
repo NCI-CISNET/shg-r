@@ -1255,7 +1255,7 @@ void SHGInterface::LegacyRunWebVersion(const char *sInputFileName)
 //' @title Get SHG Configuration
 //' @description Returns the current configuration of the SHG instance as an R list. Can include debug information when debug=TRUE.
 //' @param debug Logical. If TRUE, includes additional debug information such as RNG state fingerprint, package version, system info, and memory usage. If not provided, defaults to FALSE.
-//' @return A list containing the current configuration including: config_version, rng_strategy, number_of_segments, num_threads, seeds, input file paths (including mortality_filename), params_bundle_source and params_mortality (from load_params, else NA), immediate_cessation_year, inferred cohort_year (single-cohort runs; otherwise NA), repeat/race/sex after runSimFromFixedValues (otherwise NA), and timestamp. After a simulation has run, number_of_segments and num_threads reflect the effective runtime values used (not unresolved -1 auto settings). seeds always returns concrete values (explicit user seeds or defaults). If debug=TRUE, also includes rng_state_fingerprint, package_version, package_source, r_version, platform, and memory_usage.
+//' @return A list containing the current intent configuration including: config_version, rng_strategy, number_of_segments, num_threads, seeds, input file paths (including mortality_filename), params_bundle_source and params_mortality (from load_params, else NA), immediate_cessation_year, inferred cohort_year (single-cohort runs; otherwise NA), repeat/race/sex after runSimFromFixedValues (otherwise NA), and timestamp. This method returns currently applied values (including unresolved auto values such as -1 for segments/threads). Use \code{getReproConfig()} to export effective runtime values from the last completed simulation. seeds always returns concrete values (explicit user seeds or defaults). If debug=TRUE, also includes rng_state_fingerprint, package_version, package_source, r_version, platform, and memory_usage.
 //' @examples
 //' \dontrun{
 //' library(SmokingHistoryGenerator)
@@ -1268,7 +1268,14 @@ void SHGInterface::LegacyRunWebVersion(const char *sInputFileName)
 //' # Get config with debug info
 //' debug_config <- shg$getConfig(debug = TRUE)
 //' }
-Rcpp::List SHGInterface::getConfig(bool debug) {
+Rcpp::List SHGInterface::buildConfig(bool debug, bool use_effective_runtime, bool require_effective_runtime) {
+   if (require_effective_runtime && !has_effective_runtime_config_) {
+      Rcpp::stop(
+         "No completed simulation is available to export reproducibility config. "
+         "Run runSimFromFixedValues() or runSimFromDataFrame() first."
+      );
+   }
+
    Rcpp::List config;
    
    // Config version for future compatibility
@@ -1276,8 +1283,9 @@ Rcpp::List SHGInterface::getConfig(bool debug) {
    
   // Basic configuration
   config["rng_strategy"] = rng_strategy;
-  config["number_of_segments"] = has_effective_runtime_config_ ? last_effective_number_of_segments_ : number_of_segments;
-  config["num_threads"] = has_effective_runtime_config_ ? last_effective_num_threads_ : num_threads;
+  const bool use_effective = use_effective_runtime && has_effective_runtime_config_;
+  config["number_of_segments"] = use_effective ? last_effective_number_of_segments_ : number_of_segments;
+  config["num_threads"] = use_effective ? last_effective_num_threads_ : num_threads;
   
   // Get seeds using get_current_seeds(). Prefer integer output for whole values
   // so YAML/JSON serialization does not render confusing trailing ".0".
@@ -1412,9 +1420,35 @@ Rcpp::List SHGInterface::getConfig(bool debug) {
    return config;
 }
 
+Rcpp::List SHGInterface::getConfig(bool debug) {
+   return buildConfig(debug, false, false);
+}
+
 // Wrapper method without debug parameter (defaults to false)
 Rcpp::List SHGInterface::getConfig() {
    return getConfig(false);
+}
+
+//' Get reproducibility-focused SHG configuration from last run
+//' @name getReproConfig
+//' @title Get Reproducibility Configuration
+//' @description Returns a configuration list that captures effective runtime settings from the last completed simulation.
+//' @param debug Logical. If TRUE, includes additional debug information such as RNG state fingerprint, package version, system info, and memory usage. If not provided, defaults to FALSE.
+//' @return A list containing the same fields as \code{getConfig()}, but with \code{number_of_segments} and \code{num_threads} exported as effective runtime values used by the last simulation. Errors if no simulation has completed on the instance.
+//' @examples
+//' \dontrun{
+//' library(SmokingHistoryGenerator)
+//' shg <- new(SHGInterface)
+//' shg$runSimFromFixedValues(1000, 0, 0, 1950)
+//' repro <- shg$getReproConfig()
+//' }
+Rcpp::List SHGInterface::getReproConfig(bool debug) {
+   return buildConfig(debug, true, true);
+}
+
+// Wrapper method without debug parameter (defaults to false)
+Rcpp::List SHGInterface::getReproConfig() {
+   return getReproConfig(false);
 }
 
 //' Configure SHG instance from config object
@@ -1439,6 +1473,9 @@ Rcpp::List SHGInterface::getConfig() {
 //' }
 void SHGInterface::useConfig(Rcpp::List config) {
    last_completed_sim_was_fixed_cohort_ = false;
+   has_effective_runtime_config_ = false;
+   last_effective_number_of_segments_ = -1;
+   last_effective_num_threads_ = -1;
 
    // Validate config_version
    if (!config.containsElementNamed("config_version")) {
@@ -1607,7 +1644,7 @@ RCPP_MODULE(SmokingSimulator) {
 //' @name Rcpp_SHGInterface
 //' @title Rcpp SHG Interface Class
 //' @export
-//' @description This module provides an Rcpp interface to the Smoking History Generator (SHG) application.
+//' @description This module provides an Rcpp interface to the Smoking History Generator (SHG) application, including intent-oriented config methods (\code{getConfig}/\code{useConfig}) and reproducibility export (\code{getReproConfig}).
    class_<SHGInterface>("SHGInterface")
        .constructor("Create a new SHGInterface instance")
        .constructor<Rcpp::List>("Create a new SHGInterface instance with optional config parameter")
@@ -1635,7 +1672,9 @@ RCPP_MODULE(SmokingSimulator) {
       .method("get_rng_state_fingerprint", &SHGInterface::get_rng_state_fingerprint, "Get a fingerprint of the RNG internal state. For RngStream, returns the actual internal state (24 values). For MersenneTwister, returns random numbers generated from each stream (12 values). Different seeds will produce different fingerprints, verifying that seeds are actually being used.")
       .method("get_data_shape", &SHGInterface::get_data_shape, "Get information about the shape/dimensions of the loaded input data. Returns a list with num_races, num_sexes, num_cohorts, age ranges, and CPD loading statistics.")
       .method("getConfig", (Rcpp::List (SHGInterface::*)()) &SHGInterface::getConfig, "Get current configuration as a list (same as getConfig(debug=FALSE)).")
-      .method("getConfig", (Rcpp::List (SHGInterface::*)(bool)) &SHGInterface::getConfig, "Get current configuration as a list. Returns all current settings including RNG strategy, seeds, input file paths, and simulation parameters. Set debug=TRUE for additional debug info.")
+      .method("getConfig", (Rcpp::List (SHGInterface::*)(bool)) &SHGInterface::getConfig, "Get current intent configuration as a list. Returns current settings including RNG strategy, seeds, input file paths, and simulation parameters as currently set on the instance. Set debug=TRUE for additional debug info.")
+      .method("getReproConfig", (Rcpp::List (SHGInterface::*)()) &SHGInterface::getReproConfig, "Get reproducibility configuration from the last completed simulation (same as getReproConfig(debug=FALSE)).")
+      .method("getReproConfig", (Rcpp::List (SHGInterface::*)(bool)) &SHGInterface::getReproConfig, "Get reproducibility configuration from the last completed simulation. Exports effective runtime segments/threads used by the run. Errors if no simulation has completed.")
       .method("useConfig", &SHGInterface::useConfig, "Apply configuration from a list. Sets all configuration parameters from a list previously obtained from getConfig() or manually created. Validates config version and warns about unknown fields.")
       .method("last_completed_sim_was_fixed_cohort", &SHGInterface::last_completed_sim_was_fixed_cohort, "TRUE if the last completed simulation was runSimFromFixedValues (not a population runSimFromDataFrame). Portable save requires this to be TRUE.");
      // TODO: also antithetical variates; also increment substreams
