@@ -17,11 +17,10 @@ install.packages("SmokingHistoryGenerator") # Coming soon to CRAN
 
 ### Installation from Github
 ```r
-install.packages("devtools")
-Sys.setenv(PKG_BUILD_EXTRA_FLAGS = "false") # optional, but should increase performance
-devtools::install_github("NCI-CISNET/shg-r")
+install.packages("pak")
+pak::pak("NCI-CISNET/shg-r")
 # OR
-devtools::install_github("NCI-CISNET/shg-r@[optional-branch-of-your-choice]")
+pak::pak("NCI-CISNET/shg-r@[optional-branch-of-your-choice]")
 ```
 ## Loading parameter sets
 
@@ -61,7 +60,7 @@ RNGSTREAM_SIM <- shg$runSimFromFixedValues(N, race, sex, cohort_year)
 
 You can also use a pre-generated population instead of using fixed values for race, sex, cohort_year:
 
-If `birth_cohort` spans many distinct years (as in this illustration), you need **full** NHIS-style inputs—initiation, cessation, CPD, and mortality tables that include every cohort column your population uses. The trimmed CSVs under `inst/extdata` in the installed package do **not** cover that; they only bundle a few cohorts for CRAN. See [Input data: CRAN bundle vs full NHIS set](#input-data-cran-bundle-vs-full-nhis-set) below for how to obtain the complete tables.
+If `birth_cohort` spans many distinct years (as in this illustration), you need **full** NHIS-style inputs—initiation, cessation, CPD, and mortality tables that include every cohort column your population uses. The trimmed CSVs under `inst/extdata` in the installed package do **not** cover that; they only bundle a few cohorts for CRAN. See [data-readme.md](data-readme.md) for full input-data options.
 
 ```r
 shg <- new(SHGInterface)
@@ -132,39 +131,13 @@ The SHG package provides functions to capture and restore configuration settings
 
 ## Additional documentation
 
-### Compiling from source
-Please see the [developer readme](dev-readme.md) for instructions on how to compile the package from source.
-
-### Performance optimization
-The package is compiled with `-O3` optimization by default. For additional performance gains on your specific machine, you can enable CPU-specific optimizations by adding the following to your `~/.R/Makevars` file:
-
-```makefile
-CXX17FLAGS += -march=native
-```
-
-This enables CPU-specific instructions (AVX2, AVX-512, etc.) which can improve performance by 5-20% for numerical code. Note that binaries compiled with `-march=native` are not portable to other machines with different CPUs.
-
-### Input data: CRAN bundle vs full NHIS set
-
-The package installs a **small, trimmed** csv-partial subset under `system.file("extdata", package = "SmokingHistoryGenerator")`: `initiation.csv`, `cessation.csv`, `cpd.csv`, `acm.csv`, and `ocm-excl-lung-cancer.csv`. That bundle is sized for **CRAN** and the bundled tests (cohorts **1940**, **1950**, **2010**; race **0**, sex **0**; CPD rows omit all-“.” / non-positive intensity padding).
-
-The **full** NHIS 1965–2016–style parameter tables are **too large for CRAN**. How you get them depends on how you are working with the package:
-
-**If you have cloned this GitHub repository**, the full tables are already present under [`tests/testdata/NHIS-1965-2016/csv-complete/`](tests/testdata/NHIS-1965-2016/csv-complete/) (CSV format) and [`tests/testdata/NHIS-1965-2016/legacy-complete/`](tests/testdata/NHIS-1965-2016/legacy-complete/) (legacy `.txt` format). Point the interface at the `csv-complete` folder:
-
-```r
-shg$input_data_folder <- file.path(getwd(), "tests/testdata/NHIS-1965-2016/csv-complete")
-```
-
-**If you installed from CRAN** (or via `devtools::install_github`) and do not have a local clone, the full tables will be published as a separate download on **Zenodo** (DOI/link to be added here when the record is public). After downloading, unpack the five CSV files (`initiation.csv`, `cessation.csv`, `cpd.csv`, `acm.csv`, `ocm-excl-lung-cancer.csv`) into a directory of your choice and set `input_data_folder` to point there.
-
-In either case, the large trees (`csv-complete/`, `legacy-complete/`) are omitted from the CRAN source tarball via `.Rbuildignore`; trimmed `csv-partial/` and `legacy-partial/` stay in the repo for CI tests and local benchmarks.
-
-### Custom data input files
-Please see the [data readme](data-readme.md) for filenames, mortality (**ACM** vs **OCM**), `mortality_filename`, and legacy config keys.
-
-### Legacy mode
-The Smoking History Generator R wrapper has a legacy mode that allows you to run the generator using a simulation configuration file rather than properties. This is useful if you want to use the same input files as the CLI version of the Smoking History Generator. The legacy mode is accessed through the `LegacyRunWebVersion()` method of the `SHGInterface` class. You can read more about the legacy mode in the [legacy readme](legacy-readme.md).
+- [Input data and parameter bundles](data-readme.md)  
+  (CRAN subset vs full NHIS inputs, `load_params()`, cache behavior, ACM/OCM, custom files)
+- [Portable YAML configuration workflow](CONFIG-MANAGEMENT.md)  
+  (save/load config for platform-agnostic reproducibility)
+- [Developer build and compile guidance](dev-readme.md)  
+  (source builds, compile flags, local optimization options)
+- [Legacy mode details](legacy-readme.md)
 
 ## Contributors
 The Smoking History Generator CLI (Command Line Interface) was developed in the early 2000s and maintained by several contributors since that time.
