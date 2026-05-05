@@ -6,15 +6,13 @@
 #
 # Or in R:  source("install-and-try-load-params.R")
 
-stopifnot(requireNamespace("devtools", quietly = TRUE))
-
 pkg_root <- normalizePath(".", winslash = "/", mustWork = TRUE)
 if (!file.exists(file.path(pkg_root, "DESCRIPTION")))
   stop("Run this from the shg-r package root (where DESCRIPTION lives).")
 
 message("Package root: ", pkg_root)
 
-#devtools::install(pkg_root, quiet = FALSE, upgrade = FALSE)
+# If needed, install manually before running this demo script.
 
 library(SmokingHistoryGenerator)
 
