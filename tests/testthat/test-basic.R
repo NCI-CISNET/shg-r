@@ -312,8 +312,8 @@ test_that("getConfig() captures effective runtime segments/threads after simulat
   cfg <- shg_rt$getConfig(debug = FALSE)
   expect_true(cfg$number_of_segments >= 1)
   expect_true(cfg$num_threads >= 1)
-  expect_false(identical(cfg$number_of_segments, -1L))
-  expect_false(identical(cfg$num_threads, -1L))
+  expect_false(identical(cfg$number_of_segments, -1))
+  expect_false(identical(cfg$num_threads, -1))
 })
 
 test_that("getConfig() records cohort_year for single-cohort runs", {
@@ -322,18 +322,58 @@ test_that("getConfig() records cohort_year for single-cohort runs", {
   shg_rt$runSimFromFixedValues(500, 0, 0, 1950)
 
   cfg <- shg_rt$getConfig(debug = FALSE)
-  expect_equal(cfg$cohort_year, 1950L)
+  expect_equal(cfg$cohort_year, 1950)
 })
 
 test_that("getConfig() records repeat/race/sex after runSimFromFixedValues", {
   shg_rt <- new(SHGInterface)
   shg_rt$input_data_folder <- data_folder
-  shg_rt$runSimFromFixedValues(500L, 1L, 0L, 1940L)
+  shape <- shg_rt$get_data_shape()
+  race_value <- as.integer(max(0, shape$num_races - 1))
+  shg_rt$runSimFromFixedValues(500, race_value, 0, 1940)
 
   cfg <- shg_rt$getConfig(debug = FALSE)
-  expect_equal(cfg[["repeat"]], 500L)
-  expect_equal(cfg[["race"]], 1L)
-  expect_equal(cfg[["sex"]], 0L)
+  expect_equal(cfg[["repeat"]], 500)
+  expect_equal(cfg[["race"]], race_value)
+  expect_equal(cfg[["sex"]], 0)
+})
+
+test_that("runSimFromFixedValues errors clearly when cohort/race/sex not available", {
+  shg_rt <- new(SHGInterface)
+  shg_rt$input_data_folder <- data_folder
+  shape <- shg_rt$get_data_shape()
+
+  starts <- as.integer(shape$cohort_start_years)
+  ends <- as.integer(shape$cohort_end_years)
+  min_y <- min(starts, na.rm = TRUE)
+  max_y <- max(ends, na.rm = TRUE)
+  years <- min_y:max_y
+  covered <- rep(FALSE, length(years))
+  for (i in seq_along(starts)) {
+    covered[years >= starts[i] & years <= ends[i]] <- TRUE
+  }
+  missing_years <- years[!covered]
+  skip_if_not(length(missing_years) > 0, "No cohort gaps in current parameter set.")
+
+  bad_cohort <- as.integer(missing_years[[1]])
+  bad_race <- as.integer(shape$num_races)
+  bad_sex <- as.integer(shape$num_sexes)
+  valid_cohort <- as.integer(starts[[1]])
+
+  out <- "not-assigned"
+  expect_error(
+    out <- shg_rt$runSimFromFixedValues(10, 0, 0, bad_cohort),
+    "Requested cohort_year .* not available"
+  )
+  expect_identical(out, "not-assigned")
+  expect_error(
+    shg_rt$runSimFromFixedValues(10, bad_race, 0, valid_cohort),
+    "Requested race value .* not available"
+  )
+  expect_error(
+    shg_rt$runSimFromFixedValues(10, 0, bad_sex, valid_cohort),
+    "Requested sex value .* not available"
+  )
 })
 
 test_that("getConfig(debug=TRUE) includes debug info", {

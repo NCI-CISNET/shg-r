@@ -808,6 +808,68 @@ Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) 
 //' smoking_history <- shg$runSimFromFixedValues(N, 0, 0, 1950)
 //' }
 Rcpp::DataFrame SHGInterface::runSimFromFixedValues(int repeat, short wRace, short wSex, short wYearBirth) {
+   if (repeat < 1) {
+      Rcpp::stop(
+         "Requested repeat value %d is invalid. repeat must be >= 1.",
+         repeat
+      );
+   }
+
+   string initFile = input_data_folder + "/" + initiation_filename;
+   string cessFile = input_data_folder + "/" + cessation_filename;
+   string lifeFile = input_data_folder + "/" + mortality_filename_;
+   string cpdFile = input_data_folder + "/" + cpd_filename;
+   SmokingSimulatorSharedData* pSharedData = Smoking_Simulator::CreateSharedData(
+      initFile.c_str(), cessFile.c_str(), lifeFile.c_str(), cpdFile.c_str());
+
+   const int availableRaces = static_cast<int>(pSharedData->gwNumRaceValues);
+   const int availableSexes = static_cast<int>(pSharedData->gwNumSexValues);
+   const int cohortCount = static_cast<int>(pSharedData->gwNumBirthCohorts);
+
+   if (wRace < 0 || wRace >= availableRaces) {
+      pSharedData->release();
+      Rcpp::stop(
+         "Requested race value %d is not available in the loaded parameter set. "
+         "Available race values are 0..%d (count=%d).",
+         static_cast<int>(wRace),
+         availableRaces - 1,
+         availableRaces
+      );
+   }
+   if (wSex < 0 || wSex >= availableSexes) {
+      pSharedData->release();
+      Rcpp::stop(
+         "Requested sex value %d is not available in the loaded parameter set. "
+         "Available sex values are 0..%d (count=%d).",
+         static_cast<int>(wSex),
+         availableSexes - 1,
+         availableSexes
+      );
+   }
+
+   bool cohortAvailable = false;
+   for (int i = 0; i < cohortCount; ++i) {
+      const short start = pSharedData->gwYOBCohortStartYrs[i];
+      const short end = pSharedData->gwYOBCohortEndYrs[i];
+      if (wYearBirth >= start && wYearBirth <= end) {
+         cohortAvailable = true;
+         break;
+      }
+   }
+   if (!cohortAvailable) {
+      const int minCohort = cohortCount > 0 ? pSharedData->gwYOBCohortStartYrs[0] : NA_INTEGER;
+      const int maxCohort = cohortCount > 0 ? pSharedData->gwYOBCohortEndYrs[cohortCount - 1] : NA_INTEGER;
+      pSharedData->release();
+      Rcpp::stop(
+         "Requested cohort_year %d is not available in the loaded parameter set. "
+         "Available cohort range is [%d, %d] across %d cohort windows.",
+         static_cast<int>(wYearBirth),
+         minCohort,
+         maxCohort,
+         cohortCount
+      );
+   }
+   pSharedData->release();
 
    has_last_fixed_run_ = true;
    last_fixed_repeat_ = repeat;
