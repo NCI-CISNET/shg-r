@@ -620,10 +620,12 @@ Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) 
       // Launch segments
       vector<future<void>> futures;
       
+      int fileCumOffset = 0;
       for (int seg = 0; seg < n; seg++) {
-         int offset = seg * repeat_per_sim;
-         int current_repeat = repeat_per_sim + (seg == n - 1 ? remainder : 0);
-         
+         int current_repeat = repeat_per_sim + (seg < remainder ? 1 : 0);
+         int offset = fileCumOffset;
+         fileCumOffset += current_repeat;
+
          if (asyncWorkerThreads) {
             futures.push_back(async(launch::async, &SHGInterface::runSimSegmentToFile, this,
                                     current_repeat,
@@ -689,14 +691,11 @@ Rcpp::DataFrame SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) 
    vector<future<void>> futures;
    
    // Launch n simulations in parallel (or sequentially if single-threaded)
+   int memCumOffset = 0;
    for (int i = 0; i < n; ++i) {
-      int offset = i * repeat_per_sim;
-      int current_repeat_per_sim = repeat_per_sim;
-
-      // Add the remainder to the last segment
-      if (i == n - 1) {
-         current_repeat_per_sim += remainder;
-      }
+      int current_repeat_per_sim = repeat_per_sim + (i < remainder ? 1 : 0);
+      int offset = memCumOffset;
+      memCumOffset += current_repeat_per_sim;
 
       if (asyncWorkerThreads) {
          futures.push_back(async(launch::async, &SHGInterface::runSimSegment, this,
@@ -975,8 +974,10 @@ void SHGInterface::runSimSegment(int repeat,
    
    qSimulator->gbSkipValidation = true;     // Skip input validation (inputs pre-validated by R)
 
-   // Set RNG strategy with user-specified seeds or defaults
-   // Skip oversampling for RngStream (performance), keep for MT (backwards compatibility)
+   // Set RNG strategy with user-specified seeds or defaults.
+   // Match RunWebVersion / CLI: default gbSkipOversampling (oversampling ON) and
+   // unbuffered RngStreamRNG for RngStream (parallel CLI segments use BufferedRngStreamRNG
+   // only inside worker threads; single-segment web/CLI path does not).
    if (rng_strategy == "MersenneTwister") {
       qSimulator->gbSkipOversampling = false;  // MT: keep oversampling for backwards compatibility
       if (mt_seeds.size() == 4) {
@@ -990,32 +991,23 @@ void SHGInterface::runSimSegment(int repeat,
       }
    }
    else if (rng_strategy == "RngStream") {
-      qSimulator->gbSkipOversampling = true;   // RngStream: skip oversampling (faster, no benefit)
-      
-      // Create base RNG
-      RngStreamRNG* baseRng;
+      qSimulator->gbSkipOversampling = false;  // align with CLI RunWebVersion (OversamplePRNGs each person)
       if (rngstream_seed.size() == 6) {
          unsigned long seed_array[6];
          for (int i = 0; i < 6; i++) {
             seed_array[i] = rngstream_seed[i];
          }
-         baseRng = new RngStreamRNG(seed_array);
+         qSimulator->setRNGStrategy(new RngStreamRNG(seed_array));
       } else {
-         baseRng = new RngStreamRNG();
+         qSimulator->setRNGStrategy(new RngStreamRNG());
       }
-      
-      // Wrap with buffering for 13-15% performance improvement (same as CLI)
-      // Buffer size 10000 matches CLI (reduces RNG function call overhead)
-      BufferedRngStreamRNG* bufferedRng = new BufferedRngStreamRNG(baseRng, 10000, true);
-      qSimulator->setRNGStrategy(bufferedRng);
    }
    else
       Rcpp::stop("Invalid RNG strategy or strategy not yet implemented");
 
-   // TODO: review the following; not sure this is the best pattern
-   // We could include another parameter in the function signature to pass the segment number;
-   // But this works also. The idea is ensure that the RNG state is advanced in the same way for each segment so that the results are identical and IID
-   int segment_number = offset / repeat; // expected 0, 1, 2... for each segment
+   // Segment index for RNG: with the same per-segment counts as main.cpp (repsPerSegment +
+   // (seg < remainder), cumulative offset), offset/repeat equals the segment index (integer div).
+   int segment_number = offset / repeat;
    qSimulator->incrementSubstreams(segment_number);
 
    // Pre-check cpd_format to avoid per-iteration string comparison
@@ -1102,8 +1094,7 @@ void SHGInterface::runSimSegmentToFile(int repeat,
    Smoking_Simulator* qSimulator = new Smoking_Simulator(pSharedData, wOutputType, immediate_cessation_year);
    qSimulator->gbSkipValidation = true;
    
-   // Set RNG strategy
-   // Skip oversampling for RngStream (performance), keep for MT (backwards compatibility)
+   // Set RNG strategy (match RunWebVersion / CLI; see runSimSegment)
    if (rng_strategy == "MersenneTwister") {
       qSimulator->gbSkipOversampling = false;  // MT: keep oversampling for backwards compatibility
       if (mt_seeds.size() == 4) {
@@ -1116,7 +1107,7 @@ void SHGInterface::runSimSegmentToFile(int repeat,
          qSimulator->setRNGStrategy(new MersenneTwisterRNG(1898587603, 1468371936, 1551308340, 1590227640));
       }
    } else if (rng_strategy == "RngStream") {
-      qSimulator->gbSkipOversampling = true;   // RngStream: skip oversampling (faster, no benefit)
+      qSimulator->gbSkipOversampling = false;  // align with CLI RunWebVersion
       if (rngstream_seed.size() == 6) {
          unsigned long seed_array[6];
          for (int i = 0; i < 6; i++) {
