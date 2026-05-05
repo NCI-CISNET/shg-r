@@ -40,7 +40,7 @@ test_that("shg_params_summary returns parameter shape from configured files", {
   expect_equal(s$cessation$cohorts$count, s$num_cohorts)
   expect_true(s$cpd$cohorts$count >= 1)
   expect_type(s$cpd$note, "character")
-  expect_true(length(s$cpd$note) == 1L && nzchar(s$cpd$note))
+  expect_true(length(s$cpd$note) == 1 && nzchar(s$cpd$note))
   expect_true(is.list(s$cpd$initiation_alignment))
   expect_match(s$cpd$note, "ages 0-7")
   expect_match(s$cpd$note, "effectively ignored")
@@ -60,7 +60,7 @@ test_that(".shg_cpd_initiation_note handles dot rows as ignorable", {
   )
   utils::write.csv(dat, tmp, row.names = FALSE, quote = FALSE)
 
-  out <- f(tmp, 8L)
+  out <- f(tmp, 8)
   expect_equal(out$details$status, "ok")
   expect_match(out$note, "0 or '\\.'")
   expect_match(out$note, "treated as missing")
@@ -80,7 +80,7 @@ test_that(".shg_cpd_initiation_note flags non-zero initiation below cpd min age"
   )
   utils::write.csv(dat, tmp, row.names = FALSE, quote = FALSE)
 
-  out <- f(tmp, 8L)
+  out <- f(tmp, 8)
   expect_equal(out$details$status, "needs-review")
   expect_match(out$note, "non-zero initiation")
 })

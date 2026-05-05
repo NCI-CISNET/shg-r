@@ -98,14 +98,14 @@ shg_save_config <- function(shg, path, quiet = FALSE) {
 #' @seealso \code{\link{shg_save_config}}, \code{\link{shg_run}}
 #' @export
 shg_load_config <- function(shg, path) {
-  if (!is.character(path) || length(path) != 1L || is.na(path[1L]) || !nzchar(path[1L]))
+  if (!is.character(path) || length(path) != 1 || is.na(path[1]) || !nzchar(path[1]))
     stop("'path' must be a single non-empty path to a YAML file.")
-  path <- enc2utf8(path[1L])
+  path <- enc2utf8(path[1])
   if (!isTRUE(file.exists(path)))
     stop("YAML file not found: ", path)
 
   bundle <- yaml::read_yaml(path)
-  if (!is.list(bundle) || length(bundle) == 0L)
+  if (!is.list(bundle) || length(bundle) == 0)
     stop("YAML did not parse to a non-empty mapping.")
 
   bundle <- .shg_normalize_config_list(bundle)
@@ -143,8 +143,8 @@ shg_run <- function(shg, config) {
   if (missing(config) || is.null(config))
     stop("'config' must be a list from shg_load_config() or yaml::read_yaml().")
 
-  if (is.character(config) && length(config) == 1L && nzchar(config[1L])) {
-    cf <- config[1L]
+  if (is.character(config) && length(config) == 1 && nzchar(config[1])) {
+    cf <- config[1]
     if (!isTRUE(file.exists(cf)))
       stop("Config file not found: ", cf)
     config <- yaml::read_yaml(cf)
@@ -164,7 +164,7 @@ shg_run <- function(shg, config) {
     }
     if (is.list(v))
       v <- unlist(v, use.names = FALSE)
-    if (length(v) < 1L || is.na(v[1L]))
+    if (length(v) < 1 || is.na(v[1]))
       miss <- c(miss, f)
   }
   if (length(miss))
@@ -189,7 +189,7 @@ shg_run <- function(shg, config) {
 .shg_apply_config_bundle <- function(shg, bundle) {
   meta_src <- bundle$params_bundle_source
   meta_mot <- bundle$params_mortality
-  if (is.null(meta_mot) || (length(meta_mot) == 1L && is.na(meta_mot)))
+  if (is.null(meta_mot) || (length(meta_mot) == 1 && is.na(meta_mot)))
     meta_mot <- "acm"
   else
     meta_mot <- match.arg(as.character(meta_mot), c("acm", "ocm"))
@@ -200,7 +200,7 @@ shg_run <- function(shg, config) {
 
   # Fresh instances default to package extdata; clear so params_paths_exist reflects
   # whether we have restored this bundle's extracted zip (see params_bundle_source).
-  src  <- if (is.null(meta_src) || length(meta_src) != 1L) "" else trimws(as.character(meta_src))
+  src  <- if (is.null(meta_src) || length(meta_src) != 1) "" else trimws(as.character(meta_src))
   if (nzchar(src) && !is.na(src))
     shg$input_data_folder <- ""
 
@@ -259,7 +259,7 @@ shg_run <- function(shg, config) {
   )
   out <- cfg[!names(cfg) %in% drop]
 
-  if (is.null(out$params_bundle_source) || length(out$params_bundle_source) != 1L ||
+  if (is.null(out$params_bundle_source) || length(out$params_bundle_source) != 1 ||
       is.na(out$params_bundle_source))
     stop(
       "Cannot save portable config: params_bundle_source is missing or NA. ",
@@ -270,7 +270,7 @@ shg_run <- function(shg, config) {
   na_run <- character(0)
   for (nm in req_run) {
     v <- out[[nm]]
-    if (is.null(v) || length(v) != 1L || is.na(v))
+    if (is.null(v) || length(v) != 1 || is.na(v))
       na_run <- c(na_run, nm)
   }
   if (length(na_run)) {
@@ -298,7 +298,7 @@ shg_run <- function(shg, config) {
     if (is.list(s))
       s <- unlist(s, use.names = FALSE)
     s <- as.numeric(s)
-    can_int <- length(s) > 0L && all(is.finite(s)) &&
+    can_int <- length(s) > 0 && all(is.finite(s)) &&
       all(abs(s - round(s)) < 1e-9) &&
       all(s <= .Machine$integer.max & s >= -.Machine$integer.max)
     x$seeds <- if (can_int) as.integer(round(s)) else s
@@ -314,8 +314,8 @@ shg_run <- function(shg, config) {
     v <- x[[f]]
     if (is.list(v))
       v <- unlist(v, use.names = FALSE)
-    if (length(v) >= 1L) {
-      vv <- v[[1L]]
+    if (length(v) >= 1) {
+      vv <- v[[1]]
       if (!is.na(vv))
         x[[f]] <- as.integer(vv)
     }

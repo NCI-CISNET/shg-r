@@ -44,7 +44,7 @@ shg$load_params(url = zip_path, mortality = "ocm")
 
 shape <- shg_params_summary(shg)
 fmt_range_count <- function(x) {
-  if (is.null(x) || length(x) == 0L) return("[NA, NA], n=0")
+  if (is.null(x) || length(x) == 0) return("[NA, NA], n=0")
   paste0("[", x[["min"]], ", ", x[["max"]], "], n=", x[["count"]])
 }
 cat("\n--- Parameter shape summary ---\n")

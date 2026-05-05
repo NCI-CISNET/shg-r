@@ -287,8 +287,8 @@ clear_params_cache <- shg_clear_params_cache
   top <- top[!grepl("__MACOSX", top)]   # strip macOS artefact dir
 
   dirs <- top[file.info(top)$isdir]
-  if (length(dirs) == 1L) {
-    cand <- dirs[[1L]]
+  if (length(dirs) == 1) {
+    cand <- dirs[[1]]
     if (dir.exists(file.path(cand, "smoking")) ||
         dir.exists(file.path(cand, "mortality")))
       return(cand)

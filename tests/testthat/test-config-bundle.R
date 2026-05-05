@@ -53,7 +53,7 @@ test_that("shg_use_config_bundle re-extracts when cache folder exists but files 
 
   shg1 <- new(SHGInterface)
   shg1$load_params(url = zip_path)
-  shg1$runSimFromFixedValues(50L, 0L, 0L, 1950L)
+  shg1$runSimFromFixedValues(50, 0, 0, 1950)
   shg_save_config(shg1, yml, quiet = TRUE)
 
   unlink(shg1$input_data_folder, recursive = TRUE)
@@ -87,7 +87,7 @@ test_that("YAML config: cache reuse, clear cache, load_config re-fetches", {
 
   shg1 <- new(SHGInterface)
   shg1$load_params(url = zip_path, mortality = "acm")
-  shg1$runSimFromFixedValues(100L, 0L, 0L, 1950L)
+  shg1$runSimFromFixedValues(100, 0, 0, 1950)
   shg_save_config(shg1, yml, quiet = TRUE)
 
   shg2 <- new(SHGInterface)
@@ -135,7 +135,7 @@ test_that("shg_load_config restores config and can re-fetch after cache clear", 
 
   shg1 <- new(SHGInterface)
   shg1$load_params(url = zip_path, mortality = "ocm")
-  shg1$runSimFromFixedValues(80L, 0L, 0L, 1950L)
+  shg1$runSimFromFixedValues(80, 0, 0, 1950)
   shg_save_config(shg1, yml, quiet = TRUE)
 
   shg_clear_params_cache()
@@ -169,7 +169,7 @@ test_that("SHGInterface$load_config and runSim delegate correctly", {
 
   shg1 <- new(SHGInterface)
   shg1$load_params(url = zip_path)
-  shg1$runSimFromFixedValues(40L, 0L, 0L, 1950L)
+  shg1$runSimFromFixedValues(40, 0, 0, 1950)
   shg_save_config(shg1, yml, quiet = TRUE)
 
   shg_clear_params_cache()
@@ -182,10 +182,10 @@ test_that("SHGInterface$load_config and runSim delegate correctly", {
 
   out <- shg2$runSim(cfg)
   expect_s3_class(out, "data.frame")
-  expect_equal(nrow(out), 40L)
+  expect_equal(nrow(out), 40)
 
   out2 <- shg_run(shg2, cfg)
-  expect_equal(nrow(out2), 40L)
+  expect_equal(nrow(out2), 40)
 })
 
 test_that("SHGInterface$save_config matches shg_save_config output", {
@@ -209,7 +209,7 @@ test_that("SHGInterface$save_config matches shg_save_config output", {
 
   shg <- new(SHGInterface)
   shg$load_params(url = zip_path)
-  shg$runSimFromFixedValues(10L, 0L, 0L, 1950L)
+  shg$runSimFromFixedValues(10, 0, 0, 1950)
   shg$save_config(yml1, quiet = TRUE)
   shg_save_config(shg, yml2, quiet = TRUE)
 
@@ -235,14 +235,14 @@ test_that("shg_save_config errors after population run following fixed cohort ru
   on.exit(unlink(yml), add = TRUE)
 
   shg <- new(SHGInterface)
-  shg$num_threads <- 1L
-  shg$number_of_segments <- 1L
+  shg$num_threads <- 1
+  shg$number_of_segments <- 1
   shg$load_params(url = zip_path)
-  shg$runSimFromFixedValues(5L, 0L, 0L, 1950L)
+  shg$runSimFromFixedValues(5, 0, 0, 1950)
   pop <- data.frame(
-    race = rep(0L, 3L),
-    sex = rep(0L, 3L),
-    birth_cohort = rep(1950L, 3L)
+    race = rep(0, 3),
+    sex = rep(0, 3),
+    birth_cohort = rep(1950, 3)
   )
   shg$runSimFromDataFrame(pop)
   expect_error(shg_save_config(shg, yml, quiet = TRUE), "runSimFromDataFrame")

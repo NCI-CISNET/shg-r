@@ -114,7 +114,7 @@ shg_params_summary <- function(shg) {
     num_sexes = NA_integer_,
     cohorts = .shg_cohort_summary(integer(0))
   )
-  if (!is.character(path) || length(path) != 1L || !nzchar(path) || !file.exists(path))
+  if (!is.character(path) || length(path) != 1 || !nzchar(path) || !file.exists(path))
     return(out)
 
   dat <- tryCatch(
@@ -188,10 +188,10 @@ shg_params_summary <- function(shg) {
       cpd_min_age = as.integer(cpd_min_age)
     )
   )
-  if (!is.character(initiation_path) || length(initiation_path) != 1L ||
+  if (!is.character(initiation_path) || length(initiation_path) != 1 ||
       !nzchar(initiation_path) || !file.exists(initiation_path))
     return(unavailable)
-  if (is.null(cpd_min_age) || length(cpd_min_age) < 1L || is.na(cpd_min_age))
+  if (is.null(cpd_min_age) || length(cpd_min_age) < 1 || is.na(cpd_min_age))
     return(unavailable)
 
   dat <- tryCatch(
@@ -211,7 +211,7 @@ shg_params_summary <- function(shg) {
   if (!length(cohort_cols))
     return(unavailable)
 
-  age_cut <- as.integer(cpd_min_age[[1L]])
+  age_cut <- as.integer(cpd_min_age[[1]])
   early <- dat[dat$AGE < age_cut, c("RACE", "SEX", "AGE", cohort_cols), drop = FALSE]
   if (!nrow(early)) {
     return(list(
