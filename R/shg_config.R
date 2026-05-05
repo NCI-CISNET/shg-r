@@ -194,13 +194,23 @@ shg_run <- function(shg, config) {
   else
     meta_mot <- match.arg(as.character(meta_mot), c("acm", "ocm"))
 
+  src  <- if (is.null(meta_src) || length(meta_src) != 1) "" else trimws(as.character(meta_src))
+  # useConfig() strips these keys from cfg; set/clear explicitly so stale load_params()
+  # provenance cannot survive across YAML loads on a reused instance.
+  if (nzchar(src) && !is.na(src)) {
+    shg$params_bundle_source <- src
+    shg$params_mortality <- meta_mot
+  } else {
+    shg$params_bundle_source <- ""
+    shg$params_mortality <- ""
+  }
+
   cfg <- bundle
   cfg <- .shg_strip_derived_input_paths(cfg)
   cfg <- .shg_strip_bundle_for_useconfig(cfg)
 
   # Fresh instances default to package extdata; clear so params_paths_exist reflects
   # whether we have restored this bundle's extracted zip (see params_bundle_source).
-  src  <- if (is.null(meta_src) || length(meta_src) != 1) "" else trimws(as.character(meta_src))
   if (nzchar(src) && !is.na(src))
     shg$input_data_folder <- ""
 

@@ -491,6 +491,20 @@ test_that("useConfig() accepts legacy lifetable_filename key", {
   expect_equal(shg$mortality_filename, "mortality/acm.csv")
 })
 
+test_that("useConfig() clears stale params provenance when input paths change without bundle keys", {
+  shg <- new(SHGInterface)
+  shg$params_bundle_source <- "https://example.invalid/bundle.zip"
+  shg$params_mortality <- "ocm"
+  shg$useConfig(list(
+    config_version = "1.0",
+    rng_strategy = "RngStream",
+    input_data_folder = data_folder
+  ))
+  cfg <- shg$getConfig()
+  expect_true(is.na(cfg$params_bundle_source))
+  expect_true(is.na(cfg$params_mortality))
+})
+
 test_that("Round-trip: getConfig() -> useConfig() -> verify", {
   shg1 <- new(SHGInterface)
   shg1$num_threads <- 1
