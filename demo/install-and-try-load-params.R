@@ -2,9 +2,9 @@
 # and run a quick 1M-individual benchmark (wall-clock).
 #
 # Usage (from the shg-r repo root):
-#   Rscript install-and-try-load-params.R
+#   Rscript demo/install-and-try-load-params.R
 #
-# Or in R:  source("install-and-try-load-params.R")
+# Or in R:  source("demo/install-and-try-load-params.R")
 
 pkg_root <- normalizePath(".", winslash = "/", mustWork = TRUE)
 if (!file.exists(file.path(pkg_root, "DESCRIPTION")))
