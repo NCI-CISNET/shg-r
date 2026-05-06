@@ -185,7 +185,7 @@ test_that("Comparison between MT-SIM and RNGSTREAM-SIM", {
   expect_equal(dim(RS_SIM), dim(MT_SIM))
   expect_equal(MT_STATS$mean_initiation, RS_STATS$mean_initiation, tolerance = 0.01)
   expect_equal(MT_STATS$mean_cessation, RS_STATS$mean_cessation, tolerance = 0.01)
-  expect_equal(MT_STATS$mean_age_at_death, RS_STATS$mean_age_at_death, tolerance = 0.01)
+  expect_equal(MT_STATS$age_at_death, RS_STATS$age_at_death, tolerance = 0.01)
   # If MT_STATS and RS_STATS are equal, it would indicate there is a problem with the RNG
   # Results should be very similar but *not* identical
   expect_false(isTRUE(all.equal(MT_STATS, RS_STATS)))
@@ -209,18 +209,18 @@ RS_STATS_POP <- get_stats_from_df(RS_SIM_POP)
 test_that("Comparison between MT-SIM and RNGSTREAM-SIM with runSimFromDataFrame", {
   expect_equal(MT_STATS_POP$mean_initiation, RS_STATS_POP$mean_initiation, tolerance = 0.01)
   expect_equal(MT_STATS_POP$mean_cessation, RS_STATS_POP$mean_cessation, tolerance = 0.01)
-  expect_equal(MT_STATS_POP$mean_age_at_death, RS_STATS_POP$mean_age_at_death, tolerance = 0.01)
+  expect_equal(MT_STATS_POP$age_at_death, RS_STATS_POP$age_at_death, tolerance = 0.01)
 })
 
 test_that("Comparison between runSimFromDataFrame and runSimFromFixedValues for MersenneTwister", {
   expect_identical(MT_STATS_POP$mean_initiation, MT_STATS$mean_initiation)
   expect_identical(MT_STATS_POP$mean_cessation, MT_STATS$mean_cessation)
-  expect_identical(MT_STATS_POP$mean_age_at_death, MT_STATS$mean_age_at_death)
+  expect_identical(MT_STATS_POP$age_at_death, MT_STATS$age_at_death)
 })
 test_that("Comparison between runSimFromDataFrame and runSimFromFixedValues for RngStream", {
   expect_identical(RS_STATS_POP$mean_initiation, RS_STATS$mean_initiation)
   expect_identical(RS_STATS_POP$mean_cessation, RS_STATS$mean_cessation)
-  expect_identical(RS_STATS_POP$mean_age_at_death, RS_STATS$mean_age_at_death)
+  expect_identical(RS_STATS_POP$age_at_death, RS_STATS$age_at_death)
 })
 
 test_that("Invalid input configuration path fails with proper error message", {
