@@ -530,6 +530,17 @@ shg_run <- function(shg, config, attach_run_info = TRUE) {
   if (!is.list(config))
     stop("'config' must be a list or a path to YAML.")
 
+  bundle_src <- config[["params_bundle_source"]]
+  has_bundle_src <- !is.null(bundle_src) &&
+    length(bundle_src) == 1L &&
+    !is.na(bundle_src[[1]]) &&
+    nzchar(trimws(as.character(bundle_src[[1]])))
+  if (isTRUE(has_bundle_src)) {
+    # One-step run for config-first workflows: hydrate params and apply config
+    # before simulation when bundle provenance is supplied in run config.
+    shg_apply_config(shg, config)
+  }
+
   original_config <- config
   if (!is.null(original_config[["mortality"]]) && is.null(original_config[["params_mortality"]]))
     original_config[["params_mortality"]] <- original_config[["mortality"]]
@@ -541,6 +552,10 @@ shg_run <- function(shg, config, attach_run_info = TRUE) {
     config[["repeat"]] <- config[["N"]]
   if (is.null(config[["repeat"]]))
     config[["repeat"]] <- 1000L
+  if (is.null(config[["race"]]))
+    config[["race"]] <- 0L
+  if (is.null(config[["sex"]]))
+    config[["sex"]] <- 0L
 
   req <- c("repeat", "race", "sex", "cohort_year")
   miss <- character(0)
@@ -561,13 +576,19 @@ shg_run <- function(shg, config, attach_run_info = TRUE) {
   if (!is.null(config$immediate_cessation_year))
     shg$immediate_cessation_year <- as.integer(config$immediate_cessation_year)
 
+  output_file <- config[["output_file"]]
+  if (is.null(output_file) || length(output_file) != 1L || is.na(output_file[[1]]))
+    output_file <- ""
+  output_file <- as.character(output_file[[1]])
+
   shg$runSimFromFixedValues(
     as.integer(config[["repeat"]]),
     as.integer(config[["race"]]),
     as.integer(config[["sex"]]),
     as.integer(config[["cohort_year"]]),
     attach_run_info,
-    original_config
+    original_config,
+    output_file
   )
 }
 

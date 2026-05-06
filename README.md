@@ -37,7 +37,7 @@ files and want to point SHG directly at those inputs.
 library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
 
-shg$input_data_folder <- "/path/to/usa-national@smok-2016"
+shg$input_data_folder   <- "/path/to/usa-national@smok-2016"
 shg$initiation_filename <- "smoking/initiation.csv"
 shg$cessation_filename  <- "smoking/cessation.csv"
 shg$cpd_filename        <- "smoking/cpd.csv"
@@ -212,7 +212,7 @@ RNGSTREAM_SIM_POP <- shg$runSimFromDataFrame(pop)
 - **RngStream** (default): Recommended for all use cases, especially multi-segment and parallel simulations. Supports multiple segments and multi-threading while maintaining IID properties.
 - **MersenneTwister**: Legacy RNG for backward compatibility. **Restricted to single-segment, single-threaded execution** due to limitations in maintaining IID properties across segments. Attempting to use MersenneTwister with `number_of_segments > 1` or `num_threads != 1` will result in an error.
 
-If you want to produce identical results as with previous versions of the SHG, you must select the Mersenne Twister strategy:
+If you want to produce identical results as with legacy versions of the SHG command line version (v6.3.5 and earlier), you must select the Mersenne Twister strategy (see [shg-cli](https://github.com/NCI-CISNET/shg-cli/)):
 
 ```r
 library(SmokingHistoryGenerator)
@@ -238,15 +238,28 @@ shg$cpd_format <- "legacy"  # Backwards compatible: "17 (20), 18 (20), 19 (10)"
 
 ## File Output Mode
 
-For CLI-like performance, you can write results directly to disk instead of returning a DataFrame:
+For CLI-like performance, you can write rows directly to disk. With the bundled return form, the in-memory object still includes configs and audit metadata, but not the full simulated row set (to conserve memory):
 
 ```r
-shg$output_file <- "/path/to/output.csv"
-result <- shg$runSimFromDataFrame(df)
-# Result is a small info DataFrame; actual data is in the file
+library(SmokingHistoryGenerator)
+shg <- new(SHGInterface)
+
+run_cfg <- list(
+  params_bundle_source = "/path/to/usa-national@smok-2016.zip",
+  params_mortality = "acm",
+  cohort_year = 1950,
+  output_file = "/path/to/output-fixed.csv"
+)
+
+# Load parameters from config metadata, then run
+bundle <- shg$runSim(run_cfg)
+
+# Same bundle structure; output rows are in output-fixed.csv
+# Defaults used here: individuals = 1000, race = 0, sex = 0.
+# bundle$original_config / bundle$repro_config / bundle$run_info are returned
 ```
 
-File output matches CLI's data format (semicolon-separated) and achieves similar performance (~1.3s for 1M individuals).
+File output matches CLI's data format (semicolon-separated).
 
 ## Setting Random Number Generator Seeds
 

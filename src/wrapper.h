@@ -49,12 +49,27 @@ public:
     bool isValidDataFrame(Rcpp::DataFrame& dfPopulation);
     Rcpp::RObject runSimFromFixedValues(int repeat, short wRace, short wSex, short wYearBirth);
     Rcpp::RObject runSimFromFixedValues(int repeat, short wRace, short wSex, short wYearBirth,
+                                       std::string output_file_path);
+    Rcpp::RObject runSimFromFixedValues(int repeat, short wRace, short wSex, short wYearBirth,
                                        bool attach_run_info,
                                        Rcpp::Nullable<Rcpp::List> original_config);
+    Rcpp::RObject runSimFromFixedValues(int repeat, short wRace, short wSex, short wYearBirth,
+                                       bool attach_run_info,
+                                       Rcpp::Nullable<Rcpp::List> original_config,
+                                       std::string output_file_path);
     Rcpp::RObject runSimFromDataFrame(Rcpp::DataFrame dfPopulation);
+    Rcpp::RObject runSimFromDataFrame(Rcpp::DataFrame dfPopulation,
+                                      std::string output_file_path);
+    Rcpp::RObject runSimFromDataFrame(Rcpp::DataFrame dfPopulation,
+                                      bool attach_run_info,
+                                      std::string output_file_path);
     Rcpp::RObject runSimFromDataFrame(Rcpp::DataFrame dfPopulation,
                                       bool attach_run_info,
                                       Rcpp::Nullable<Rcpp::List> original_config);
+    Rcpp::RObject runSimFromDataFrame(Rcpp::DataFrame dfPopulation,
+                                      bool attach_run_info,
+                                      Rcpp::Nullable<Rcpp::List> original_config,
+                                      std::string output_file_path);
 
     string input_data_folder = find_default_data_path();
     string initiation_filename = R_INITIATION_DATA_FILE;

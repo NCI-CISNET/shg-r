@@ -1043,6 +1043,28 @@ test_that("output_file writes results to disk", {
   unlink(output_path)
 })
 
+test_that("runSimFromDataFrame output_file argument writes file without mutating property", {
+  output_path <- tempfile(fileext = ".csv")
+  on.exit(unlink(output_path), add = TRUE)
+
+  shg <- new(SHGInterface)
+  shg$input_data_folder <- data_folder
+  shg$rng_strategy <- "RngStream"
+  shg$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
+  shg$number_of_segments <- 1
+  shg$num_threads <- 1
+  shg$output_file <- ""
+
+  N <- 200
+  df <- test_pop_df(N)
+  result <- shg$runSimFromDataFrame(df, output_path)
+
+  expect_true(file.exists(output_path))
+  expect_true(grepl("file", result$info, ignore.case = TRUE))
+  expect_equal(result$rows, N)
+  expect_equal(shg$output_file, "")
+})
+
 test_that("output_file parallel execution works (disk + multi-thread, non-Windows)", {
   skip_on_os("windows")
 

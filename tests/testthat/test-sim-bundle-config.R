@@ -58,10 +58,13 @@ test_that("shg_apply_config warns on package_repro identity mismatch", {
 })
 
 test_that("shg_run bundle original_config preserves params bundle intent", {
+  skip_on_cran()
+  zip_path <- testthat::test_path("../testdata/usa-national@smok-2016.zip")
+  skip_if_not(file.exists(zip_path))
   shg <- new(SHGInterface)
   shg$input_data_folder <- system.file("extdata", package = "SmokingHistoryGenerator")
   cfg <- list(
-    params_bundle_source = "https://example.invalid/params.zip",
+    params_bundle_source = zip_path,
     params_mortality = "ocm",
     individuals = 8L,
     race = 0L,
@@ -74,6 +77,56 @@ test_that("shg_run bundle original_config preserves params bundle intent", {
   expect_equal(out$original_config$individuals, 8L)
 })
 
+test_that("shg_run with output_file returns bundle and captures output path", {
+  shg <- new(SHGInterface)
+  shg$input_data_folder <- system.file("extdata", package = "SmokingHistoryGenerator")
+  output_path <- tempfile(fileext = ".csv")
+  on.exit(unlink(output_path), add = TRUE)
+
+  cfg <- list(
+    output_file = output_path,
+    individuals = 12,
+    race = 0,
+    sex = 0,
+    cohort_year = 1950
+  )
+  out <- shg_run(shg, cfg, attach_run_info = TRUE)
+  expect_true(file.exists(output_path))
+  expect_true(all(c("results", "original_config", "repro_config", "run_info") %in% names(out)))
+  expect_equal(out$original_config$output_file, output_path)
+  expect_equal(out$repro_config$output_file, output_path)
+  expect_true(grepl("file", out$results$info[1], ignore.case = TRUE))
+})
+
+test_that("shg_run auto-applies params when params_bundle_source is in config", {
+  skip_on_cran()
+  zip_path <- testthat::test_path("../testdata/usa-national@smok-2016.zip")
+  skip_if_not(file.exists(zip_path))
+
+  tmp_cache <- tempfile("shg_run_auto_apply_")
+  dir.create(tmp_cache)
+  old <- Sys.getenv("R_USER_CACHE_DIR", "")
+  Sys.setenv(R_USER_CACHE_DIR = tmp_cache)
+  on.exit({
+    if (nzchar(old)) Sys.setenv(R_USER_CACHE_DIR = old)
+    else Sys.unsetenv("R_USER_CACHE_DIR")
+    unlink(tmp_cache, recursive = TRUE)
+  }, add = TRUE)
+
+  shg <- new(SHGInterface)
+  cfg <- list(
+    params_bundle_source = zip_path,
+    params_mortality = "ocm",
+    individuals = 25,
+    cohort_year = 1950
+  )
+  out <- shg_run(shg, cfg, attach_run_info = TRUE)
+  expect_s3_class(out$results, "data.frame")
+  expect_equal(nrow(out$results), 25L)
+  expect_equal(shg$mortality_filename, "mortality/ocm-excl-lung-cancer.csv")
+  expect_true(SmokingHistoryGenerator:::.shg_params_paths_exist(shg))
+})
+
 test_that("shg_run defaults omitted individuals to 1000", {
   skip_on_cran()
   shg <- new(SHGInterface)
@@ -81,6 +134,18 @@ test_that("shg_run defaults omitted individuals to 1000", {
   out <- shg_run(shg, list(race = 0L, sex = 0L, cohort_year = 1950L), attach_run_info = FALSE)
   expect_s3_class(out, "data.frame")
   expect_equal(nrow(out), 1000L)
+})
+
+test_that("shg_run defaults omitted race and sex to 0", {
+  skip_on_cran()
+  shg <- new(SHGInterface)
+  shg$input_data_folder <- system.file("extdata", package = "SmokingHistoryGenerator")
+  out <- shg_run(shg, list(cohort_year = 1950L), attach_run_info = TRUE)
+  expect_equal(out$original_config$cohort_year, 1950L)
+  expect_equal(out$repro_config$race, 0L)
+  expect_equal(out$repro_config$sex, 0L)
+  expect_equal(out$repro_config[["repeat"]], 1000L)
+  expect_equal(nrow(out$results), 1000L)
 })
 
 test_that("shg_write_config_yaml strips audit keys and writes readable YAML", {

@@ -542,6 +542,33 @@ Rcpp::RObject SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) {
 }
 
 Rcpp::RObject SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation,
+                                                std::string output_file_path) {
+   return runSimFromDataFrame(dfPopulation, false, R_NilValue, output_file_path);
+}
+
+Rcpp::RObject SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation,
+                                                bool attach_run_info,
+                                                std::string output_file_path) {
+   return runSimFromDataFrame(dfPopulation, attach_run_info, R_NilValue, output_file_path);
+}
+
+Rcpp::RObject SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation,
+                                                bool attach_run_info,
+                                                Rcpp::Nullable<Rcpp::List> original_config,
+                                                std::string output_file_path) {
+   const std::string previous_output_file = output_file;
+   output_file = output_file_path;
+   try {
+      Rcpp::RObject out = runSimFromDataFrame(dfPopulation, attach_run_info, original_config);
+      output_file = previous_output_file;
+      return out;
+   } catch (...) {
+      output_file = previous_output_file;
+      throw;
+   }
+}
+
+Rcpp::RObject SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation,
                                                 bool attach_run_info,
                                                 Rcpp::Nullable<Rcpp::List> original_config) {
    Rcpp::List original_cfg;
@@ -888,6 +915,34 @@ Rcpp::RObject SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation,
 //' }
 Rcpp::RObject SHGInterface::runSimFromFixedValues(int repeat, short wRace, short wSex, short wYearBirth) {
    return runSimFromFixedValues(repeat, wRace, wSex, wYearBirth, false, R_NilValue);
+}
+
+Rcpp::RObject SHGInterface::runSimFromFixedValues(int repeat,
+                                                  short wRace,
+                                                  short wSex,
+                                                  short wYearBirth,
+                                                  std::string output_file_path) {
+   return runSimFromFixedValues(repeat, wRace, wSex, wYearBirth, false, R_NilValue, output_file_path);
+}
+
+Rcpp::RObject SHGInterface::runSimFromFixedValues(int repeat,
+                                                  short wRace,
+                                                  short wSex,
+                                                  short wYearBirth,
+                                                  bool attach_run_info,
+                                                  Rcpp::Nullable<Rcpp::List> original_config,
+                                                  std::string output_file_path) {
+   const std::string previous_output_file = output_file;
+   output_file = output_file_path;
+   try {
+      Rcpp::RObject out = runSimFromFixedValues(
+         repeat, wRace, wSex, wYearBirth, attach_run_info, original_config);
+      output_file = previous_output_file;
+      return out;
+   } catch (...) {
+      output_file = previous_output_file;
+      throw;
+   }
 }
 
 Rcpp::RObject SHGInterface::runSimFromFixedValues(int repeat,
@@ -1413,6 +1468,7 @@ Rcpp::List SHGInterface::buildConfig(bool debug, bool use_effective_runtime, boo
    
    // Input file configuration
    config["input_data_folder"] = input_data_folder;
+  config["output_file"] = output_file;
    config["initiation_filename"] = initiation_filename;
    config["cessation_filename"] = cessation_filename;
    config["mortality_filename"] = mortality_filename_;
@@ -1638,6 +1694,9 @@ void SHGInterface::useConfig(Rcpp::List config) {
   if (config.containsElementNamed("input_data_folder")) {
       set_input_data_folder(Rcpp::as<std::string>(config["input_data_folder"]));
    }
+  if (config.containsElementNamed("output_file")) {
+      set_output_file(Rcpp::as<std::string>(config["output_file"]));
+   }
    
    if (config.containsElementNamed("initiation_filename")) {
       set_initiation_filename(Rcpp::as<std::string>(config["initiation_filename"]));
@@ -1741,7 +1800,7 @@ void SHGInterface::useConfig(Rcpp::List config) {
   // Warn about unknown fields (but allow for future compatibility)
    std::vector<std::string> known_fields = {
     "config_version", "rng_strategy", "number_of_segments", "num_threads", "run_multi_threaded",
-    "seeds", "input_data_folder", "initiation_filename", "cessation_filename",
+    "seeds", "input_data_folder", "output_file", "initiation_filename", "cessation_filename",
     "lifetable_filename", "mortality_filename", "cpd_filename", "immediate_cessation_year",
     "cohort_year", "repeat", "race", "sex", "timestamp",
     "individuals", "mortality",
@@ -1782,17 +1841,37 @@ RCPP_MODULE(SmokingSimulator) {
        .method("runSimFromFixedValues",
                (Rcpp::RObject(SHGInterface::*)(int, short, short, short)) &SHGInterface::runSimFromFixedValues,
                "Generates a data frame of simulated smoking histories for n individuals (or a bundle when attach_run_info is used)")
+      .method("runSimFromFixedValues",
+              (Rcpp::RObject(SHGInterface::*)(int, short, short, short, std::string))
+                 &SHGInterface::runSimFromFixedValues,
+              "Same as 4-arg runSimFromFixedValues, but writes to output_file path when provided")
        .method("runSimFromFixedValues",
                (Rcpp::RObject(SHGInterface::*)(int, short, short, short, bool, Rcpp::Nullable<Rcpp::List>))
                   &SHGInterface::runSimFromFixedValues,
                "Same as 4-arg runSimFromFixedValues; if attach_run_info is TRUE, returns list(results, original_config, repro_config, run_info)")
+      .method("runSimFromFixedValues",
+              (Rcpp::RObject(SHGInterface::*)(int, short, short, short, bool, Rcpp::Nullable<Rcpp::List>, std::string))
+                 &SHGInterface::runSimFromFixedValues,
+              "Same as 6-arg runSimFromFixedValues with optional output_file path")
        .method("runSimFromDataFrame",
                (Rcpp::RObject(SHGInterface::*)(Rcpp::DataFrame)) &SHGInterface::runSimFromDataFrame,
                "Generates a data frame of simulated smoking histories for n individuals")
+      .method("runSimFromDataFrame",
+              (Rcpp::RObject(SHGInterface::*)(Rcpp::DataFrame, std::string))
+                 &SHGInterface::runSimFromDataFrame,
+              "Same as 1-arg runSimFromDataFrame, but writes to output_file path when provided")
+      .method("runSimFromDataFrame",
+              (Rcpp::RObject(SHGInterface::*)(Rcpp::DataFrame, bool, std::string))
+                 &SHGInterface::runSimFromDataFrame,
+              "Same as 1-arg runSimFromDataFrame with attach_run_info and output_file path")
        .method("runSimFromDataFrame",
                (Rcpp::RObject(SHGInterface::*)(Rcpp::DataFrame, bool, Rcpp::Nullable<Rcpp::List>))
                   &SHGInterface::runSimFromDataFrame,
                "Same as 1-arg runSimFromDataFrame; optional bundle when attach_run_info is TRUE")
+      .method("runSimFromDataFrame",
+              (Rcpp::RObject(SHGInterface::*)(Rcpp::DataFrame, bool, Rcpp::Nullable<Rcpp::List>, std::string))
+                 &SHGInterface::runSimFromDataFrame,
+              "Same as 3-arg runSimFromDataFrame with optional output_file path")
        .method("LegacyRunWebVersion", &SHGInterface::LegacyRunWebVersion, "Runs a simulation from a configuration file to produce results for a website (legacy)")
        .property("number_of_segments", &SHGInterface::get_number_of_segments, &SHGInterface::set_number_of_segments,"Number of segments to use for simulation. -1 = auto, 1 = single, N = N segments")
        .property("num_threads", &SHGInterface::get_num_threads, &SHGInterface::set_num_threads, "Thread count: -1 = auto (all cores), 1 = single-threaded, N = N threads")
