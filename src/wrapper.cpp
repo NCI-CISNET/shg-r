@@ -183,8 +183,6 @@ void SHGInterface::reset_to_factory_defaults() {
    last_cpd_min_age = 0;
    last_cpd_max_age = 0;
    last_num_intensity_grps = 0;
-   last_cpd_rows_loaded = 0;
-   last_cpd_rows_skipped = 0;
    last_first_cohort_start = 0;
    last_first_cohort_end = 0;
    last_last_cohort_start = 0;
@@ -364,7 +362,7 @@ void SHGInterface::reset_seeds_to_defaults() {
 
 Rcpp::NumericVector SHGInterface::get_rng_state_fingerprint() {
    // Create a temporary simulator with current seeds to get the RNG state fingerprint
-   Smoking_Simulator* qSimulator = loadSimulator();
+   std::unique_ptr<Smoking_Simulator> qSimulator(loadSimulator());
    
    // Set RNG strategy with user-specified seeds or defaults (same logic as runSimSegment)
    if (rng_strategy == "MersenneTwister") {
@@ -390,7 +388,6 @@ Rcpp::NumericVector SHGInterface::get_rng_state_fingerprint() {
       }
    }
    else {
-      delete qSimulator;
       Rcpp::stop("Invalid RNG strategy. Cannot get fingerprint for strategy: " + rng_strategy);
    }
    
@@ -403,7 +400,6 @@ Rcpp::NumericVector SHGInterface::get_rng_state_fingerprint() {
       result[i] = fingerprint[i];
    }
    
-   delete qSimulator;
    return result;
 }
 
@@ -1080,12 +1076,6 @@ bool SHGInterface::isValidDataFrame(Rcpp::DataFrame& dfPopulation) {
    Rcpp::IntegerVector raceVec = dfPopulation["race"];
    Rcpp::IntegerVector sexVec = dfPopulation["sex"];
    Rcpp::IntegerVector birthCohortVec = dfPopulation["birth_cohort"];
-
-   for (int i = 0; i < repeat; i++) {
-      if (raceVec[i] != 0 && raceVec[i] != 1) {
-            Rcpp::stop("Invalid value of '" + to_string(raceVec[i]) + "' for race at index " + to_string(i));
-      }
-   }
 
    for (int i = 0; i < repeat; i++) {
       if (sexVec[i] != 0 && sexVec[i] != 1) {

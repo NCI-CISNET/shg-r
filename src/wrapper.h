@@ -179,8 +179,6 @@ public:
     long last_cpd_min_age = 0;
     long last_cpd_max_age = 0;
     int last_num_intensity_grps = 0;
-    long last_cpd_rows_loaded = 0;
-    long last_cpd_rows_skipped = 0;
     int last_first_cohort_start = 0;
     int last_first_cohort_end = 0;
     int last_last_cohort_start = 0;
