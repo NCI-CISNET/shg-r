@@ -4,7 +4,7 @@
 \alias{Rcpp_SHGInterface}
 \title{Rcpp SHG Interface Class}
 \description{
-This module provides an Rcpp interface to the Smoking History Generator (SHG) application.
+This module provides an Rcpp interface to the Smoking History Generator (SHG) application, including intent-oriented config methods (\code{getConfig}/\code{useConfig}) and reproducibility export (\code{getReproConfig}).
 }
 \details{
 Rcpp SHG Interface Class

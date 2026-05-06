@@ -11,9 +11,9 @@ runSimFromDataFrame offers a way to configure and run a simulation from an exist
 }
 \details{
 On Windows, \code{output_file} (direct disk output) cannot be combined with
-         multi-threaded execution (\code{num_threads} not equal to \code{1}). The call stops with an error
-         before loading inputs or writing files. Use the default in-memory DataFrame return value, or set
-         \code{num_threads <- 1} to write a file.
+multi-threaded execution (\code{num_threads} not equal to \code{1}). The call stops with an error
+before loading inputs or writing files. Use the default in-memory DataFrame return value, or set
+\code{num_threads <- 1} to write a file.
 }
 \examples{
 \dontrun{

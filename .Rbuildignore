@@ -30,4 +30,6 @@
 ^legacy-readme\.md$
 ^SmokingHistoryGenerator\.Rcheck$
 ^SmokingHistoryGenerator_.*\.tar\.gz$
+^tmp/
 ^tests/testdata/NHIS-1965-2016/(csv-complete|legacy-complete)(?:/|$)
+^tests/testdata/.*\.zip$

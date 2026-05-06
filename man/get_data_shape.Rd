@@ -4,9 +4,9 @@
 \alias{get_data_shape}
 \title{get_data_shape method}
 \value{
-A list with data shape information including races, sexes, cohorts, age ranges, and CPD statistics.
+A list with data shape information including races, sexes, cohorts, age ranges, cohort boundaries, and CPD statistics.
 }
 \description{
-Returns a list containing information about the shape/dimensions of the loaded input data.
-             This is populated after a simulation is run and shows the structure of the parameter files.
+Returns a list containing information about the shape/dimensions of the current input data files.
+It reads the configured parameter files directly and does not require running a simulation first.
 }

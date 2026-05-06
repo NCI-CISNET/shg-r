@@ -8,7 +8,19 @@ Sys.setenv(PKG_BUILD_EXTRA_FLAGS = "false") # optional, but should increase perf
 devtools::load_all()
 ```
 
-Then initially and each time you make changes to the src directory
+For GitHub users/devs who want to (re)install the local checkout into their library,
+you can use `pak` directly from the repo root:
+
+```r
+install.packages("pak")
+setwd("path-to-shg-r")
+pak::pak(".")
+```
+
+After install, start a **new R session** before reloading/testing to avoid stale package
+state from a previously loaded DLL.
+
+Then initially and each time you make changes to the src directory:
 ```r
 # If you want to prevent the pedantic and -O0 optimization flags (slower)
 Sys.setenv(PKG_BUILD_EXTRA_FLAGS = "false")
@@ -23,3 +35,15 @@ pkgbuild::compile_dll(path = ".", debug = FALSE)
 devtools::load_all() 
 library(SmokingHistoryGenerator)
 ```
+
+## Performance optimization (developer/local builds)
+
+The package is built with `-O3` by default. For machine-specific speedups on local runs,
+you can enable CPU-targeted instructions in `~/.R/Makevars`:
+
+```makefile
+CXX17FLAGS += -march=native
+```
+
+This can improve throughput for numeric code, but binaries built with `-march=native`
+are not portable across different CPU families.

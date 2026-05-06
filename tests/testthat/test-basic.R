@@ -185,7 +185,7 @@ test_that("Comparison between MT-SIM and RNGSTREAM-SIM", {
   expect_equal(dim(RS_SIM), dim(MT_SIM))
   expect_equal(MT_STATS$mean_initiation, RS_STATS$mean_initiation, tolerance = 0.01)
   expect_equal(MT_STATS$mean_cessation, RS_STATS$mean_cessation, tolerance = 0.01)
-  expect_equal(MT_STATS$mean_age_at_death, RS_STATS$mean_age_at_death, tolerance = 0.01)
+  expect_equal(MT_STATS$age_at_death, RS_STATS$age_at_death, tolerance = 0.01)
   # If MT_STATS and RS_STATS are equal, it would indicate there is a problem with the RNG
   # Results should be very similar but *not* identical
   expect_false(isTRUE(all.equal(MT_STATS, RS_STATS)))
@@ -209,18 +209,18 @@ RS_STATS_POP <- get_stats_from_df(RS_SIM_POP)
 test_that("Comparison between MT-SIM and RNGSTREAM-SIM with runSimFromDataFrame", {
   expect_equal(MT_STATS_POP$mean_initiation, RS_STATS_POP$mean_initiation, tolerance = 0.01)
   expect_equal(MT_STATS_POP$mean_cessation, RS_STATS_POP$mean_cessation, tolerance = 0.01)
-  expect_equal(MT_STATS_POP$mean_age_at_death, RS_STATS_POP$mean_age_at_death, tolerance = 0.01)
+  expect_equal(MT_STATS_POP$age_at_death, RS_STATS_POP$age_at_death, tolerance = 0.01)
 })
 
 test_that("Comparison between runSimFromDataFrame and runSimFromFixedValues for MersenneTwister", {
   expect_identical(MT_STATS_POP$mean_initiation, MT_STATS$mean_initiation)
   expect_identical(MT_STATS_POP$mean_cessation, MT_STATS$mean_cessation)
-  expect_identical(MT_STATS_POP$mean_age_at_death, MT_STATS$mean_age_at_death)
+  expect_identical(MT_STATS_POP$age_at_death, MT_STATS$age_at_death)
 })
 test_that("Comparison between runSimFromDataFrame and runSimFromFixedValues for RngStream", {
   expect_identical(RS_STATS_POP$mean_initiation, RS_STATS$mean_initiation)
   expect_identical(RS_STATS_POP$mean_cessation, RS_STATS$mean_cessation)
-  expect_identical(RS_STATS_POP$mean_age_at_death, RS_STATS$mean_age_at_death)
+  expect_identical(RS_STATS_POP$age_at_death, RS_STATS$age_at_death)
 })
 
 test_that("Invalid input configuration path fails with proper error message", {
@@ -259,6 +259,23 @@ test_that("Invalid output path fails with proper error message", {
 # TODO: Compare Legacy tests with runSimFromFixedValues(): requires parsing of results
 
 # Tests for configuration management
+test_that("getConfig() with no arguments works (R does not apply C++ default args)", {
+  shg <- new(SHGInterface)
+  cfg <- shg$getConfig()
+  expect_type(cfg, "list")
+  expect_equal(cfg$config_version, "1.0")
+  cfg_named <- shg$getConfig(debug = FALSE)
+  expect_equal(sort(names(cfg)), sort(names(cfg_named)))
+})
+
+test_that("factory default mortality_filename is acm.csv", {
+  shg <- new(SHGInterface)
+  expect_equal(shg$mortality_filename, "acm.csv")
+  shg$mortality_filename <- "mortality/ocm-excl-lung-cancer.csv"
+  shg$reset_to_factory_defaults()
+  expect_equal(shg$mortality_filename, "acm.csv")
+})
+
 test_that("getConfig() returns correct structure with config_version", {
   shg_test <- new(SHGInterface)
   config <- shg_test$getConfig(debug = FALSE)
@@ -271,7 +288,121 @@ test_that("getConfig() returns correct structure with config_version", {
   expect_true("seeds" %in% names(config))
   expect_true("input_data_folder" %in% names(config))
   expect_true("mortality_filename" %in% names(config))
+  expect_true("params_bundle_source" %in% names(config))
+  expect_true("params_mortality" %in% names(config))
+  expect_true("cohort_year" %in% names(config))
+  expect_true("repeat" %in% names(config))
+  expect_true("race" %in% names(config))
+  expect_true("sex" %in% names(config))
   expect_true("timestamp" %in% names(config))
+})
+
+test_that("getConfig() returns concrete default seeds", {
+  shg_rs <- new(SHGInterface)
+  shg_rs$rng_strategy <- "RngStream"
+  cfg_rs <- shg_rs$getConfig(debug = FALSE)
+  expect_equal(cfg_rs$seeds, c(12345, 12345, 12345, 12345, 12345, 12345))
+
+  shg_mt <- new(SHGInterface)
+  shg_mt$rng_strategy <- "MersenneTwister"
+  cfg_mt <- shg_mt$getConfig(debug = FALSE)
+  expect_equal(cfg_mt$seeds, c(1898587603, 1468371936, 1551308340, 1590227640))
+})
+
+test_that("getConfig() keeps intent values after simulation", {
+  shg_rt <- new(SHGInterface)
+  shg_rt$input_data_folder <- data_folder
+  shg_rt$rng_strategy <- "RngStream"
+  shg_rt$number_of_segments <- -1
+  shg_rt$num_threads <- -1
+  shg_rt$runSimFromFixedValues(5000, 0, 0, 1950)
+
+  cfg <- shg_rt$getConfig(debug = FALSE)
+  expect_equal(cfg$number_of_segments, -1)
+  expect_equal(cfg$num_threads, -1)
+})
+
+test_that("getReproConfig() captures effective runtime segments/threads after simulation", {
+  shg_rt <- new(SHGInterface)
+  shg_rt$input_data_folder <- data_folder
+  shg_rt$rng_strategy <- "RngStream"
+  shg_rt$number_of_segments <- -1
+  shg_rt$num_threads <- -1
+  shg_rt$runSimFromFixedValues(5000, 0, 0, 1950)
+
+  cfg <- shg_rt$getReproConfig(debug = FALSE)
+  expect_true(cfg$number_of_segments >= 1)
+  expect_true(cfg$num_threads >= 1)
+  expect_false(identical(cfg$number_of_segments, -1))
+  expect_false(identical(cfg$num_threads, -1))
+})
+
+test_that("getReproConfig() errors before any completed simulation", {
+  shg_rt <- new(SHGInterface)
+  expect_error(
+    shg_rt$getReproConfig(),
+    "No completed simulation is available"
+  )
+})
+
+test_that("getConfig() records cohort_year for single-cohort runs", {
+  shg_rt <- new(SHGInterface)
+  shg_rt$input_data_folder <- data_folder
+  shg_rt$runSimFromFixedValues(500, 0, 0, 1950)
+
+  cfg <- shg_rt$getConfig(debug = FALSE)
+  expect_equal(cfg$cohort_year, 1950)
+})
+
+test_that("getConfig() records repeat/race/sex after runSimFromFixedValues", {
+  shg_rt <- new(SHGInterface)
+  shg_rt$input_data_folder <- data_folder
+  shape <- shg_rt$get_data_shape()
+  race_value <- as.integer(max(0, shape$num_races - 1))
+  shg_rt$runSimFromFixedValues(500, race_value, 0, 1940)
+
+  cfg <- shg_rt$getConfig(debug = FALSE)
+  expect_equal(cfg[["repeat"]], 500)
+  expect_equal(cfg[["race"]], race_value)
+  expect_equal(cfg[["sex"]], 0)
+})
+
+test_that("runSimFromFixedValues errors clearly when cohort/race/sex not available", {
+  shg_rt <- new(SHGInterface)
+  shg_rt$input_data_folder <- data_folder
+  shape <- shg_rt$get_data_shape()
+
+  starts <- as.integer(shape$cohort_start_years)
+  ends <- as.integer(shape$cohort_end_years)
+  min_y <- min(starts, na.rm = TRUE)
+  max_y <- max(ends, na.rm = TRUE)
+  years <- min_y:max_y
+  covered <- rep(FALSE, length(years))
+  for (i in seq_along(starts)) {
+    covered[years >= starts[i] & years <= ends[i]] <- TRUE
+  }
+  missing_years <- years[!covered]
+  skip_if_not(length(missing_years) > 0, "No cohort gaps in current parameter set.")
+
+  bad_cohort <- as.integer(missing_years[[1]])
+  bad_race <- as.integer(shape$num_races)
+  bad_sex <- as.integer(shape$num_sexes)
+  valid_cohort <- as.integer(starts[[1]])
+
+  out <- "not-assigned"
+  expect_error(
+    out <- shg_rt$runSimFromFixedValues(10, 0, 0, bad_cohort),
+    "Requested cohort_year .* not available"
+  )
+  expect_identical(out, "not-assigned")
+  expect_error(
+    shg_rt$runSimFromFixedValues(10, bad_race, 0, valid_cohort),
+    "Requested race value .* not available"
+  )
+  expect_error(
+    shg_rt$runSimFromFixedValues(10, 0, bad_sex, valid_cohort),
+    "Requested sex value .* not available"
+  )
 })
 
 test_that("getConfig(debug=TRUE) includes debug info", {
@@ -308,12 +439,39 @@ test_that("useConfig() correctly configures instance", {
   expect_equal(shg2$immediate_cessation_year, shg1$immediate_cessation_year)
 })
 
+test_that("useConfig() clears stale effective runtime cache", {
+  shg_rt <- new(SHGInterface)
+  shg_rt$input_data_folder <- data_folder
+  shg_rt$rng_strategy <- "RngStream"
+  shg_rt$number_of_segments <- -1
+  shg_rt$num_threads <- -1
+  shg_rt$runSimFromFixedValues(500, 0, 0, 1950)
+
+  cfg_repro <- shg_rt$getReproConfig()
+  expect_true(cfg_repro$number_of_segments >= 1)
+
+  shg_rt$useConfig(list(
+    config_version = "1.0",
+    number_of_segments = -1,
+    num_threads = -1,
+    rng_strategy = "RngStream"
+  ))
+
+  cfg_intent <- shg_rt$getConfig()
+  expect_equal(cfg_intent$number_of_segments, -1)
+  expect_equal(cfg_intent$num_threads, -1)
+  expect_error(
+    shg_rt$getReproConfig(),
+    "No completed simulation is available"
+  )
+})
+
 test_that("useConfig() validates config_version", {
   shg_test <- new(SHGInterface)
   
-  # Missing config_version should warn but work
+  # Missing config_version should still work (assume current format)
   config_no_version <- list(rng_strategy = "RngStream")
-  expect_warning(shg_test$useConfig(config_no_version), "Config missing config_version")
+  expect_silent(shg_test$useConfig(config_no_version))
   
   # Unsupported version should warn
   config_bad_version <- list(config_version = "2.0", rng_strategy = "RngStream")
@@ -328,6 +486,31 @@ test_that("useConfig() warns on unknown fields", {
     unknown_field = "test"
   )
   expect_warning(shg_test$useConfig(config), "Unknown config field")
+})
+
+test_that("useConfig() accepts legacy lifetable_filename key", {
+  shg <- new(SHGInterface)
+  cfg <- list(
+    config_version = "1.0",
+    rng_strategy = "RngStream",
+    lifetable_filename = "mortality/acm.csv"
+  )
+  expect_silent(shg$useConfig(cfg))
+  expect_equal(shg$mortality_filename, "mortality/acm.csv")
+})
+
+test_that("useConfig() clears stale params provenance when input paths change without bundle keys", {
+  shg <- new(SHGInterface)
+  shg$params_bundle_source <- "https://example.invalid/bundle.zip"
+  shg$params_mortality <- "ocm"
+  shg$useConfig(list(
+    config_version = "1.0",
+    rng_strategy = "RngStream",
+    input_data_folder = data_folder
+  ))
+  cfg <- shg$getConfig()
+  expect_true(is.na(cfg$params_bundle_source))
+  expect_true(is.na(cfg$params_mortality))
 })
 
 test_that("Round-trip: getConfig() -> useConfig() -> verify", {
@@ -346,12 +529,17 @@ test_that("Round-trip: getConfig() -> useConfig() -> verify", {
   
   shg2 <- new(SHGInterface)
   shg2$useConfig(config_loaded)
+  cfg2 <- shg2$getConfig(debug = FALSE)
   
   expect_equal(shg2$rng_strategy, shg1$rng_strategy)
   expect_equal(shg2$number_of_segments, shg1$number_of_segments)
   expect_equal(shg2$num_threads, shg1$num_threads)
   expect_equal(shg2$immediate_cessation_year, shg1$immediate_cessation_year)
-  
+  expect_equal(cfg2$cohort_year, config_loaded$cohort_year)
+  expect_equal(cfg2[["repeat"]], config_loaded[["repeat"]])
+  expect_equal(cfg2[["race"]], config_loaded[["race"]])
+  expect_equal(cfg2[["sex"]], config_loaded[["sex"]])
+
   unlink(temp_file)
 })
 
@@ -801,7 +989,7 @@ test_that("Windows: disk output + multi-thread fails before simulation (no outpu
   shg$rng_strategy <- "RngStream"
   shg$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
   shg$number_of_segments <- 1
-  shg$num_threads <- -1
+  suppressWarnings(shg$num_threads <- -1) # set_num_threads warns when segments==1 (unused threads)
   shg$output_file <- output_path
 
   df <- test_pop_df(1)
@@ -853,6 +1041,28 @@ test_that("output_file writes results to disk", {
   expect_true(any(grepl("<VERSION>", lines)))
   
   unlink(output_path)
+})
+
+test_that("runSimFromDataFrame output_file argument writes file without mutating property", {
+  output_path <- tempfile(fileext = ".csv")
+  on.exit(unlink(output_path), add = TRUE)
+
+  shg <- new(SHGInterface)
+  shg$input_data_folder <- data_folder
+  shg$rng_strategy <- "RngStream"
+  shg$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
+  shg$number_of_segments <- 1
+  shg$num_threads <- 1
+  shg$output_file <- ""
+
+  N <- 200
+  df <- test_pop_df(N)
+  result <- shg$runSimFromDataFrame(df, output_path)
+
+  expect_true(file.exists(output_path))
+  expect_true(grepl("file", result$info, ignore.case = TRUE))
+  expect_equal(result$rows, N)
+  expect_equal(shg$output_file, "")
 })
 
 test_that("output_file parallel execution works (disk + multi-thread, non-Windows)", {
