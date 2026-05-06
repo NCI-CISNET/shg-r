@@ -22,13 +22,13 @@ shg_load_params(
 \item{base_url}{Base URL; combined with \code{snapshot} or \code{path}.}
 
 \item{snapshot}{Snapshot identifier appended to \code{base_url} as
-\code{<base_url>/<snapshot>.zip}.}
+\verb{<base_url>/<snapshot>.zip}.}
 
 \item{path}{Explicit path appended to \code{base_url}.}
 
 \item{mortality}{\code{"acm"} (all-cause mortality, \strong{default}) or \code{"ocm"}
-  (other-cause mortality excluding lung cancer).  Controls which file in
-  \code{mortality/} is assigned to \code{shg$mortality_filename}.
+(other-cause mortality excluding lung cancer).  Controls which file in
+\verb{mortality/} is assigned to \code{shg$mortality_filename}.
 
 For private GitHub-hosted zips, set the \code{GITHUB_PAT} environment variable
 before downloading (used automatically when needed).}
@@ -44,8 +44,8 @@ use absolute paths in the filename fields).
 
 The parameter bundle is expected to contain the layout produced by the
 \strong{shg-params} releases (GitHub or Zenodo):
-\preformatted{
-<snapshot-id>/
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{<snapshot-id>/
   smoking/
     initiation.csv
     cessation.csv
@@ -55,17 +55,15 @@ The parameter bundle is expected to contain the layout produced by the
     ocm-excl-lung-cancer.csv
   metadata.yml      (optional, informational)
   inventory.yml     (optional, informational)
-}
+}\if{html}{\out{</div>}}
 }
 \section{URL forms}{
 
-Exactly one of \code{url} or \code{base_url} must be supplied:
-
-\tabular{ll}{
-\strong{Arguments} \tab \strong{Resolved URL} \cr
-\code{url = "https://.../snap.zip"} \tab used as-is \cr
-\code{base_url = ".../files", snapshot = "snap-id"} \tab \code{.../files/snap-id.zip} \cr
-\code{base_url = ".../download", path = "v1/snap.zip"} \tab \code{.../download/v1/snap.zip} \cr
+Exactly one of \code{url} or \code{base_url} must be supplied:\tabular{ll}{
+   Arguments \tab Resolved URL \cr
+   \code{url = "https://.../snap.zip"} \tab used as-is \cr
+   \verb{base_url = ".../files", snapshot = "snap-id"} \tab \code{.../files/snap-id.zip} \cr
+   \verb{base_url = ".../download", path = "v1/snap.zip"} \tab \code{.../download/v1/snap.zip} \cr
 }
 }
 
@@ -107,6 +105,6 @@ shg$load_params(url = "https://.../snapshot-id.zip")
 
 }
 \seealso{
-\code{\link{shg_clear_params_cache}}, \code{\link{shg_params_cache_dir}},
-\code{\link{shg_config_bundle}}, \code{\link{shg_load_config}}, \code{\link{shg_use_config_bundle}}
+\code{\link[=shg_clear_params_cache]{shg_clear_params_cache()}}, \code{\link[=shg_params_cache_dir]{shg_params_cache_dir()}},
+\code{\link[=shg_config_bundle]{shg_config_bundle()}}, \code{\link[=shg_load_config]{shg_load_config()}}, \code{\link[=shg_use_config_bundle]{shg_use_config_bundle()}}
 }

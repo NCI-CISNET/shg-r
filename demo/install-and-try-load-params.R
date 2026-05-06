@@ -1,5 +1,10 @@
-# Install SmokingHistoryGenerator from source, load_params from the test zip,
+# Install SmokingHistoryGenerator from source, apply config with params bundle source,
 # and run a quick 1M-individual benchmark (wall-clock).
+#
+# This demo also shows:
+# - bundled return with attach_run_info
+# - defaults-first apply from sparse config
+# - one-writer YAML for sparse vs repro configs
 #
 # Usage (from the shg-r repo root):
 #   Rscript demo/install-and-try-load-params.R
@@ -24,7 +29,16 @@ zip_path <- normalizePath(
 message("Zip: ", zip_path)
 
 shg <- new(SHGInterface)
-shg$load_params(url = zip_path)
+run_cfg <- list(
+  params_bundle_source = zip_path,
+  mortality = "ocm",
+  individuals = 1e6,
+  race = 0,
+  sex = 0,
+  cohort_year = 1980
+)
+
+shg_apply_config(shg, run_cfg)
 
 message("input_data_folder: ", shg$input_data_folder)
 message("initiation (relative): ", shg$initiation_filename)
@@ -32,27 +46,19 @@ message("initiation (resolved): ",
         file.path(shg$input_data_folder, shg$initiation_filename))
 message("cessation:  ", shg$cessation_filename)
 message("cpd:        ", shg$cpd_filename)
-message("mortality:  ", shg$mortality_filename)
-
-shg$load_params(url = zip_path, mortality = "ocm")
 message("mortality (ocm): ", shg$mortality_filename)
-
-# --- benchmark: 1M individuals (single cohort cell: race, sex, cohort_year) ---
-N <- 1e6
-race <- 0
-sex <- 0
-cohort_year <- 1980
 
 message("\n--- benchmark ---")
 message(
-  "N = ", format(N, big.mark = ","),
+  "N = ", format(run_cfg$individuals, big.mark = ","),
   "  |  rng_strategy = ", shg$rng_strategy,
   "  |  num_threads = ", shg$num_threads,
   "  |  number_of_segments = ", shg$number_of_segments
 )
 
 t0 <- proc.time()
-sim <- shg$runSimFromFixedValues(N, race, sex, cohort_year)
+bundle <- shg$runSim(run_cfg, attach_run_info = TRUE)
+sim <- bundle$results
 elapsed <- proc.time() - t0
 
 message(
@@ -63,11 +69,22 @@ message(
 )
 message(
   "Throughput: ",
-  round(N / elapsed["elapsed"]), " individuals / s (wall)"
+  round(run_cfg$individuals / elapsed["elapsed"]), " individuals / s (wall)"
 )
 message("Result rows: ", nrow(sim), "  cols: ", ncol(sim))
+message("Bundle slots: ", paste(names(bundle), collapse = ", "))
+message("run_info keys: ", paste(names(bundle$run_info), collapse = ", "))
 
-message("\nConfig snapshot (includes zip provenance if present):")
-str(shg_config_bundle(shg), max.level = 2, list.len = 99)
+intent_yaml <- tempfile("shg-intent-", fileext = ".yml")
+repro_yaml <- tempfile("shg-repro-", fileext = ".yml")
+shg_write_config_yaml(bundle$original_config, intent_yaml)
+shg_write_config_yaml(bundle$repro_config, repro_yaml)
+message("Wrote intent YAML: ", intent_yaml)
+message("Wrote repro YAML:  ", repro_yaml)
+
+# defaults-first sparse apply example
+shg_apply_config(shg, list(cohort_year = 1950))
+message("After shg_apply_config(): rng_strategy=", shg$rng_strategy,
+        ", cohort_year=", shg$getConfig(FALSE)$cohort_year)
 
 message("\nDone.")

@@ -7,6 +7,7 @@ using namespace std;
 #define R_DEFAULT_DATA_DIR "./extdata/"
 #define R_INITIATION_DATA_FILE "initiation.csv"
 #define R_CESSATION_DATA_FILE "cessation.csv"
+#define R_ACM_DATA_FILE "acm.csv"
 #define R_OTHER_COD_DATA_FILE "ocm-excl-lung-cancer.csv"
 #define R_CPD_DATA_FILE "cpd.csv"
 
@@ -46,13 +47,19 @@ public:
     SHGInterface(Rcpp::List config);
     // Function to run simulations in parallel and combine results
     bool isValidDataFrame(Rcpp::DataFrame& dfPopulation);
-    Rcpp::DataFrame runSimFromFixedValues(int repeat, short wRace, short wSex, short wYearBirth);
-    Rcpp::DataFrame runSimFromDataFrame(Rcpp::DataFrame dfPopulation);
+    Rcpp::RObject runSimFromFixedValues(int repeat, short wRace, short wSex, short wYearBirth);
+    Rcpp::RObject runSimFromFixedValues(int repeat, short wRace, short wSex, short wYearBirth,
+                                       bool attach_run_info,
+                                       Rcpp::Nullable<Rcpp::List> original_config);
+    Rcpp::RObject runSimFromDataFrame(Rcpp::DataFrame dfPopulation);
+    Rcpp::RObject runSimFromDataFrame(Rcpp::DataFrame dfPopulation,
+                                      bool attach_run_info,
+                                      Rcpp::Nullable<Rcpp::List> original_config);
 
     string input_data_folder = find_default_data_path();
     string initiation_filename = R_INITIATION_DATA_FILE;
     string cessation_filename = R_CESSATION_DATA_FILE;
-    string mortality_filename_ = R_OTHER_COD_DATA_FILE;
+    string mortality_filename_ = R_ACM_DATA_FILE;
     string cpd_filename = R_CPD_DATA_FILE;
     /** Last load_params() source URL or local zip path (R package only; empty if unset). */
     string params_bundle_source_ = "";
@@ -197,8 +204,14 @@ public:
     Rcpp::List getReproConfig(bool debug);
     Rcpp::List getReproConfig();  // Wrapper without debug parameter (defaults to false)
     void useConfig(Rcpp::List config);
+    void reset_to_factory_defaults();
+    std::string get_shg_core_version() const;
     Rcpp::List buildConfig(bool debug, bool use_effective_runtime, bool require_effective_runtime);
 
+private:
+    Rcpp::RObject finalizeSimOutput(Rcpp::DataFrame df,
+                                    bool attach_run_info,
+                                    const Rcpp::List& original_config);
 };
 
 

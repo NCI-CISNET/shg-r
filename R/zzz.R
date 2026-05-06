@@ -47,10 +47,10 @@ evalqOnLoad({
     repro_config = function(debug = FALSE) {
       .self$getReproConfig(debug)
     },
-    runSim = function(config) {
+    runSim = function(config, attach_run_info = TRUE) {
       get(".shg_run_sim",
           envir     = asNamespace("SmokingHistoryGenerator"),
-          inherits  = FALSE)(.self, config)
+          inherits  = FALSE)(.self, config, attach_run_info)
     }
   )
 })

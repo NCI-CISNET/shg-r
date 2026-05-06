@@ -4,18 +4,26 @@
 \alias{shg_run}
 \title{Run a fixed cohort simulation from a config list}
 \usage{
-shg_run(shg, config)
+shg_run(shg, config, attach_run_info = TRUE)
 }
 \arguments{
 \item{shg}{An \code{SHGInterface} instance.}
 
 \item{config}{Named list from \code{\link{shg_load_config}}, or a YAML path.}
+
+\item{attach_run_info}{If \code{TRUE} (default), returns a list with
+\code{results}, \code{original_config}, \code{repro_config}, and
+\code{run_info}. Set to \code{FALSE} to return only the simulation
+\code{data.frame}.}
 }
 \value{
-A data frame from \code{runSimFromFixedValues}.
+A data frame from \code{runSimFromFixedValues}, or a bundle list when
+\code{attach_run_info} is \code{TRUE}.
 }
 \description{
 Validates required keys and calls \code{\link{runSimFromFixedValues}}.
+If \code{repeat}, \code{individuals}, and \code{N} are all omitted,
+\code{repeat} defaults to \code{1000L}.
 If \code{config} is a single string, it is treated as a path and read with
 \code{\link[yaml]{read_yaml}} (use after \code{\link{shg_load_config}} with the
 returned list is preferred).

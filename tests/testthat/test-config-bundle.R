@@ -24,6 +24,71 @@ test_that(".shg_params_paths_exist is false when any core table file is missing"
   expect_false(SmokingHistoryGenerator:::.shg_params_paths_exist(shg))
 })
 
+test_that("shg_apply_config loads bundle via params_bundle_source", {
+  skip_on_cran()
+  zip_path <- testthat::test_path("../testdata/usa-national@smok-2016.zip")
+  skip_if_not(file.exists(zip_path))
+
+  tmp_cache <- tempfile("shg_apply_cfg_bundle_")
+  dir.create(tmp_cache)
+  on.exit(unlink(tmp_cache, recursive = TRUE), add = TRUE)
+  old <- Sys.getenv("R_USER_CACHE_DIR", "")
+  Sys.setenv(R_USER_CACHE_DIR = tmp_cache)
+  on.exit({
+    if (nzchar(old)) Sys.setenv(R_USER_CACHE_DIR = old)
+    else Sys.unsetenv("R_USER_CACHE_DIR")
+  }, add = TRUE)
+
+  shg <- new(SHGInterface)
+  shg_apply_config(shg, list(
+    params_bundle_source = zip_path,
+    params_mortality = "ocm",
+    cohort_year = 1950L
+  ))
+  expect_true(SmokingHistoryGenerator:::.shg_params_paths_exist(shg))
+  expect_equal(shg$mortality_filename, "mortality/ocm-excl-lung-cancer.csv")
+})
+
+test_that("shg_apply_config maps mortality alias to params_mortality", {
+  skip_on_cran()
+  zip_path <- testthat::test_path("../testdata/usa-national@smok-2016.zip")
+  skip_if_not(file.exists(zip_path))
+
+  tmp_cache <- tempfile("shg_apply_cfg_mort_alias_")
+  dir.create(tmp_cache)
+  on.exit(unlink(tmp_cache, recursive = TRUE), add = TRUE)
+  old <- Sys.getenv("R_USER_CACHE_DIR", "")
+  Sys.setenv(R_USER_CACHE_DIR = tmp_cache)
+  on.exit({
+    if (nzchar(old)) Sys.setenv(R_USER_CACHE_DIR = old)
+    else Sys.unsetenv("R_USER_CACHE_DIR")
+  }, add = TRUE)
+
+  shg <- new(SHGInterface)
+  shg_apply_config(shg, list(
+    params_bundle_source = zip_path,
+    mortality = "ocm",
+    cohort_year = 1950L
+  ))
+  expect_equal(shg$mortality_filename, "mortality/ocm-excl-lung-cancer.csv")
+})
+
+test_that("shg_apply_config preserves explicit paths when no params_bundle_source", {
+  shg <- new(SHGInterface)
+  ext <- system.file("extdata", package = "SmokingHistoryGenerator")
+  shg_apply_config(shg, list(
+    input_data_folder = ext,
+    initiation_filename = "initiation.csv",
+    cessation_filename = "cessation.csv",
+    mortality_filename = "acm.csv",
+    cpd_filename = "cpd.csv",
+    cohort_year = 1950L
+  ))
+  expect_equal(normalizePath(shg$input_data_folder, winslash = "/"),
+               normalizePath(ext, winslash = "/"))
+  expect_true(SmokingHistoryGenerator:::.shg_params_paths_exist(shg))
+})
+
 test_that("shg_config_bundle adds NA provenance without load_params", {
   shg <- new(SHGInterface)
   b <- shg_config_bundle(shg)
@@ -203,11 +268,11 @@ test_that("SHGInterface$load_config and runSim delegate correctly", {
   expect_true(is.list(cfg))
   expect_true(file.exists(file.path(shg2$input_data_folder, shg2$initiation_filename)))
 
-  out <- shg2$runSim(cfg)
+  out <- shg2$runSim(cfg, attach_run_info = FALSE)
   expect_s3_class(out, "data.frame")
   expect_equal(nrow(out), 40)
 
-  out2 <- shg_run(shg2, cfg)
+  out2 <- shg_run(shg2, cfg, attach_run_info = FALSE)
   expect_equal(nrow(out2), 40)
 })
 

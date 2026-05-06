@@ -268,6 +268,14 @@ test_that("getConfig() with no arguments works (R does not apply C++ default arg
   expect_equal(sort(names(cfg)), sort(names(cfg_named)))
 })
 
+test_that("factory default mortality_filename is acm.csv", {
+  shg <- new(SHGInterface)
+  expect_equal(shg$mortality_filename, "acm.csv")
+  shg$mortality_filename <- "mortality/ocm-excl-lung-cancer.csv"
+  shg$reset_to_factory_defaults()
+  expect_equal(shg$mortality_filename, "acm.csv")
+})
+
 test_that("getConfig() returns correct structure with config_version", {
   shg_test <- new(SHGInterface)
   config <- shg_test$getConfig(debug = FALSE)
@@ -461,9 +469,9 @@ test_that("useConfig() clears stale effective runtime cache", {
 test_that("useConfig() validates config_version", {
   shg_test <- new(SHGInterface)
   
-  # Missing config_version should warn but work
+  # Missing config_version should still work (assume current format)
   config_no_version <- list(rng_strategy = "RngStream")
-  expect_warning(shg_test$useConfig(config_no_version), "Config missing config_version")
+  expect_silent(shg_test$useConfig(config_no_version))
   
   # Unsupported version should warn
   config_bad_version <- list(config_version = "2.0", rng_strategy = "RngStream")

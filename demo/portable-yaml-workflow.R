@@ -4,10 +4,11 @@
 #   demo("portable-yaml-workflow", package = "SmokingHistoryGenerator")
 #
 # This demonstrates scientific reproducibility with a portable config:
-# 1) load params from a zip bundle
+# 1) apply config with params_bundle_source (which restores bundle tables)
 # 2) run a fixed cohort simulation
-# 3) save portable YAML
-# 4) clear cache, reload from YAML, rerun, compare
+# 3) collect bundled outputs (results + original_config + repro_config + run_info)
+# 4) write sparse + repro YAML with one writer
+# 5) clear cache, reload from YAML, rerun, compare
 
 library(SmokingHistoryGenerator)
 
@@ -40,7 +41,15 @@ cat("Bundle source:", zip_path, "\n")
 cat("Portable YAML:", config_path, "\n")
 
 shg <- new(SHGInterface)
-shg$load_params(url = zip_path, mortality = "ocm")
+run_cfg <- list(
+  params_bundle_source = zip_path,
+  params_mortality = "ocm",
+  individuals = 100000,
+  race = 0,
+  sex = 0,
+  cohort_year = 2010
+)
+shg_apply_config(shg, run_cfg)
 
 shape <- shg_params_summary(shg)
 fmt_range_count <- function(x) {
@@ -56,22 +65,28 @@ cat("Mortality cohorts:  ", fmt_range_count(shape$mortality$cohorts), "\n", sep 
 cat("CPD cohorts:        ", fmt_range_count(shape$cpd$cohorts), "\n", sep = "")
 cat("CPD note:", shape$cpd$note, "\n")
 
-N <- 1e5
-race <- 0
-sex <- 0
-cohort_year <- 2010
-sim1 <- shg$runSimFromFixedValues(N, race, sex, cohort_year)
+bundle1 <- shg$runSim(run_cfg)
+sim1 <- bundle1$results
 
 stopifnot(isTRUE(shg$last_completed_sim_was_fixed_cohort()))
 shg$save_config(config_path)
 
+intent_path <- tempfile("shg-intent-config-", fileext = ".yml")
+repro_path <- tempfile("shg-repro-config-", fileext = ".yml")
+shg_write_config_yaml(bundle1$original_config, intent_path)
+shg_write_config_yaml(bundle1$repro_config, repro_path)
+
 cat("\nSaved portable YAML from last fixed cohort run.\n")
+cat("Saved sparse intent YAML:", intent_path, "\n")
+cat("Saved repro YAML:", repro_path, "\n")
+cat("Bundle run_info keys:", paste(names(bundle1$run_info), collapse = ", "), "\n")
 cat("Clearing parameter cache and restoring from YAML...\n")
 shg_clear_params_cache()
 
 shg2 <- new(SHGInterface)
 config <- shg2$load_config(config_path)
 sim2 <- shg2$runSim(config)
+sim2 <- sim2$results
 
 comparison <- all.equal(sim1, sim2)
 identical_results <- isTRUE(comparison)

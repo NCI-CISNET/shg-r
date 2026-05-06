@@ -28,20 +28,74 @@ The SHG needs calibrated input files (initiation, cessation, CPD, and mortality 
 The package ships a small CRAN-sized subset under `inst/extdata/`; full NHIS-style tables
 are distributed as **parameter bundles** via Zenodo (and GitHub Releases).
 
-Use `shg$load_params()` to download, cache, and configure a bundle in one call:
+### Traditional workflow: local folder with already-uncompressed files
+
+Use this when you already have a local directory containing `smoking/` and `mortality/`
+files and want to point SHG directly at those inputs.
 
 ```r
 library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
 
-# Download from Zenodo (replace xxxx with the record id when published)
-shg$load_params(
-  base_url = "https://zenodo.org/records/xxxx/files",
-  snapshot  = "usa-national@smok-2016"
+shg$input_data_folder <- "/path/to/usa-national@smok-2016"
+shg$initiation_filename <- "smoking/initiation.csv"
+shg$cessation_filename  <- "smoking/cessation.csv"
+shg$cpd_filename        <- "smoking/cpd.csv"
+shg$mortality_filename  <- "mortality/acm.csv"  # or mortality/ocm-excl-lung-cancer.csv
+
+run_cfg <- list(
+  individuals = 1e5,
+  race = 0,
+  sex = 0,
+  cohort_year = 1980
+)
+bundle <- shg$runSim(run_cfg)
+sim <- bundle$results
+```
+
+### Recommended workflow: config list + bundle zip path
+
+Use a single config list that includes both bundle provenance and run fields.
+For now this example uses a local zip path; later this can point to a Zenodo URL.
+
+```r
+library(SmokingHistoryGenerator)
+shg <- new(SHGInterface)
+
+# Local zip path for now (replace with Zenodo URL when published)
+zip_path <- "/path/to/usa-national@smok-2016.zip"
+
+run_cfg <- list(
+  params_bundle_source = zip_path,
+  params_mortality = "acm",   # or "ocm"; alias `mortality = "ocm"` also works
+  individuals = 1e5,
+  race = 0,
+  sex = 0,
+  cohort_year = 1980
+)
+
+# Hydrate tables from bundle metadata in config
+shg_apply_config(shg, run_cfg)
+
+# Single run call returns coupled outputs
+bundle <- shg$runSim(run_cfg)
+sim <- bundle$results
+```
+
+Future Zenodo variant (same pattern; replace `xxxx` with the published record id):
+
+```r
+run_cfg <- list(
+  params_bundle_source = "https://zenodo.org/records/xxxx/files/usa-national@smok-2016.zip",
+  params_mortality = "acm",
+  individuals = 1e5,
+  race = 0,
+  sex = 0,
+  cohort_year = 1980
 )
 ```
 
-The bundle is downloaded once and cached locally; subsequent calls reuse the cache.
+The bundle is downloaded/extracted once and cached locally; subsequent calls reuse the cache.
 See [`data-readme.md`](data-readme.md) for all supported URL forms, the mortality toggle (ACM vs OCM), private-repo authentication, and cache management.
 
 ---
@@ -55,7 +109,70 @@ N <- 10^5 # Individuals to simulate (REPEAT)
 race = 0 # All races combined
 sex = 0 # male
 cohort_year = 1940
-RNGSTREAM_SIM <- shg$runSimFromFixedValues(N, race, sex, cohort_year)
+run_cfg <- list(
+  individuals = as.integer(N),
+  race = as.integer(race),
+  sex = as.integer(sex),
+  cohort_year = as.integer(cohort_year)
+)
+bundle <- shg$runSim(run_cfg)
+RNGSTREAM_SIM <- bundle$results
+```
+
+For a single object that couples simulated rows with **`original_config`**, **`repro_config`** (full snapshot), and **`run_info`** (machine/software audit), call the 6-argument method with **`attach_run_info = TRUE`**:
+
+```r
+bundle <- shg$runSim(run_cfg)
+
+sim <- bundle$results
+cfg_intent <- bundle$original_config
+cfg_repro <- bundle$repro_config
+audit <- bundle$run_info
+```
+
+## Common use cases
+
+### 1) Apply a sparse config safely (defaults-first)
+
+```r
+shg <- new(SHGInterface)
+shg_apply_config(shg, list(cohort_year = 1950L))
+```
+
+`shg_apply_config()` resets the instance to factory defaults first, then applies only the keys you supply.
+
+### 2) Save sparse intent or full repro config with one writer
+
+```r
+# Small hand-editable config snippet
+shg_write_config_yaml(bundle$original_config, "intent.yml")
+
+# Full replay config
+shg_write_config_yaml(bundle$repro_config, "repro.yml")
+```
+
+The same `shg_write_config_yaml(config, path)` function handles both.
+
+### 3) Re-run from a full repro config in-memory (no file)
+
+```r
+shg2 <- new(SHGInterface)
+shg_apply_config(shg2, bundle$repro_config)
+sim2 <- shg2$runSim(bundle$repro_config)
+sim2_df <- sim2$results
+```
+
+### 4) Load once, then change cohort for another run
+
+```r
+shg3 <- new(SHGInterface)
+base_run <- shg_load_config(shg3, "repro.yml")  # applies params + engine settings
+
+# Keep everything else the same, change only cohort year
+base_run$cohort_year <- 2000
+
+sim3 <- shg3$runSim(base_run)
+sim3_df <- sim3$results
 ```
 
 You can also use a pre-generated population instead of using fixed values for race, sex, cohort_year:

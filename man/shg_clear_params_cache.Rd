@@ -11,7 +11,7 @@ clear_params_cache()
 }
 \value{
 Invisibly returns the top-level cache directory path that was removed
-  (character scalar), or an empty character vector if the cache did not exist.
+(character scalar), or an empty character vector if the cache did not exist.
 }
 \description{
 Deletes the entire directory returned by \code{\link{shg_params_cache_dir}}

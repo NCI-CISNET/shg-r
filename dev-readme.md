@@ -8,7 +8,19 @@ Sys.setenv(PKG_BUILD_EXTRA_FLAGS = "false") # optional, but should increase perf
 devtools::load_all()
 ```
 
-Then initially and each time you make changes to the src directory
+For GitHub users/devs who want to (re)install the local checkout into their library,
+you can use `pak` directly from the repo root:
+
+```r
+install.packages("pak")
+setwd("path-to-shg-r")
+pak::pak(".")
+```
+
+After install, start a **new R session** before reloading/testing to avoid stale package
+state from a previously loaded DLL.
+
+Then initially and each time you make changes to the src directory:
 ```r
 # If you want to prevent the pedantic and -O0 optimization flags (slower)
 Sys.setenv(PKG_BUILD_EXTRA_FLAGS = "false")

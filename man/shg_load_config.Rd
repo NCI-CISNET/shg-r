@@ -17,8 +17,8 @@ compatible hand-written YAML.}
 }
 \value{
 The parsed config list (same object to pass to \code{\link{shg_run}} /
-  \code{runSim}). Return value is visible so you can assign:
-  \code{config <- shg_load_config(shg, "my-run.yml")}.
+\code{runSim}). Return value is visible so you can assign:
+\code{config <- shg_load_config(shg, "my-run.yml")}.
 }
 \description{
 Reads the YAML file, applies engine settings with \code{useConfig()}, then

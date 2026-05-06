@@ -11,17 +11,17 @@ shg_params_summary(shg)
 }
 \value{
 A named list with nested sections \code{initiation},
-  \code{cessation}, \code{mortality}, and \code{cpd}, plus
-  top-level dimensions/cohort metadata for convenience.
+\code{cessation}, \code{mortality}, and \code{cpd}, plus
+top-level dimensions/cohort metadata for convenience.
 
-  The \code{cpd$note} field summarizes whether initiation rows below the
-  CPD minimum age are effectively ignorable (all zeros and/or dots), or if
-  there are non-zero initiation values that may indicate a mismatch.
+The \code{cpd$note} field summarizes whether initiation rows below the
+CPD minimum age are effectively ignorable (all zeros and/or dots), or if
+there are non-zero initiation values that may indicate a mismatch.
 }
 \description{
 Returns a compact "shape" summary of the currently configured parameter files
 (races, sexes, cohorts, age ranges, and CPD coverage). This works after
-either \code{\link{shg_load_params}} or manual file-path configuration on an
+either \code{\link[=shg_load_params]{shg_load_params()}} or manual file-path configuration on an
 \code{SHGInterface} instance.
 }
 \examples{

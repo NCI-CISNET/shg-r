@@ -8,5 +8,5 @@ A list with data shape information including races, sexes, cohorts, age ranges, 
 }
 \description{
 Returns a list containing information about the shape/dimensions of the current input data files.
-             It reads the configured parameter files directly and does not require running a simulation first.
+It reads the configured parameter files directly and does not require running a simulation first.
 }

@@ -157,6 +157,7 @@ shg$save_config("my-run.yml")
 shg2 <- new(SHGInterface)
 config <- shg_load_config(shg2, "my-run.yml")
 out <- shg2$runSim(config)
+out_df <- out$results
 ```
 
 See [CONFIG-MANAGEMENT.md](CONFIG-MANAGEMENT.md) for the full workflow.
