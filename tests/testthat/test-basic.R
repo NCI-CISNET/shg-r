@@ -989,7 +989,7 @@ test_that("Windows: disk output + multi-thread fails before simulation (no outpu
   shg$rng_strategy <- "RngStream"
   shg$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
   shg$number_of_segments <- 1
-  shg$num_threads <- -1
+  suppressWarnings(shg$num_threads <- -1) # set_num_threads warns when segments==1 (unused threads)
   shg$output_file <- output_path
 
   df <- test_pop_df(1)

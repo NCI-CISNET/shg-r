@@ -581,6 +581,14 @@ shg_run <- function(shg, config, attach_run_info = TRUE) {
     output_file <- ""
   output_file <- as.character(output_file[[1]])
 
+  # Windows: wrapper forbids disk output with multi-threaded defaults (num_threads != 1).
+  # shg_run does not call shg_apply_config() unless params_bundle_source is set, so the
+  # interface keeps num_threads=-1 unless we align here when num_threads was omitted.
+  if (nzchar(output_file) && .Platform$OS.type == "windows" &&
+      is.null(config[["num_threads"]])) {
+    shg$num_threads <- 1L
+  }
+
   shg$runSimFromFixedValues(
     as.integer(config[["repeat"]]),
     as.integer(config[["race"]]),
