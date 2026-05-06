@@ -4,6 +4,8 @@
 
 ### Configuration
 
+- **`shg_load_params()`** (URLs): **`shg.params.download.timeout_sec`** (default 600) and **`shg.params.download.connect_sec`** (default 60) when **`httr2`** is installed; clearer HTTP/network errors; HTML and non-zip responses detected before unzip.
+
 - **`shg_reset_defaults()`** / **`shg$reset_to_factory_defaults()`** restore engine fields to the same defaults as a fresh **`SHGInterface`**.
 - **`shg_apply_config(shg, config)`** resets defaults, then applies a sparse or full named list via **`useConfig()`**, so partial YAML/intent configs do not inherit stale instance state.
 - **`shg_apply_config()`** with **`params_bundle_source`** now calls **`shg_load_params()`** the same way as **`shg_load_config()`** (clears derived paths, restores the bundle). Without a bundle, explicit **`input_data_folder`** / table filenames in the list are still applied.

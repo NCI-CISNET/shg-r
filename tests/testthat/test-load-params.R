@@ -119,6 +119,44 @@ test_that(".shg_resolve_params_url: errors when base_url but no snapshot or path
   expect_error(f(NULL, "https://example.com", NULL, NULL), "snapshot")
 })
 
+test_that(".shg_assert_downloaded_zip rejects HTML-like content", {
+  tmp <- tempfile(fileext = ".zip")
+  on.exit(unlink(tmp), add = TRUE)
+  writeBin(charToRaw("<html><head><title>404</title></html>"), tmp)
+  expect_error(
+    SmokingHistoryGenerator:::.shg_assert_downloaded_zip(tmp, "https://example.com/bad.zip"),
+    "HTML"
+  )
+})
+
+test_that(".shg_assert_downloaded_zip rejects empty file", {
+  tmp <- tempfile(fileext = ".zip")
+  on.exit(unlink(tmp), add = TRUE)
+  file.create(tmp)
+  expect_error(
+    SmokingHistoryGenerator:::.shg_assert_downloaded_zip(tmp, "https://example.com/x.zip"),
+    "empty"
+  )
+})
+
+test_that(".shg_assert_downloaded_zip accepts a real parameter zip", {
+  zip_path <- testthat::test_path("../testdata/usa-national@smok-2016.zip")
+  skip_if_not(file.exists(zip_path))
+
+  expect_identical(
+    SmokingHistoryGenerator:::.shg_assert_downloaded_zip(zip_path, zip_path),
+    zip_path
+  )
+})
+
+test_that(".shg_download_options reads package options", {
+  old <- options(shg.params.download.timeout_sec = 123, shg.params.download.connect_sec = 45)
+  on.exit(options(old), add = TRUE)
+  o <- SmokingHistoryGenerator:::.shg_download_options()
+  expect_equal(o$timeout_sec, 123)
+  expect_equal(o$connect_sec, 45)
+})
+
 test_that(".shg_resolve_params_url: warns if url + base_url both given", {
   f <- SmokingHistoryGenerator:::.shg_resolve_params_url
   expect_warning(

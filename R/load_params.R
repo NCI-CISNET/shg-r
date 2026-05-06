@@ -56,6 +56,25 @@
 #' For private GitHub-hosted zips, set the \code{GITHUB_PAT} environment variable
 #' before downloading (used automatically when needed).
 #'
+#' @section Download timeouts and errors:
+#' When the optional package \pkg{httr2} is installed (recommended), HTTPS
+#' downloads use a **total transfer timeout** and a **connection timeout**,
+#' configurable via R options:
+#' \describe{
+#'   \item{\code{shg.params.download.timeout_sec}}{Maximum seconds for the whole
+#'     transfer (default \code{600}). Large bundles on slow links may need more.}
+#'   \item{\code{shg.params.download.connect_sec}}{Maximum seconds to establish
+#'     the connection (default \code{60}).}
+#' }
+#' Without \pkg{httr2}, \code{\link[utils]{download.file}} is used with
+#' \code{options(timeout)} set to the same total timeout value (less detailed
+#' HTTP error reporting).
+#'
+#' Failed downloads and bad URLs are reported with the underlying message plus
+#' short hints for common cases (HTTP 404/401/403, timeouts, DNS, TLS).
+#' Non-zip responses (e.g.\ HTML login or error pages) are detected **before**
+#' unpacking so you see a clear message instead of a cryptic unzip failure.
+#'
 #' @return The `SHGInterface` instance, invisibly (allows chaining).
 #'
 #' @examples
@@ -221,6 +240,7 @@ clear_params_cache <- shg_clear_params_cache
     stop("Local parameter zip not found: ", zip_path)
   dir.create(cache_path, recursive = TRUE)
   message("Extracting local parameter set:\n  ", zip_path)
+  .shg_assert_downloaded_zip(zip_path, zip_path)
   tryCatch(
     utils::unzip(zip_path, exdir = cache_path),
     error = function(e) {
@@ -231,48 +251,198 @@ clear_params_cache <- shg_clear_params_cache
   message("Cached at:\n  ", cache_path)
 }
 
+.shg_download_options <- function() {
+  t <- getOption("shg.params.download.timeout_sec", 600L)
+  csec <- getOption("shg.params.download.connect_sec", 60L)
+  list(
+    timeout_sec = max(as.numeric(t), 1),
+    connect_sec = max(as.numeric(csec), 1)
+  )
+}
+
+.shg_peek_file_raw <- function(path, n = 512L) {
+  con <- file(path, "rb")
+  on.exit(close(con), add = TRUE)
+  readBin(con, "raw", n = as.integer(n))
+}
+
+.shg_assert_downloaded_zip <- function(path, url_for_message) {
+  info <- file.info(path)
+  if (is.na(info$size) || info$size == 0L) {
+    stop(
+      "Download saved an empty file — check the URL, authentication, and network.\n",
+      "  URL: ", url_for_message,
+      call. = FALSE
+    )
+  }
+  raw <- .shg_peek_file_raw(path)
+  if (length(raw) == 0L) {
+    stop("Download is unreadable (empty read).\n  URL: ", url_for_message, call. = FALSE)
+  }
+  i <- 1L
+  if (length(raw) >= 3L &&
+      raw[1L] == as.raw(0xef) && raw[2L] == as.raw(0xbb) && raw[3L] == as.raw(0xbf)) {
+    i <- 4L
+  }
+  if (i <= length(raw) && raw[i] == as.raw(0x3c)) {
+    stop(
+      "Download is not a zip file — content starts with '<' (likely an HTML error ",
+      "or login page). Use a direct \".zip\" download URL; for authenticated hosts ",
+      "see the package documentation (e.g. GITHUB_PAT).\n",
+      "  URL: ", url_for_message,
+      call. = FALSE
+    )
+  }
+  if (length(raw) >= 2L && raw[1L] == as.raw(0x1f) && raw[2L] == as.raw(0x8b)) {
+    stop(
+      "Download appears to be gzip-compressed, not a .zip file.\n",
+      "  URL: ", url_for_message,
+      call. = FALSE
+    )
+  }
+  pk <- length(raw) >= 4L && raw[1L] == as.raw(0x50) && raw[2L] == as.raw(0x4b)
+  if (!pk) {
+    stop(
+      "Download is not a valid .zip (missing PK header). The server may have ",
+      "returned text or another format.\n",
+      "  URL: ", url_for_message,
+      call. = FALSE
+    )
+  }
+  invisible(path)
+}
+
+.shg_download_failure_message <- function(url, err, has_auth_token) {
+  base <- conditionMessage(err)
+  bl <- paste(base, collapse = " ")
+  lines <- c(
+    paste0("Failed to download parameter bundle from:\n  ", url),
+    "",
+    paste0("Details: ", base)
+  )
+  hints <- character()
+  if (grepl("404|not found", bl, ignore.case = TRUE))
+    hints <- c(hints, "- HTTP 404 / not found: verify the file URL (typos, moved releases, or wrong Zenodo/GitHub path).")
+  if (grepl("401|unauthorized", bl, ignore.case = TRUE))
+    hints <- c(hints, "- HTTP 401: authentication required (set GITHUB_PAT for private GitHub assets).")
+  if (grepl("403|forbidden", bl, ignore.case = TRUE))
+    hints <- c(hints, "- HTTP 403: access forbidden (token scope, rate limit, or private resource).")
+  if (grepl("timed out|timeout|time out|Timeout was reached", bl, ignore.case = TRUE))
+    hints <- c(hints, paste0(
+      "- Timeout: increase options(shg.params.download.timeout_sec = ...) ",
+      "(total seconds; default 600)."
+    ))
+  if (grepl("Could not resolve host|couldn't resolve", bl, ignore.case = TRUE))
+    hints <- c(hints, "- DNS failure: check network connectivity and the hostname.")
+  if (grepl("Connection refused|Failed to connect|ECONNREFUSED", bl, ignore.case = TRUE))
+    hints <- c(hints, "- Connection refused: server down, wrong port, or firewall.")
+  if (grepl("SSL|certificate|TLS|certificate verify failed", bl, ignore.case = TRUE))
+    hints <- c(hints, "- TLS/certificate issue (proxy or outdated CA store).")
+  if (length(hints))
+    lines <- c(lines, "", "Hints:", hints)
+  if (!has_auth_token && grepl("github\\.com", url, ignore.case = TRUE))
+    lines <- c(lines, "", "Note: For private GitHub releases set GITHUB_PAT.")
+  paste(lines, collapse = "\n")
+}
+
+.shg_download_with_httr2 <- function(url, dest_path, auth_hdr) {
+  opts <- .shg_download_options()
+  req <- httr2::request(url)
+  if (length(auth_hdr))
+    req <- httr2::req_headers(req, !!!auth_hdr)
+  req <- httr2::req_timeout(req, opts$timeout_sec)
+  req <- httr2::req_options(req, connecttimeout = opts$connect_sec)
+  httr2::req_perform(req, path = dest_path)
+}
+
+.shg_download_with_base <- function(url, dest_path, auth_hdr) {
+  opts <- .shg_download_options()
+  old <- options(timeout = opts$timeout_sec)
+  on.exit(options(old), add = TRUE)
+  status <- if (length(auth_hdr)) {
+    utils::download.file(url, dest_path, mode = "wb", quiet = TRUE, headers = auth_hdr)
+  } else {
+    utils::download.file(url, dest_path, mode = "wb", quiet = TRUE)
+  }
+  if (!identical(status, 0L)) {
+    stop(
+      "download.file() exited with status ", status,
+      ". Install package 'httr2' for clearer HTTPS errors and timeouts.",
+      call. = FALSE
+    )
+  }
+}
+
 .shg_download_and_extract <- function(url, cache_path, token) {
   tmp <- tempfile(fileext = ".zip")
   on.exit(unlink(tmp), add = TRUE)
+  opts <- .shg_download_options()
   message("Downloading parameter set from:\n  ", url)
-
-  pat       <- .shg_resolve_token(token, url)
-  auth_hdr  <- if (!is.null(pat)) c(Authorization = paste("Bearer", pat)) else character()
-
-  # Prefer httr2 when available (cleaner error messages, streaming to disk).
-  downloaded <- FALSE
   if (requireNamespace("httr2", quietly = TRUE)) {
-    req <- httr2::request(url)
-    if (length(auth_hdr))
-      req <- httr2::req_headers(req, !!!auth_hdr)
-    downloaded <- tryCatch({
-      httr2::req_perform(req, path = tmp)
-      TRUE
-    }, error = function(e) {
-      warning("httr2 failed (", conditionMessage(e), "); trying download.file().")
-      FALSE
-    })
+    message(
+      "(timeouts: ", opts$timeout_sec, "s total, ", opts$connect_sec,
+      "s connect — see ?shg_load_params)"
+    )
+  } else {
+    message(
+      "Note: Install package 'httr2' for HTTPS timeouts (",
+      opts$timeout_sec, "s via options(timeout)) and clearer HTTP errors."
+    )
   }
 
-  if (!downloaded) {
+  pat <- .shg_resolve_token(token, url)
+  auth_hdr <- if (!is.null(pat)) c(Authorization = paste("Bearer", pat)) else character()
+  has_auth_token <- nzchar(Sys.getenv("GITHUB_PAT", "")) ||
+    (!is.null(pat) && nzchar(as.character(pat)))
+
+  if (requireNamespace("httr2", quietly = TRUE)) {
     tryCatch(
-      utils::download.file(url, tmp, mode = "wb", quiet = FALSE, headers = auth_hdr),
+      .shg_download_with_httr2(url, tmp, auth_hdr),
       error = function(e) {
-        stop("Download failed from:\n  ", url,
-             "\n", conditionMessage(e),
-             if (!is.null(pat)) "" else
-               "\nFor private GitHub releases set the GITHUB_PAT environment variable.")
+        stop(.shg_download_failure_message(url, e, has_auth_token), call. = FALSE)
+      }
+    )
+  } else {
+    tryCatch(
+      .shg_download_with_base(url, tmp, auth_hdr),
+      error = function(e) {
+        stop(.shg_download_failure_message(url, e, has_auth_token), call. = FALSE)
       }
     )
   }
 
+  info <- file.info(tmp)
+  message("Download finished (", info$size, " bytes). Verifying archive...")
+  .shg_assert_downloaded_zip(tmp, url)
+
   dir.create(cache_path, recursive = TRUE)
   message("Extracting to cache...")
-  tryCatch(
-    utils::unzip(tmp, exdir = cache_path),
-    error = function(e) {
-      unlink(cache_path, recursive = TRUE)
-      stop("Extraction failed for ", url, ": ", conditionMessage(e))
+  withCallingHandlers(
+    tryCatch(
+      utils::unzip(tmp, exdir = cache_path),
+      error = function(e) {
+        unlink(cache_path, recursive = TRUE)
+        stop(
+          "Could not extract archive after download.\n",
+          conditionMessage(e),
+          call. = FALSE
+        )
+      }
+    ),
+    warning = function(w) {
+      msg <- conditionMessage(w)
+      if (grepl("error 1 in extracting|cannot open zip file", msg, ignore.case = TRUE)) {
+        unlink(cache_path, recursive = TRUE)
+        stop(
+          "The downloaded file is not a valid zip or is corrupted.\n",
+          "If the URL points to a web page (HTML) instead of a binary .zip, fix the link ",
+          "or authentication.\n",
+          "  URL: ", url, "\n",
+          "  unzip: ", msg,
+          call. = FALSE
+        )
+      }
+      invokeRestart("muffleWarning")
     }
   )
   message("Cached at:\n  ", cache_path)
@@ -308,10 +478,15 @@ clear_params_cache <- shg_clear_params_cache
   )
   missing_f <- required[!file.exists(required)]
   if (length(missing_f))
-    stop("Parameter bundle is missing expected files:\n",
-         paste0("  ", missing_f, collapse = "\n"),
-         "\nExpected layout: smoking/{initiation,cessation,cpd}.csv, ",
-         "mortality/{acm,ocm-excl-lung-cancer}.csv")
+    stop(
+      "Parameter bundle is missing expected files:\n",
+      paste0("  ", missing_f, collapse = "\n"),
+      "\nExpected layout: smoking/{initiation,cessation,cpd}.csv, ",
+      "mortality/{acm,ocm-excl-lung-cancer}.csv",
+      "\nIf you loaded from a URL, the download may have been an HTML page or a ",
+      "truncated file — verify the link and run shg_clear_params_cache() before retrying.",
+      call. = FALSE
+    )
 
   mort_file <- if (mortality == "acm") {
     file.path(mrt_dir, "acm.csv")

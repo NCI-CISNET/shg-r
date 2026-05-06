@@ -67,6 +67,27 @@ Exactly one of \code{url} or \code{base_url} must be supplied:\tabular{ll}{
 }
 }
 
+\section{Download timeouts and errors}{
+
+When the optional package \pkg{httr2} is installed (recommended), HTTPS
+downloads use a \strong{total transfer timeout} and a \strong{connection timeout},
+configurable via R options:
+\describe{
+\item{\code{shg.params.download.timeout_sec}}{Maximum seconds for the whole
+transfer (default \code{600}). Large bundles on slow links may need more.}
+\item{\code{shg.params.download.connect_sec}}{Maximum seconds to establish
+the connection (default \code{60}).}
+}
+Without \pkg{httr2}, \code{\link[utils]{download.file}} is used with
+\code{options(timeout)} set to the same total timeout value (less detailed
+HTTP error reporting).
+
+Failed downloads and bad URLs are reported with the underlying message plus
+short hints for common cases (HTTP 404/401/403, timeouts, DNS, TLS).
+Non-zip responses (e.g.\ HTML login or error pages) are detected \strong{before}
+unpacking so you see a clear message instead of a cryptic unzip failure.
+}
+
 \examples{
 \dontrun{
 library(SmokingHistoryGenerator)
