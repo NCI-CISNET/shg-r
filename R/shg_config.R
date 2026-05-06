@@ -284,7 +284,7 @@ shg_write_config_yaml <- function(config, path) {
 
 .shg_normalize_for_yaml_write <- function(cfg) {
   drop_always <- c(
-    "timestamp",
+    "timestamp", "output_file",
     "rng_state_fingerprint", "package_version", "package_source",
     "r_version", "platform", "memory_usage"
   )
@@ -647,10 +647,16 @@ shg_run <- function(shg, config, attach_run_info = TRUE) {
 
   if (nzchar(src) && !is.na(src)) {
     if (need) {
-      message("Parameter cache or paths missing; re-loading bundle from:\n  ", src)
       cache_path <- .shg_params_cache_path(src)
-      if (dir.exists(cache_path))
-        unlink(cache_path, recursive = TRUE)
+      cache_intact <- dir.exists(cache_path) && {
+        snap <- tryCatch(.shg_snapshot_root(cache_path), error = function(e) cache_path)
+        file.exists(file.path(snap, "smoking", "initiation.csv"))
+      }
+      if (!cache_intact) {
+        message("Parameter cache or paths missing; re-loading bundle from:\n  ", src)
+        if (dir.exists(cache_path))
+          unlink(cache_path, recursive = TRUE)
+      }
     }
     shg_load_params(shg, url = src, mortality = meta_mot)
   } else if (need) {
@@ -696,7 +702,7 @@ shg_run <- function(shg, config, attach_run_info = TRUE) {
 
   drop <- c(
     "input_data_folder", "initiation_filename", "cessation_filename",
-    "mortality_filename", "cpd_filename", "timestamp",
+    "mortality_filename", "cpd_filename", "timestamp", "output_file",
     "rng_state_fingerprint", "package_version", "package_source",
     "r_version", "platform", "memory_usage"
   )
