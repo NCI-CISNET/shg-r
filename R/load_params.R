@@ -270,7 +270,7 @@ clear_params_cache <- shg_clear_params_cache
   info <- file.info(path)
   if (is.na(info$size) || info$size == 0L) {
     stop(
-      "Download saved an empty file — check the URL, authentication, and network.\n",
+      "Download saved an empty file - check the URL, authentication, and network.\n",
       "  URL: ", url_for_message,
       call. = FALSE
     )
@@ -286,7 +286,7 @@ clear_params_cache <- shg_clear_params_cache
   }
   if (i <= length(raw) && raw[i] == as.raw(0x3c)) {
     stop(
-      "Download is not a zip file — content starts with '<' (likely an HTML error ",
+      "Download is not a zip file - content starts with '<' (likely an HTML error ",
       "or login page). Use a direct \".zip\" download URL; for authenticated hosts ",
       "see the package documentation (e.g. GITHUB_PAT).\n",
       "  URL: ", url_for_message,
@@ -381,7 +381,7 @@ clear_params_cache <- shg_clear_params_cache
   if (requireNamespace("httr2", quietly = TRUE)) {
     message(
       "(timeouts: ", opts$timeout_sec, "s total, ", opts$connect_sec,
-      "s connect — see ?shg_load_params)"
+      "s connect - see ?shg_load_params)"
     )
   } else {
     message(
@@ -484,7 +484,7 @@ clear_params_cache <- shg_clear_params_cache
       "\nExpected layout: smoking/{initiation,cessation,cpd}.csv, ",
       "mortality/{acm,ocm-excl-lung-cancer}.csv",
       "\nIf you loaded from a URL, the download may have been an HTML page or a ",
-      "truncated file — verify the link and run shg_clear_params_cache() before retrying.",
+      "truncated file - verify the link and run shg_clear_params_cache() before retrying.",
       call. = FALSE
     )
 
