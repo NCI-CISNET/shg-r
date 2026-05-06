@@ -110,10 +110,10 @@ race = 0 # All races combined
 sex = 0 # male
 cohort_year = 1940
 run_cfg <- list(
-  individuals = as.integer(N),
-  race = as.integer(race),
-  sex = as.integer(sex),
-  cohort_year = as.integer(cohort_year)
+  individuals = N,
+  race = race,
+  sex = sex,
+  cohort_year = cohort_year
 )
 bundle <- shg$runSim(run_cfg)
 RNGSTREAM_SIM <- bundle$results
@@ -136,7 +136,7 @@ audit <- bundle$run_info
 
 ```r
 shg <- new(SHGInterface)
-shg_apply_config(shg, list(cohort_year = 1950L))
+shg_apply_config(shg, list(cohort_year = 1950))
 ```
 
 `shg_apply_config()` resets the instance to factory defaults first, then applies only the keys you supply.
