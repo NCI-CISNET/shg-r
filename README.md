@@ -101,20 +101,30 @@ See [`data-readme.md`](data-readme.md) for all supported URL forms, the mortalit
 ---
 
 ## Basic usage
-Relying on the default values for input filepaths, RNG strategy, multi-threading, immediate cessation, segments you can launch a smoking history simulation as follows: 
+Using a config list that includes a parameter bundle source (recommended), you can launch a smoking history simulation as follows:
 ```r
 library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
+
+# Local zip path for now (replace with Zenodo URL when published)
+zip_path <- "/path/to/usa-national@smok-2016.zip"
+
 N <- 10^5 # Individuals to simulate (REPEAT)
 race = 0 # All races combined
 sex = 0 # male
 cohort_year = 1940
 run_cfg <- list(
+  params_bundle_source = zip_path,
+  params_mortality = "acm",
   individuals = N,
   race = race,
   sex = sex,
   cohort_year = cohort_year
 )
+
+# Hydrate parameter tables from config bundle metadata
+shg_apply_config(shg, run_cfg)
+
 bundle <- shg$runSim(run_cfg)
 RNGSTREAM_SIM <- bundle$results
 ```
