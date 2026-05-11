@@ -4,16 +4,16 @@ The Smoking History Generator requires a calibrated parameter set to run: probab
 
 ## Bundled minimal set (CRAN)
 
-The CRAN package ships a **small csv-partial subset** under `inst/extdata/` (installed as `system.file("extdata", package = "SmokingHistoryGenerator")`). Default property values point at these **CSV** files:
+The CRAN package ships a **small csv-partial subset** under `inst/extdata/smoking/` and `inst/extdata/mortality/` (installed as `system.file("extdata", package = "SmokingHistoryGenerator")`). Default property values point at these **CSV** paths relative to `input_data_folder`:
 
 | SHG property | Default filename |
 | ------------- | ------------- |
-| `initiation_filename` | `initiation.csv` |
-| `cessation_filename` | `cessation.csv` |
-| `mortality_filename` | `ocm-excl-lung-cancer.csv` |
-| `cpd_filename` | `cpd.csv` |
+| `initiation_filename` | `smoking/initiation.csv` |
+| `cessation_filename` | `smoking/cessation.csv` |
+| `mortality_filename` | `mortality/acm.csv` |
+| `cpd_filename` | `smoking/cpd.csv` |
 
-Use `mortality_filename` to point at `acm.csv` or `ocm-excl-lung-cancer.csv`, depending on your analysis. Wide `.txt` tables (CLI / legacy web layout) remain supported when you set filenames and paths accordingly. Saved configs that still list `lifetable_filename` are accepted by `useConfig()` and mapped to `mortality_filename`.
+You may still point at **flat** filenames (e.g. `initiation.csv` next to `input_data_folder`) for custom layouts. Use `mortality_filename` to select `mortality/acm.csv` or `mortality/ocm-excl-lung-cancer.csv` as needed. Wide `.txt` tables (CLI / legacy web layout) remain supported when you set filenames and paths accordingly. Saved configs that still list `lifetable_filename` are accepted by `useConfig()` and mapped to `mortality_filename`.
 
 After installation, locate the folder with:
 

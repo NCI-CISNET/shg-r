@@ -16,6 +16,9 @@
 - Fix any linter errors before proceeding with commits
 - Do not commit code that fails linting checks
 
+### R style (integer literals)
+- **Prefer plain numeric literals** in R examples, demos, and tests (e.g. `500`, `0`, `1950`) instead of the `L` integer suffix unless an API strictly requires `integer()` and coercion would be ambiguous.
+
 ### C++ / Rcpp rebuild hygiene (avoid stale-binary segfaults)
 
 Incremental compiles plus **LTO** (`-flto` in the toolchain) can leave **`src/*.o` out of sync** with regenerated **`RcppExports.cpp`** or other headers. That mismatch often crashes inside **`CppMethod__invoke`** / **`runSimFromFixedValues`** with a fault near address **`0x1`** (wrong vtable / ABI), not a logic bug in the simulator.
@@ -44,7 +47,7 @@ The following `src/` files **MUST match shg-cli exactly**:
 
 **R-only glue (not synced from CLI):** `wrapper.cpp`, `wrapper.h`, `RcppExports.cpp`
 
-**Bundled inputs (not synced; CRAN-sized subset):** flat **`inst/extdata/*.csv`** (csv-partial style: `initiation.csv`, `cessation.csv`, `cpd.csv`, `acm.csv`, `ocm-excl-lung-cancer.csv`). Regenerate with **`tools/trim-nhis-testdata.R`** (from `csv-complete/`). For trimming wide legacy `.txt` in a custom folder, use **`tools/trim-default-inputs.R`** with that directory as the sole argument. After changing bundled inputs or CPD loading, refresh legacy XML fixtures with **`tools/refresh-legacy-fixtures.R`**. Sample Legacy web configs: `tests/testdata/legacy-web-examples/`. Full tables: Zenodo (see `README.md`).
+**Bundled inputs (not synced; CRAN-sized subset):** **`inst/extdata/smoking/*.csv`** and **`inst/extdata/mortality/*.csv`** (csv-partial: initiation, cessation, cpd under `smoking/`; `acm.csv` and `ocm-excl-lung-cancer.csv` under `mortality/`). Factory defaults use these relative paths. Regenerate with **`tools/trim-nhis-testdata.R`** (from `csv-complete/`) when present in the repo. For trimming wide legacy `.txt` in a custom folder, use **`tools/trim-default-inputs.R`** with that directory as the sole argument. After changing bundled inputs or CPD loading, refresh legacy XML fixtures with **`tools/refresh-legacy-fixtures.R`**. Sample Legacy web configs: `tests/testdata/legacy-web-examples/`. Full tables: Zenodo (see `README.md`).
 
 **DO NOT modify shared files in shg-r** without first updating shg-cli. The CLI is the source of truth for shared simulation code.
 

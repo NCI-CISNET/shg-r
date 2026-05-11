@@ -25,7 +25,7 @@ pak::pak("NCI-CISNET/shg-r@[optional-branch-of-your-choice]")
 ## Loading parameter sets
 
 The SHG needs calibrated input files (initiation, cessation, CPD, and mortality tables).
-The package ships a small CRAN-sized subset under `inst/extdata/`; full NHIS-style tables
+The package ships a small CRAN-sized subset under `inst/extdata/smoking/` and `inst/extdata/mortality/`; full NHIS-style tables
 are distributed as **parameter bundles** via Zenodo (and GitHub Releases).
 
 ### Traditional workflow: local folder with already-uncompressed files
