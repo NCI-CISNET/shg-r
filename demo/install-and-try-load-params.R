@@ -28,6 +28,8 @@ zip_path <- normalizePath(
 )
 message("Zip: ", zip_path)
 
+zip_path <- "http://localhost:5173/shg-data/bundles/usa-national@smok-2016.zip"
+
 shg <- new(SHGInterface)
 run_cfg <- list(
   params_bundle_source = zip_path,

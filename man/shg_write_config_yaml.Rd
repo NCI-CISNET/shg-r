@@ -20,6 +20,11 @@ Strips audit-only keys when present, then drops redundant input paths when
 serialize as-is (minimal keys only).
 }
 \details{
+Parameter provenance and table paths are grouped under a \code{params} mapping
+when present (\code{params_bundle_source} / \code{params_mortality} and/or
+\code{input_data_folder} with per-table filenames). \code{\link{shg_load_config}}
+and \code{\link{shg_apply_config}} accept both nested and legacy flat keys.
+
 For full portable fixed-cohort bundles, \code{config} should include
 \code{params_bundle_source} and complete \code{repeat}, \code{race},
 \code{sex}, \code{cohort_year} (see \code{\link{shg_save_config}}).

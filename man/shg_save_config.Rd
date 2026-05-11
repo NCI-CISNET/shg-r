@@ -4,7 +4,7 @@
 \alias{shg_save_config}
 \title{Save a portable reproducibility config as YAML}
 \usage{
-shg_save_config(shg, path, quiet = FALSE)
+shg_save_config(shg, path, quiet = FALSE, results = NULL)
 }
 \arguments{
 \item{shg}{An \code{SHGInterface} instance.}
@@ -12,13 +12,28 @@ shg_save_config(shg, path, quiet = FALSE)
 \item{path}{Destination file path (usually \code{.yml} or \code{.yaml}).}
 
 \item{quiet}{If \code{TRUE}, suppress the explanatory message printed on save.}
+
+\item{results}{Optional simulation \code{data.frame}; when supplied, the YAML
+includes a \code{results} block (\code{content_md5}, \code{summary}) and a single
+\code{repro_digest} (MD5 of engine settings plus R session string) for verification
+(see run bundles from \code{\link{shg_run}} with \code{attach_run_info = TRUE}).
+Summary uses \code{never_smokers} / \code{ever_smokers} with \code{count} and
+\code{fraction} (YAML reserves bare \code{n}); \code{ever_smokers$cpd_mode} is the
+most common rounded CPD among ever smokers. Mean/sd blocks use \code{n_obs}
+(finite values excluding \code{-999}). Initiation and cessation means are among
+ever smokers only; \code{age_at_death$ever_smokers} holds death-age stats (not the
+same list as top-level \code{ever_smokers}). \code{age_at_death} subgroup
+\code{n_obs} can be smaller if age is missing or sentinel for some individuals.
+The simulator encodes never smokers with \code{smoking_initiation_age == -999},
+not \code{NA}; \code{NA} initiation is excluded from \code{never_smokers},
+top-level \code{ever_smokers}, and those ever-only means.}
 }
 \value{
 \code{path}, invisibly.
 }
 \description{
 Writes a YAML file containing \code{params_bundle_source}, mortality choice,
-engine settings (RNG, seeds, threads, segments), fixed-run parameters
+engine settings (RNG, seeds, effective segment count), fixed-run parameters
 (\code{repeat}, \code{race}, \code{sex}, \code{cohort_year}), and
 \code{immediate_cessation_year}. Omits derived paths (\code{input_data_folder},
 per-table filenames) so the bundle stays portable; those paths are restored by
@@ -36,8 +51,10 @@ Use \code{shg$last_completed_sim_was_fixed_cohort()} to test programmatically.
 
 The run scalars (\code{repeat}, \code{race}, \code{sex}, \code{cohort_year}) come
 from that fixed cohort run. Engine fields (\code{number_of_segments},
-\code{num_threads}, \code{rng_strategy}, \code{seeds}) reflect \strong{effective}
-values from it when you used defaults or auto settings (e.g.\ \code{num_threads = -1}).
+\code{rng_strategy}, \code{seeds}) reflect \strong{effective} values from it when
+you used defaults or auto settings for segments. Thread count is intentionally
+omitted from the portable repro file (outcomes must not depend on it). Optional
+\code{results} adds content hashes and compact numeric summaries for verification.
 
 If the last run was not a fixed cohort simulation, or fixed cohort metadata are
 missing, saving fails with an error.

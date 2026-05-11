@@ -35,13 +35,14 @@ evalqOnLoad({
         path = path
       )
     },
-    save_config = function(path, quiet = FALSE) {
+    save_config = function(path, quiet = FALSE, results = NULL) {
       get("shg_save_config",
           envir     = asNamespace("SmokingHistoryGenerator"),
           inherits  = FALSE)(
         .self,
         path = path,
-        quiet = quiet
+        quiet = quiet,
+        results = results
       )
     },
     repro_config = function(debug = FALSE) {

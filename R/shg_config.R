@@ -53,12 +53,158 @@
   )
 }
 
+
 #' @keywords internal
 #' @noRd
-.shg_package_repro_identity <- function(core_version = NA_character_) {
+.shg_raw_md5 <- function(x) {
+  tf <- tempfile()
+  on.exit(unlink(tf), add = TRUE)
+  writeBin(x, tf)
+  unname(tools::md5sum(tf))
+}
+
+
+#' @keywords internal
+#' @noRd
+.shg_repro_engine_for_digest <- function(repro) {
+  keys <- c(
+    "config_version", "rng_strategy", "number_of_segments", "seeds",
+    "repeat", "race", "sex", "cohort_year", "immediate_cessation_year",
+    "params_mortality", "params_bundle_source"
+  )
+  out <- vector("list", length(keys))
+  names(out) <- keys
+  for (k in keys) {
+    out[[k]] <- repro[[k]]
+  }
+  out
+}
+
+
+#' @keywords internal
+#' @noRd
+.shg_mean_sd_omit_sentinel <- function(x, sentinel = -999) {
+  x <- suppressWarnings(as.numeric(x))
+  ok <- is.finite(x) & x != sentinel
+  if (!any(ok))
+    return(list(mean = NA_real_, sd = NA_real_, n_obs = 0L))
+  xx <- x[ok]
+  list(
+    mean = mean(xx),
+    sd = if (length(xx) > 1L) stats::sd(xx) else NA_real_,
+    n_obs = as.integer(length(xx))
+  )
+}
+
+
+#' @keywords internal
+#' @noRd
+.shg_mode_int_most_common <- function(x) {
+  if (!length(x))
+    return(NA_integer_)
+  xi <- suppressWarnings(as.integer(round(as.numeric(x))))
+  ok <- is.finite(xi)
+  if (any(ok)) {
+    xi <- xi[ok]
+    if (!length(xi))
+      return(NA_integer_)
+    tb <- sort(table(xi), decreasing = TRUE)
+    return(as.integer(names(tb)[1L]))
+  }
+  tb <- sort(table(as.character(x)), decreasing = TRUE)
+  if (!length(tb))
+    return(NA_integer_)
+  as.integer(round(suppressWarnings(as.numeric(names(tb)[1L]))))
+}
+
+
+#' @keywords internal
+#' @noRd
+.shg_results_summary_for_repro <- function(df) {
+  if (!is.data.frame(df) || nrow(df) < 1L)
+    return(list(n_rows = if (is.data.frame(df)) nrow(df) else 0L))
+  n <- nrow(df)
+  init <- if ("smoking_initiation_age" %in% names(df)) {
+    suppressWarnings(as.numeric(df$smoking_initiation_age))
+  } else {
+    rep(NA_real_, n)
+  }
+  # Engine output: never smokers use initiation age -999 (integer), not NA.
+  # NA can appear after CSV I/O, merges, or hand-built frames; such rows are
+  # excluded from never_smokers, ever_smokers, and ever-only stats below.
+  never <- !is.na(init) & init == -999
+  ever <- !is.na(init) & init != -999
+  n_never <- as.integer(sum(never, na.rm = TRUE))
+  n_ever <- as.integer(sum(ever, na.rm = TRUE))
+
+  cpd_mode <- NA_integer_
+  if ("cigarettes_per_day" %in% names(df) && n_ever > 0L) {
+    cpd_mode <- .shg_mode_int_most_common(df$cigarettes_per_day[ever])
+  }
+
+  out <- list(
+    n_rows = n,
+    never_smokers = list(
+      count = n_never,
+      fraction = if (n > 0L) n_never / n else NA_real_
+    ),
+    ever_smokers = list(
+      cpd_mode = cpd_mode,
+      count = n_ever,
+      fraction = if (n > 0L) n_ever / n else NA_real_
+    )
+  )
+
+  if ("age_at_death" %in% names(df)) {
+    out$age_at_death <- list(
+      never_smokers = .shg_mean_sd_omit_sentinel(df$age_at_death[never]),
+      ever_smokers = .shg_mean_sd_omit_sentinel(df$age_at_death[ever])
+    )
+  }
+
+  if ("smoking_initiation_age" %in% names(df))
+    out$smoking_initiation_age <- .shg_mean_sd_omit_sentinel(df$smoking_initiation_age[ever])
+  if ("smoking_cessation_age" %in% names(df))
+    out$smoking_cessation_age <- .shg_mean_sd_omit_sentinel(df$smoking_cessation_age[ever])
+
+  out
+}
+
+
+#' @keywords internal
+#' @noRd
+.shg_enrich_repro_config <- function(repro, results) {
+  if (!is.list(repro) || !is.data.frame(results))
+    return(repro)
+  eng <- .shg_repro_engine_for_digest(repro)
+  sess <- paste0(R.version$version.string, "\n", R.version$platform)
+  repro$repro_digest <- .shg_raw_md5(
+    serialize(list(engine = eng, r_session = sess), NULL, xdr = TRUE, version = 2L)
+  )
+  repro$results <- list(
+    content_md5 = .shg_raw_md5(
+      serialize(results, NULL, xdr = TRUE, version = 2L)
+    ),
+    summary = .shg_results_summary_for_repro(results)
+  )
+  repro
+}
+
+
+#' @keywords internal
+#' @noRd
+.shg_package_repro_identity <- function(core_version = NA_character_, minimal = FALSE) {
   pd <- utils::packageDescription("SmokingHistoryGenerator")
   if (!is.list(pd))
     pd <- as.list(pd)
+
+  r_package_version <- if (!is.null(pd$Version)) {
+    as.character(pd$Version)[1]
+  } else {
+    as.character(utils::packageVersion("SmokingHistoryGenerator"))
+  }
+  if (isTRUE(minimal))
+    return(list(r_package_version = r_package_version))
 
   pkg_root <- system.file(package = "SmokingHistoryGenerator")
   package_rds <- file.path(pkg_root, "Meta", "package.rds")
@@ -115,7 +261,7 @@
 
   list(
     shg_core_version = core_version,
-    r_package_version = if (!is.null(pd$Version)) as.character(pd$Version)[1] else as.character(utils::packageVersion("SmokingHistoryGenerator")),
+    r_package_version = r_package_version,
     r_wrapper_version = if (!is.null(pd$RWrapperVersion)) as.character(pd$RWrapperVersion)[1] else NA_character_,
     shg_engine_tag = if (!is.null(pd$SHGMostRecentTag)) as.character(pd$SHGMostRecentTag)[1] else NA_character_,
     shg_commit_hash = if (!is.null(pd$SHGCommitHash)) as.character(pd$SHGCommitHash)[1] else NA_character_,
@@ -137,7 +283,8 @@
     core_version <- NA_character_
   else
     core_version <- as.character(core_version[1])
-  current <- .shg_package_repro_identity(core_version = core_version)
+  current_full <- .shg_package_repro_identity(core_version = core_version, minimal = FALSE)
+  current_ver <- .shg_package_repro_identity(minimal = TRUE)$r_package_version
 
   has_md5 <- !is.null(expected_repro$install_fingerprint_md5) &&
     length(expected_repro$install_fingerprint_md5) == 1L &&
@@ -147,13 +294,13 @@
   if (isTRUE(has_md5)) {
     same_md5 <- identical(
       as.character(expected_repro$install_fingerprint_md5)[1],
-      as.character(current$install_fingerprint_md5)[1]
+      as.character(current_full$install_fingerprint_md5)[1]
     )
     if (!isTRUE(same_md5)) {
       warning(
         "Config package fingerprint differs from current installation. ",
         "Expected install_fingerprint_md5=", expected_repro$install_fingerprint_md5,
-        ", current=", current$install_fingerprint_md5, ". ",
+        ", current=", current_full$install_fingerprint_md5, ". ",
         "Reproducibility may differ if package source/build is not identical.",
         call. = FALSE
       )
@@ -162,11 +309,24 @@
     return(invisible(FALSE))
   }
 
-  key_fields <- c("shg_core_version", "r_package_version", "r_wrapper_version", "source_locator")
+  ev_ver <- expected_repro$r_package_version
+  if (!is.null(ev_ver) && length(ev_ver) >= 1L && !is.na(ev_ver[1])) {
+    if (!identical(as.character(ev_ver[1]), as.character(current_ver))) {
+      warning(
+        "Config r_package_version (", ev_ver, ") differs from current (", current_ver, "). ",
+        "Reproducibility may differ if the R package build is not identical.",
+        call. = FALSE
+      )
+      return(invisible(TRUE))
+    }
+    return(invisible(FALSE))
+  }
+
+  key_fields <- c("shg_core_version", "r_wrapper_version", "source_locator")
   diffs <- character(0)
   for (k in key_fields) {
     ev <- expected_repro[[k]]
-    cv <- current[[k]]
+    cv <- current_full[[k]]
     if (!is.null(ev) && length(ev) >= 1L && !is.na(ev[1])) {
       if (is.null(cv) || length(cv) < 1L || is.na(cv[1]) || !identical(as.character(ev[1]), as.character(cv[1]))) {
         diffs <- c(diffs, k)
@@ -244,6 +404,11 @@ shg_apply_config <- function(shg, config = list()) {
 #' \code{params_bundle_source} is set (same idea as portable save). Sparse lists
 #' serialize as-is (minimal keys only).
 #'
+#' Parameter provenance and table paths are grouped under a \code{params} mapping
+#' when present (\code{params_bundle_source} / \code{params_mortality} and/or
+#' \code{input_data_folder} with per-table filenames). \code{\link{shg_load_config}}
+#' and \code{\link{shg_apply_config}} accept both nested and legacy flat keys.
+#'
 #' For full portable fixed-cohort bundles, \code{config} should include
 #' \code{params_bundle_source} and complete \code{repeat}, \code{race},
 #' \code{sex}, \code{cohort_year} (see \code{\link{shg_save_config}}).
@@ -268,7 +433,7 @@ shg_write_config_yaml <- function(config, path) {
 
 .shg_audit_field_names <- function() {
   c(
-    "run_info", "results", "original_config", "repro_config",
+    "run_info", "original_config", "repro_config",
     "executed_at", "host_platform", "software_versions", "package_provenance",
     "rng_state_fingerprint", "package_version", "package_source",
     "r_version", "platform", "memory_usage"
@@ -276,9 +441,67 @@ shg_write_config_yaml <- function(config, path) {
 }
 
 
+.shg_param_keys_under_params <- function() {
+  c(
+    "params_bundle_source", "params_mortality",
+    "input_data_folder", "initiation_filename", "cessation_filename",
+    "mortality_filename", "cpd_filename"
+  )
+}
+
+
+.shg_value_empty <- function(v) {
+  if (is.null(v) || length(v) == 0L)
+    return(TRUE)
+  if (is.list(v) && length(v) == 0L)
+    return(TRUE)
+  x1 <- v[[1L]]
+  if (is.na(x1))
+    return(TRUE)
+  if (is.character(x1) && !nzchar(trimws(as.character(x1))))
+    return(TRUE)
+  FALSE
+}
+
+
+.shg_unnest_params_subtree <- function(x) {
+  sub <- x$params
+  if (is.null(sub) || !is.list(sub) || length(sub) == 0L)
+    return(x)
+  known <- .shg_param_keys_under_params()
+  for (n in intersect(names(sub), known)) {
+    if (!.shg_value_empty(x[[n]]))
+      next
+    x[[n]] <- sub[[n]]
+  }
+  x$params <- NULL
+  x
+}
+
+
+.shg_lift_params_into_subtree <- function(cfg) {
+  if (!is.null(cfg$params) && is.list(cfg$params))
+    return(cfg)
+  pk <- .shg_param_keys_under_params()
+  hit <- intersect(names(cfg), pk)
+  if (length(hit) == 0L)
+    return(cfg)
+  hit <- hit[!vapply(hit, function(n) .shg_value_empty(cfg[[n]]), NA)]
+  if (length(hit) == 0L)
+    return(cfg)
+  sub <- cfg[hit]
+  cfg <- cfg[!names(cfg) %in% hit]
+  cfg$params <- sub
+  cfg
+}
+
+
 .shg_sanitize_config_for_yaml <- function(cfg) {
   drop <- .shg_audit_field_names()
-  cfg[!names(cfg) %in% drop]
+  out <- cfg[!names(cfg) %in% drop]
+  if (is.data.frame(out[["results"]]))
+    out[["results"]] <- NULL
+  out
 }
 
 
@@ -302,6 +525,7 @@ shg_write_config_yaml <- function(config, path) {
   out <- .shg_rename_repeat_to_individuals(out)
   out <- .shg_format_integer_scalars_for_yaml(out)
   out <- .shg_format_individuals_for_yaml(out)
+  out <- .shg_lift_params_into_subtree(out)
   .shg_reorder_config_fields(out)
 }
 
@@ -360,8 +584,13 @@ shg_write_config_yaml <- function(config, path) {
     "config_version", "rng_strategy", "individuals",
     "race", "sex", "cohort_year", "immediate_cessation_year",
     "number_of_segments", "num_threads", "seeds",
+    "params",
     "params_bundle_source", "params_mortality",
-    "package_repro"
+    "input_data_folder", "initiation_filename", "cessation_filename",
+    "mortality_filename", "cpd_filename",
+    "package_repro",
+    "results",
+    "repro_digest"
   )
   front <- preferred[preferred %in% names(cfg)]
   tail <- setdiff(names(cfg), front)
@@ -386,7 +615,7 @@ shg_config_bundle <- function(shg) {
 #' Save a portable reproducibility config as YAML
 #'
 #' Writes a YAML file containing \code{params_bundle_source}, mortality choice,
-#' engine settings (RNG, seeds, threads, segments), fixed-run parameters
+#' engine settings (RNG, seeds, effective segment count), fixed-run parameters
 #' (\code{repeat}, \code{race}, \code{sex}, \code{cohort_year}), and
 #' \code{immediate_cessation_year}. Omits derived paths (\code{input_data_folder},
 #' per-table filenames) so the bundle stays portable; those paths are restored by
@@ -404,8 +633,10 @@ shg_config_bundle <- function(shg) {
 #'
 #' The run scalars (\code{repeat}, \code{race}, \code{sex}, \code{cohort_year}) come
 #' from that fixed cohort run. Engine fields (\code{number_of_segments},
-#' \code{num_threads}, \code{rng_strategy}, \code{seeds}) reflect \strong{effective}
-#' values from it when you used defaults or auto settings (e.g.\ \code{num_threads = -1}).
+#' \code{rng_strategy}, \code{seeds}) reflect \strong{effective} values from it when
+#' you used defaults or auto settings for segments. Thread count is intentionally
+#' omitted from the portable repro file (outcomes must not depend on it). Optional
+#' \code{results} adds content hashes and compact numeric summaries for verification.
 #'
 #' If the last run was not a fixed cohort simulation, or fixed cohort metadata are
 #' missing, saving fails with an error.
@@ -413,6 +644,20 @@ shg_config_bundle <- function(shg) {
 #' @param shg An \code{SHGInterface} instance.
 #' @param path Destination file path (usually \code{.yml} or \code{.yaml}).
 #' @param quiet If \code{TRUE}, suppress the explanatory message printed on save.
+#' @param results Optional simulation \code{data.frame}; when supplied, the YAML
+#'   includes a \code{results} block (\code{content_md5}, \code{summary}) and a single
+#'   \code{repro_digest} (MD5 of engine settings plus R session string) for verification
+#'   (see run bundles from \code{\link{shg_run}} with \code{attach_run_info = TRUE}).
+#'   Summary uses \code{never_smokers} / \code{ever_smokers} with \code{count} and
+#'   \code{fraction} (YAML reserves bare \code{n}); \code{ever_smokers$cpd_mode} is the
+#'   most common rounded CPD among ever smokers. Mean/sd blocks use \code{n_obs}
+#'   (finite values excluding \code{-999}). Initiation and cessation means are among
+#'   ever smokers only; \code{age_at_death$ever_smokers} holds death-age stats (not the
+#'   same list as top-level \code{ever_smokers}). \code{age_at_death} subgroup
+#'   \code{n_obs} can be smaller if age is missing or sentinel for some individuals.
+#'   The simulator encodes never smokers with \code{smoking_initiation_age == -999},
+#'   not \code{NA}; \code{NA} initiation is excluded from \code{never_smokers},
+#'   top-level \code{ever_smokers}, and those ever-only means.
 #' @return \code{path}, invisibly.
 #' @seealso \code{\link{shg_load_config}}, \code{\link{shg_run}}
 #' @examples
@@ -425,7 +670,7 @@ shg_config_bundle <- function(shg) {
 #' # shg_save_config(shg, "my-run.yml")
 #' }
 #' @export
-shg_save_config <- function(shg, path, quiet = FALSE) {
+shg_save_config <- function(shg, path, quiet = FALSE, results = NULL) {
   if (!isTRUE(shg$last_completed_sim_was_fixed_cohort())) {
     stop(
       "Cannot save portable config: the most recent completed simulation on this ",
@@ -436,8 +681,10 @@ shg_save_config <- function(shg, path, quiet = FALSE) {
     )
   }
   cfg <- shg$getReproConfig(FALSE)
+  if (is.data.frame(results))
+    cfg <- .shg_enrich_repro_config(cfg, results)
   portable <- .shg_portable_config_list(cfg)
-  yaml::write_yaml(portable, path)
+  shg_write_config_yaml(portable, path)
   if (!isTRUE(quiet)) {
     message(
       "Portable YAML saved: configuration reflects the last completed runSimFromFixedValues() ",
@@ -695,7 +942,9 @@ shg_run <- function(shg, config, attach_run_info = TRUE) {
     "N", "individuals",
     "package_repro",
     "rng_state_fingerprint", "package_version", "package_source",
-    "r_version", "platform", "memory_usage"
+    "r_version", "platform", "memory_usage",
+    "results", "repro_digest",
+    "results_content_md5", "results_summary", "repro_engine_md5", "r_session_md5"
   )
   i <- names(bundle) %in% drop
   bundle[!i]
@@ -735,7 +984,7 @@ shg_run <- function(shg, config, attach_run_info = TRUE) {
       "Cannot save portable config: no complete fixed cohort run is recorded on this instance ",
       "(missing or NA: ", paste(na_run, collapse = ", "), "). ",
       "Call runSimFromFixedValues() once before save_config(); the YAML stores that run's ",
-      "repeat/race/sex/cohort_year and effective engine settings (segments, threads, RNG, seeds) ",
+      "repeat/race/sex/cohort_year and effective engine settings (segments, RNG, seeds) ",
       "from after that simulation."
     )
   }
@@ -751,6 +1000,21 @@ shg_run <- function(shg, config, attach_run_info = TRUE) {
     stop("Config must be a list from YAML.")
   if (is.null(names(x)) || any(names(x) == ""))
     stop("YAML root must be a named mapping (key/value pairs).")
+
+  x <- .shg_unnest_params_subtree(x)
+
+  if (!is.null(x$results_content_md5) || !is.null(x$results_summary)) {
+    if (is.null(x$results) || !is.list(x$results))
+      x$results <- list()
+    if (!is.null(x$results_content_md5) && is.null(x$results$content_md5))
+      x$results$content_md5 <- x$results_content_md5
+    if (!is.null(x$results_summary) && is.null(x$results$summary))
+      x$results$summary <- x$results_summary
+    x$results_content_md5 <- NULL
+    x$results_summary <- NULL
+  }
+  x$repro_engine_md5 <- NULL
+  x$r_session_md5 <- NULL
 
   if (is.null(x[["repeat"]]) && !is.null(x[["individuals"]]))
     x[["repeat"]] <- x[["individuals"]]
