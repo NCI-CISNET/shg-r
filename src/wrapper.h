@@ -5,11 +5,11 @@ using namespace std;
 
 // Note that the CLI SHG version might specify default paths differently
 #define R_DEFAULT_DATA_DIR "./extdata/"
-#define R_INITIATION_DATA_FILE "initiation.csv"
-#define R_CESSATION_DATA_FILE "cessation.csv"
-#define R_ACM_DATA_FILE "acm.csv"
-#define R_OTHER_COD_DATA_FILE "ocm-excl-lung-cancer.csv"
-#define R_CPD_DATA_FILE "cpd.csv"
+#define R_INITIATION_DATA_FILE "smoking/initiation.csv"
+#define R_CESSATION_DATA_FILE "smoking/cessation.csv"
+#define R_ACM_DATA_FILE "mortality/acm.csv"
+#define R_OTHER_COD_DATA_FILE "mortality/ocm-excl-lung-cancer.csv"
+#define R_CPD_DATA_FILE "smoking/cpd.csv"
 
 std::string find_default_data_path() {
     Rcpp::Environment base("package:base");
