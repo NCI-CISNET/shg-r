@@ -78,10 +78,10 @@ test_that("shg_apply_config preserves explicit paths when no params_bundle_sourc
   ext <- system.file("extdata", package = "SmokingHistoryGenerator")
   shg_apply_config(shg, list(
     input_data_folder = ext,
-    initiation_filename = "initiation.csv",
-    cessation_filename = "cessation.csv",
-    mortality_filename = "acm.csv",
-    cpd_filename = "cpd.csv",
+    initiation_filename = "smoking/initiation.csv",
+    cessation_filename = "smoking/cessation.csv",
+    mortality_filename = "mortality/acm.csv",
+    cpd_filename = "smoking/cpd.csv",
     cohort_year = 1950L
   ))
   expect_equal(normalizePath(shg$input_data_folder, winslash = "/"),
@@ -335,9 +335,8 @@ test_that("shg_save_config writes repro-effective engine settings", {
   shg_save_config(shg, yml, quiet = TRUE)
   cfg_saved <- yaml::read_yaml(yml)
   expect_true(cfg_saved$number_of_segments >= 1)
-  expect_true(cfg_saved$num_threads >= 1)
   expect_false(identical(cfg_saved$number_of_segments, -1))
-  expect_false(identical(cfg_saved$num_threads, -1))
+  expect_false("num_threads" %in% names(cfg_saved))
 })
 
 test_that("shg_save_config errors after population run following fixed cohort run", {
@@ -392,4 +391,72 @@ test_that("shg_save_config errors when run metadata not recorded", {
   yml <- tempfile(fileext = ".yml")
   on.exit(unlink(yml), add = TRUE)
   expect_error(shg_save_config(shg, yml, quiet = TRUE), "runSimFromFixedValues")
+})
+
+
+test_that("shg_write_config_yaml nests bundle keys under params and normalize flattens", {
+  skip_on_cran()
+  zip_path <- testthat::test_path("../testdata/usa-national@smok-2016.zip")
+  skip_if_not(file.exists(zip_path))
+
+  tf <- tempfile(fileext = ".yml")
+  on.exit(unlink(tf), add = TRUE)
+  cfg <- list(
+    config_version = "1.0",
+    rng_strategy = "RngStream",
+    params_bundle_source = zip_path,
+    params_mortality = "acm",
+    cohort_year = 1950,
+    individuals = 5,
+    race = 0,
+    sex = 0
+  )
+  shg_write_config_yaml(cfg, tf)
+  rd <- yaml::read_yaml(tf)
+  expect_true(is.list(rd$params))
+  n <- SmokingHistoryGenerator:::.shg_normalize_config_list(rd)
+  expect_equal(n$params_bundle_source, zip_path)
+  expect_equal(n$params_mortality, "acm")
+  expect_null(n$params)
+})
+
+test_that("normalize migrates legacy results_* and strips legacy repro md5 keys", {
+  x <- list(
+    cohort_year = 1950L,
+    results_content_md5 = "abc",
+    results_summary = list(n_rows = 2L),
+    repro_engine_md5 = "old",
+    r_session_md5 = "old2"
+  )
+  n <- SmokingHistoryGenerator:::.shg_normalize_config_list(x)
+  expect_null(n$results_content_md5)
+  expect_null(n$results_summary)
+  expect_null(n$repro_engine_md5)
+  expect_null(n$r_session_md5)
+  expect_equal(n$results$content_md5, "abc")
+  expect_equal(n$results$summary$n_rows, 2L)
+})
+
+test_that("shg_write_config_yaml keeps results verification block", {
+  tf <- tempfile(fileext = ".yml")
+  on.exit(unlink(tf), add = TRUE)
+  cfg <- list(
+    config_version = "1.0",
+    cohort_year = 1950L,
+    results = list(content_md5 = "abc", summary = list(n_rows = 3L)),
+    repro_digest = "def"
+  )
+  shg_write_config_yaml(cfg, tf)
+  rd <- yaml::read_yaml(tf)
+  expect_equal(rd$results$content_md5, "abc")
+  expect_equal(rd$repro_digest, "def")
+})
+
+test_that("shg_write_config_yaml drops results when it is a data frame", {
+  tf <- tempfile(fileext = ".yml")
+  on.exit(unlink(tf), add = TRUE)
+  cfg <- list(cohort_year = 1950L, results = data.frame(a = 1L))
+  shg_write_config_yaml(cfg, tf)
+  rd <- yaml::read_yaml(tf)
+  expect_null(rd$results)
 })

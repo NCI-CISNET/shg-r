@@ -13,10 +13,6 @@ test_that("shg_params_summary returns parameter shape from configured files", {
   shg <- new(SHGInterface)
   d <- system.file("extdata", package = "SmokingHistoryGenerator")
   shg$input_data_folder <- d
-  shg$initiation_filename <- "initiation.csv"
-  shg$cessation_filename <- "cessation.csv"
-  shg$mortality_filename <- "acm.csv"
-  shg$cpd_filename <- "cpd.csv"
 
   s <- shg_params_summary(shg)
   expect_type(s, "list")

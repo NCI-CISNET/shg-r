@@ -111,7 +111,7 @@ test_pop_df <- function(n, race = 0, sex = 0, birth_cohort = 1950) {
 # Tests
 shg <- new(SHGInterface)
 # Legacy XML fixtures were generated with ACM (all-cause) mortality tables
-shg$mortality_filename <- "acm.csv"
+shg$mortality_filename <- "mortality/acm.csv"
 shg$num_threads <- 1
 shg$number_of_segments <- 1
 shg$rng_strategy <- "MersenneTwister"
@@ -124,7 +124,7 @@ N <- 10^4 # Individuals to simulate (REPEAT)
 data_folder <- system.file("extdata", package = "SmokingHistoryGenerator")
 test_that("SHG extdata folder exists and contains bundled CSV inputs", {
   expect_true(nzchar(data_folder) && dir.exists(data_folder))
-  expect_true(file.exists(file.path(data_folder, "initiation.csv")))
+  expect_true(file.exists(file.path(data_folder, "smoking", "initiation.csv")))
 })
 
 shg$input_data_folder <- data_folder
@@ -268,12 +268,12 @@ test_that("getConfig() with no arguments works (R does not apply C++ default arg
   expect_equal(sort(names(cfg)), sort(names(cfg_named)))
 })
 
-test_that("factory default mortality_filename is acm.csv", {
+test_that("factory default mortality_filename is mortality/acm.csv", {
   shg <- new(SHGInterface)
-  expect_equal(shg$mortality_filename, "acm.csv")
+  expect_equal(shg$mortality_filename, "mortality/acm.csv")
   shg$mortality_filename <- "mortality/ocm-excl-lung-cancer.csv"
   shg$reset_to_factory_defaults()
-  expect_equal(shg$mortality_filename, "acm.csv")
+  expect_equal(shg$mortality_filename, "mortality/acm.csv")
 })
 
 test_that("getConfig() returns correct structure with config_version", {
@@ -322,7 +322,7 @@ test_that("getConfig() keeps intent values after simulation", {
   expect_equal(cfg$num_threads, -1)
 })
 
-test_that("getReproConfig() captures effective runtime segments/threads after simulation", {
+test_that("getReproConfig() captures effective segments but omits num_threads", {
   shg_rt <- new(SHGInterface)
   shg_rt$input_data_folder <- data_folder
   shg_rt$rng_strategy <- "RngStream"
@@ -332,9 +332,9 @@ test_that("getReproConfig() captures effective runtime segments/threads after si
 
   cfg <- shg_rt$getReproConfig(debug = FALSE)
   expect_true(cfg$number_of_segments >= 1)
-  expect_true(cfg$num_threads >= 1)
   expect_false(identical(cfg$number_of_segments, -1))
-  expect_false(identical(cfg$num_threads, -1))
+  expect_false("num_threads" %in% names(cfg))
+  expect_equal(shg_rt$num_threads, -1)
 })
 
 test_that("getReproConfig() errors before any completed simulation", {

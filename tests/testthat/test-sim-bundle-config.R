@@ -18,14 +18,19 @@ test_that("runSimFromFixedValues with attach_run_info returns four-slot bundle",
   expect_true(length(out$run_info$host_platform) > 0L)
   expect_equal(out$run_info$software_versions$shg_core_version, shg$get_shg_core_version())
   expect_true(is.list(out$repro_config$package_repro))
-  expect_true("install_fingerprint_md5" %in% names(out$repro_config$package_repro))
+  expect_true("r_package_version" %in% names(out$repro_config$package_repro))
+  expect_false("install_fingerprint_md5" %in% names(out$repro_config$package_repro))
 
   rc <- shg$getReproConfig(FALSE)
   repro_a <- out$repro_config
   repro_b <- rc
-  repro_a$timestamp <- NULL
-  repro_b$timestamp <- NULL
+  drop <- c("timestamp", "results", "repro_digest")
+  repro_a <- repro_a[!names(repro_a) %in% drop]
+  repro_b <- repro_b[!names(repro_b) %in% drop]
   expect_identical(repro_a, repro_b)
+  expect_true(nzchar(out$repro_config$results$content_md5))
+  expect_true(is.list(out$repro_config$results$summary))
+  expect_true(nzchar(out$repro_config$repro_digest))
 })
 
 test_that("shg_apply_config resets then overlays (sparse cohort_year clears sticky RNG)", {
@@ -55,6 +60,55 @@ test_that("shg_apply_config warns on package_repro identity mismatch", {
     shg_apply_config(shg, cfg),
     "Config package fingerprint differs"
   )
+})
+
+test_that("shg_apply_config warns when saved r_package_version differs", {
+  shg <- new(SHGInterface)
+  cfg <- list(
+    cohort_year = 1950L,
+    package_repro = list(r_package_version = "0.0.0-not-a-real-build")
+  )
+  expect_warning(
+    shg_apply_config(shg, cfg),
+    "r_package_version"
+  )
+})
+
+test_that(".shg_results_summary_for_repro omits -999 for means", {
+  df <- data.frame(
+    smoking_initiation_age = c(-999, 20, -999),
+    smoking_cessation_age = c(-999, 25, -999),
+    age_at_death = c(80, 70, 75),
+    cigarettes_per_day = c(NA_real_, 20, 15)
+  )
+  s <- SmokingHistoryGenerator:::.shg_results_summary_for_repro(df)
+  expect_equal(s$never_smokers$count, 2L)
+  expect_equal(s$never_smokers$fraction, 2 / 3)
+  expect_equal(s$ever_smokers$cpd_mode, 20L)
+  expect_equal(s$ever_smokers$count, 1L)
+  expect_equal(s$ever_smokers$fraction, 1 / 3)
+  expect_equal(s$smoking_initiation_age$n_obs, 1L)
+  expect_equal(s$smoking_initiation_age$mean, 20)
+  expect_equal(s$smoking_cessation_age$n_obs, 1L)
+  expect_equal(s$smoking_cessation_age$mean, 25)
+  expect_equal(s$age_at_death$never_smokers$n_obs, 2L)
+  expect_equal(s$age_at_death$never_smokers$mean, mean(c(80, 75)))
+  expect_equal(s$age_at_death$ever_smokers$n_obs, 1L)
+  expect_equal(s$age_at_death$ever_smokers$mean, 70)
+})
+
+test_that(".shg_results_summary_for_repro excludes NA initiation from never and ever", {
+  df <- data.frame(
+    smoking_initiation_age = c(NA_real_, -999, 18),
+    smoking_cessation_age = c(NA_real_, -999, 30),
+    age_at_death = c(70, 80, 75),
+    cigarettes_per_day = c(NA_real_, NA_real_, 15)
+  )
+  s <- SmokingHistoryGenerator:::.shg_results_summary_for_repro(df)
+  expect_equal(s$n_rows, 3L)
+  expect_equal(s$never_smokers$count, 1L)
+  expect_equal(s$smoking_initiation_age$n_obs, 1L)
+  expect_equal(s$smoking_initiation_age$mean, 18)
 })
 
 test_that("shg_run bundle original_config preserves params bundle intent", {
