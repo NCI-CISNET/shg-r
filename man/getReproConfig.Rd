@@ -7,7 +7,11 @@
 \item{debug}{Logical. If TRUE, includes additional debug information such as RNG state fingerprint, package version, system info, and memory usage. If not provided, defaults to FALSE.}
 }
 \value{
-A list containing the same fields as \code{getConfig()}, but with \code{number_of_segments} and \code{num_threads} exported as effective runtime values used by the last simulation. Errors if no simulation has completed on the instance.
+A list like \code{getConfig()} for the last completed simulation, but with
+\code{number_of_segments} as the effective segment count used and \strong{without}
+\code{num_threads} (thread count must not affect simulation outcomes for fixed seeds
+and segment layout; consumers default to auto threads when reloading). Errors if no
+simulation has completed on the instance.
 }
 \description{
 Returns a configuration list that captures effective runtime settings from the last completed simulation.

@@ -99,10 +99,10 @@ NULL
 #'   "RNGSTRATEGY=RngStream",
 #'   "RNGSTREAM_SEED=12345,12345,12345,12345,12345,12345",
 #'   "RACE=0", "SEX=0", "YOB=1950", "CESSATION_YR=0", "REPEAT=100",
-#'   paste0("INIT_PROB=", file.path(d, "initiation.csv")),
-#'   paste0("CESS_PROB=", file.path(d, "cessation.csv")),
-#'   paste0("MORTALITY_PROB=", file.path(d, "acm.csv")),
-#'   paste0("CPD_DATA=", file.path(d, "cpd.csv")),
+#'   paste0("INIT_PROB=", file.path(d, "smoking", "initiation.csv")),
+#'   paste0("CESS_PROB=", file.path(d, "smoking", "cessation.csv")),
+#'   paste0("MORTALITY_PROB=", file.path(d, "mortality", "acm.csv")),
+#'   paste0("CPD_DATA=", file.path(d, "smoking", "cpd.csv")),
 #'   paste0("OUTPUTFILE=", tempfile("out_", fileext = ".txt")),
 #'   paste0("ERRORFILE=", tempfile("err_", fileext = ".txt"))
 #' ), tf)
@@ -135,7 +135,11 @@ NULL
 #' @title Get Reproducibility Configuration
 #' @description Returns a configuration list that captures effective runtime settings from the last completed simulation.
 #' @param debug Logical. If TRUE, includes additional debug information such as RNG state fingerprint, package version, system info, and memory usage. If not provided, defaults to FALSE.
-#' @return A list containing the same fields as \code{getConfig()}, but with \code{number_of_segments} and \code{num_threads} exported as effective runtime values used by the last simulation. Errors if no simulation has completed on the instance.
+#' @return A list like \code{getConfig()} for the last completed simulation, but with
+#' \code{number_of_segments} as the effective segment count used and \strong{without}
+#' \code{num_threads} (thread count must not affect simulation outcomes for fixed seeds
+#' and segment layout; consumers default to auto threads when reloading). Errors if no
+#' simulation has completed on the instance.
 #' @examples
 #' \dontrun{
 #' library(SmokingHistoryGenerator)

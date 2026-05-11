@@ -201,6 +201,8 @@ Rcpp::RObject SHGInterface::finalizeSimOutput(Rcpp::DataFrame df,
    }
    Rcpp::List repro = getReproConfig(false);
    Rcpp::Environment pkg_env = Rcpp::Environment::namespace_env("SmokingHistoryGenerator");
+   Rcpp::Function enrich_repro = pkg_env[".shg_enrich_repro_config"];
+   repro = Rcpp::as<Rcpp::List>(enrich_repro(repro, df));
    Rcpp::Function build_run_info = pkg_env[".shg_build_run_info"];
    Rcpp::List run_info = build_run_info(Rcpp::Named("core_version") = std::string(SHG_CORE_VERSION));
    return Rcpp::List::create(
@@ -1372,10 +1374,10 @@ bool SHGInterface::fileExists(const char* filename) {
 //'   "RNGSTRATEGY=RngStream",
 //'   "RNGSTREAM_SEED=12345,12345,12345,12345,12345,12345",
 //'   "RACE=0", "SEX=0", "YOB=1950", "CESSATION_YR=0", "REPEAT=100",
-//'   paste0("INIT_PROB=", file.path(d, "initiation.csv")),
-//'   paste0("CESS_PROB=", file.path(d, "cessation.csv")),
-//'   paste0("MORTALITY_PROB=", file.path(d, "acm.csv")),
-//'   paste0("CPD_DATA=", file.path(d, "cpd.csv")),
+//'   paste0("INIT_PROB=", file.path(d, "smoking", "initiation.csv")),
+//'   paste0("CESS_PROB=", file.path(d, "smoking", "cessation.csv")),
+//'   paste0("MORTALITY_PROB=", file.path(d, "mortality", "acm.csv")),
+//'   paste0("CPD_DATA=", file.path(d, "smoking", "cpd.csv")),
 //'   paste0("OUTPUTFILE=", tempfile("out_", fileext = ".txt")),
 //'   paste0("ERRORFILE=", tempfile("err_", fileext = ".txt"))
 //' ), tf)
@@ -1426,7 +1428,11 @@ Rcpp::List SHGInterface::buildConfig(bool debug, bool use_effective_runtime, boo
   config["rng_strategy"] = rng_strategy;
   const bool use_effective = use_effective_runtime && has_effective_runtime_config_;
   config["number_of_segments"] = use_effective ? last_effective_number_of_segments_ : number_of_segments;
-  config["num_threads"] = use_effective ? last_effective_num_threads_ : num_threads;
+  // Reproducibility export (getReproConfig): omit num_threads — outcomes must not depend on
+  // thread count given fixed seeds and effective segment count; only segments are stored.
+  if (!(use_effective_runtime && require_effective_runtime)) {
+     config["num_threads"] = use_effective ? last_effective_num_threads_ : num_threads;
+  }
   
   // Get seeds using get_current_seeds(). Prefer integer output for whole values
   // so YAML/JSON serialization does not render confusing trailing ".0".
@@ -1501,7 +1507,9 @@ Rcpp::List SHGInterface::buildConfig(bool debug, bool use_effective_runtime, boo
      try {
         Rcpp::Environment pkg_env = Rcpp::Environment::namespace_env("SmokingHistoryGenerator");
         Rcpp::Function package_repro = pkg_env[".shg_package_repro_identity"];
-        config["package_repro"] = package_repro(Rcpp::Named("core_version") = std::string(SHG_CORE_VERSION));
+        config["package_repro"] = package_repro(
+            Rcpp::Named("core_version") = std::string(SHG_CORE_VERSION),
+            Rcpp::Named("minimal") = Rcpp::wrap(true));
      } catch(...) {
         config["package_repro"] = Rcpp::List::create();
      }
@@ -1586,7 +1594,11 @@ Rcpp::List SHGInterface::getConfig() {
 //' @title Get Reproducibility Configuration
 //' @description Returns a configuration list that captures effective runtime settings from the last completed simulation.
 //' @param debug Logical. If TRUE, includes additional debug information such as RNG state fingerprint, package version, system info, and memory usage. If not provided, defaults to FALSE.
-//' @return A list containing the same fields as \code{getConfig()}, but with \code{number_of_segments} and \code{num_threads} exported as effective runtime values used by the last simulation. Errors if no simulation has completed on the instance.
+//' @return A list like \code{getConfig()} for the last completed simulation, but with
+//' \code{number_of_segments} as the effective segment count used and \strong{without}
+//' \code{num_threads} (thread count must not affect simulation outcomes for fixed seeds
+//' and segment layout; consumers default to auto threads when reloading). Errors if no
+//' simulation has completed on the instance.
 //' @examples
 //' \dontrun{
 //' library(SmokingHistoryGenerator)
