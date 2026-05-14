@@ -5,7 +5,7 @@
   <!-- badges: end -->
 
 ## About
-This R package provides a convenient interface to the [CISNET](https://cisnet.cancer.gov/) [Smoking History Generator](https://github.com/NCI-CISNET/shg-cli). It can produce the identical outputs as the command line version (CLI) of the Smoking History Generator in R and offers an easy way for modelers to access the Smoking History Generator directly in R.
+This R package provides a convenient interface to the [CISNET](https://cisnet.cancer.gov/) Smoking History Generator. It can produce the identical outputs as the command-line version (CLI) of the Smoking History Generator in R and offers an easy way for modelers to access the Smoking History Generator directly in R.
 
 ## Getting Started
 
@@ -22,6 +22,27 @@ pak::pak("NCI-CISNET/shg-r")
 # OR
 pak::pak("NCI-CISNET/shg-r@[optional-branch-of-your-choice]")
 ```
+
+### Precompiled binary from GitHub Releases (optional)
+
+Releases ship per-OS binaries from `R CMD INSTALL --build` (see [.github/workflows/release-draft-on-tag.yaml](.github/workflows/release-draft-on-tag.yaml)). **Download the asset in your browser** from [Releases](https://github.com/NCI-CISNET/shg-r/releases) (no GitHub token), then install from the saved file.
+
+**macOS (Apple Silicon)** — use the exact downloaded filename (including ` (1)` if the browser added it). **R 4.6+** no longer accepts `type = "binary"` for macOS CRAN builds; pass this session’s native binary type (or use `R CMD INSTALL` below):
+
+```r
+pkg_tgz <- path.expand("~/Downloads/SmokingHistoryGenerator_6.5.2-1.0.0_macos-arm64.tgz")
+stopifnot(file.exists(pkg_tgz))
+install.packages(pkg_tgz, repos = NULL, type = .Platform$pkgType)
+```
+
+On older R, `.Platform$pkgType` is still the right choice when it is not `"source"`. Shell install avoids the `type` argument entirely:
+
+```bash
+R CMD INSTALL /path/to/SmokingHistoryGenerator_6.5.2-1.0.0_macos-arm64.tgz
+```
+
+Intel Macs use `_macos-x64.tgz`. Windows and Linux assets use `.zip` / `*_linux-*_R_*.tar.gz` with the same `install.packages(..., repos = NULL, type = .Platform$pkgType)` idea when your R build reports a non-`source` pkg type.
+
 ## Loading parameter sets
 
 The SHG needs calibrated input files (initiation, cessation, CPD, and mortality tables).
@@ -212,13 +233,13 @@ RNGSTREAM_SIM_POP <- shg$runSimFromDataFrame(pop)
 - **RngStream** (default): Recommended for all use cases, especially multi-segment and parallel simulations. Supports multiple segments and multi-threading while maintaining IID properties.
 - **MersenneTwister**: Legacy RNG for backward compatibility. **Restricted to single-segment, single-threaded execution** due to limitations in maintaining IID properties across segments. Attempting to use MersenneTwister with `number_of_segments > 1` or `num_threads != 1` will result in an error.
 
-If you want to produce identical results as with legacy versions of the SHG command line version (v6.3.5 and earlier), you must select the Mersenne Twister strategy (see [shg-cli](https://github.com/NCI-CISNET/shg-cli/)):
+If you want to produce identical results as with legacy versions of the SHG command line version (v6.3.5 and earlier), you must select the Mersenne Twister strategy (see the legacy CLI documentation distributed with those releases):
 
 ```r
 library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
 N <- 10^5 # Individuals to simulate (REPEAT)
-# If you want to produce identical results as previous versions of shg-cli you must set the following properties:
+# If you want to produce identical results as previous versions of the legacy CLI you must set the following properties:
 shg$rng_strategy <- "MersenneTwister"
 # Note: MersenneTwister is automatically restricted to 1 segment and non-parallel execution
 MT_SIM <- shg$runSimFromFixedValues(N, 0, 0, 1940)
@@ -288,7 +309,7 @@ The Smoking History Generator CLI (Command Line Interface) was developed in the 
 - NCI contact: Rocky Feuer
 
 ## Publications
-You can find a complete set of publications about the Smoking History Generator in the [shg-cli readme](https://github.com/NCI-CISNET/shg-cli/tree/v6.4.0-rc?tab=readme-ov-file#publications).
+You can find a complete set of publications about the Smoking History Generator via [CISNET](https://cisnet.cancer.gov/) and project-specific resource pages linked from there.
 
 ## Funding
 Funding for the CISNET Smoking History Generator and the Rcpp wrapper came from the following National Cancer Institute (NCI) grants.

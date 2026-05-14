@@ -36,7 +36,32 @@ devtools::load_all()
 library(SmokingHistoryGenerator)
 ```
 
+## CRAN-style `R CMD check` on your machine
+
+- **Reserved `inst/` paths:** Do not ship ad hoc files under `inst/html/` — R uses
+  that directory for HTML help. Static assets (e.g. the matrix “rain” viz) live under
+  `inst/matrix-rain/` instead.
+
+- **Personal `~/.R/Makevars`:** Flags such as `-march=native`, `-ffast-math`, and
+  `-flto` often produce a **NOTE** (“non-portable flag(s)”) and can break `dyn.load`
+  for compiled packages. For a clean check, use the template
+  **`tools/Makevars.CRAN-safe`** (copy over your user Makevars, or point
+  **`R_MAKEVARS_USER`** at that file for one session).
+
+- **HTML manual validation:** If check reports that **HTML Tidy** is missing or too
+  old, on macOS with Homebrew install or upgrade [tidy-html5](https://www.html-tidy.org/):
+
+  ```bash
+  brew install tidy-html5
+  # or, if already installed:
+  brew upgrade tidy-html5
+  ```
+
+  Ensure `tidy` is on your `PATH` (`which tidy`).
+
 ## Performance optimization (developer/local builds)
+
+For **`R CMD check --as-cran`**, prefer **`tools/Makevars.CRAN-safe`** (see above) instead of aggressive flags below.
 
 The package is built with `-O3` by default. For machine-specific speedups on local runs,
 you can enable CPU-targeted instructions in `~/.R/Makevars`:
@@ -46,4 +71,4 @@ CXX17FLAGS += -march=native
 ```
 
 This can improve throughput for numeric code, but binaries built with `-march=native`
-are not portable across different CPU families.
+are not portable across different CPU families, and **CRAN’s check will NOTE non-portable flags** if this is enabled during the check.
