@@ -6,7 +6,7 @@ Usage:
     python shg-sync.py check              # Compare shared files, report differences
     python shg-sync.py sync-from-cli     # Copy shared files: CLI → shg-r
     python shg-sync.py sync-to-cli       # Copy shared files: shg-r → CLI (dev only)
-    python shg-sync.py update-description # Update DESCRIPTION sync fields
+    python shg-sync.py update-description # Update inst/SHG-SYNC sync fields
     python shg-sync.py validate           # Pre-release validation
 
 Assumes shg-cli and shg-r are sibling directories.
@@ -201,8 +201,8 @@ def cmd_sync_to_cli():
 
 
 def cmd_update_description():
-    """Update DESCRIPTION file with CLI sync information."""
-    print("Updating DESCRIPTION with CLI sync info...\n")
+    """Update inst/SHG-SYNC with CLI sync information (CRAN-safe; not DESCRIPTION)."""
+    print("Updating inst/SHG-SYNC with CLI sync info...\n")
 
     # Get CLI commit hash
     try:
@@ -227,12 +227,15 @@ def cmd_update_description():
     # Calculate hash of shared files from CLI
     src_hash = md5_shared_files(CLI_SRC)
 
-    # Update DESCRIPTION
-    description_path = SHG_R_ROOT / "DESCRIPTION"
-    with open(description_path, "r") as f:
+    sync_path = SHG_R_ROOT / "inst" / "SHG-SYNC"
+    if not sync_path.exists():
+        print(f"ERROR: Missing {sync_path} (create it with RWrapperVersion and SHG* lines).")
+        return 1
+
+    with open(sync_path, "r") as f:
         lines = f.readlines()
 
-    with open(description_path, "w") as f:
+    with open(sync_path, "w") as f:
         for line in lines:
             if line.startswith("SHGMostRecentTag:"):
                 f.write(f"SHGMostRecentTag: {recent_tag}\n")
@@ -246,7 +249,7 @@ def cmd_update_description():
     print(f"  SHGMostRecentTag: {recent_tag}")
     print(f"  SHGCommitHash: {commit_hash}")
     print(f"  SHGsrcHash: {src_hash}")
-    print("\n✓ DESCRIPTION updated.")
+    print(f"\n✓ {sync_path.relative_to(SHG_R_ROOT)} updated.")
     return 0
 
 

@@ -23,6 +23,8 @@
 
 Incremental compiles plus **LTO** (`-flto` in the toolchain) can leave **`src/*.o` out of sync** with regenerated **`RcppExports.cpp`** or other headers. That mismatch often crashes inside **`CppMethod__invoke`** / **`runSimFromFixedValues`** with a fault near address **`0x1`** (wrong vtable / ABI), not a logic bug in the simulator.
 
+**macOS / Homebrew note:** `R CMD COMPILE` (used when building packages) always pulls in **`~/.R/Makevars`** (or **`~/.R/Makevars-$R_PLATFORM`**) if present; it does **not** honor **`R_MAKEVARS_USER`**. Aggressive flags there (e.g. **`-flto`** without the same on the link line, or **`-march=native`**) can yield a **`.so` that segfaults on `dyn.load`** during install. Remove or relax those flags in your personal Makevars, or temporarily rename that file while installing.
+
 **Do this after changing exported Rcpp methods, `RcppExports.cpp`, `wrapper.cpp`, shared engine sources, or when tests suddenly segfault:**
 
 1. **Clean rebuild:** from the package root, run **`bash tools/rebuild-package.sh`** (runs `rm -f src/*.o`, removes any stray `src/*.so`, then **`R CMD INSTALL --preclean .`**).
@@ -59,7 +61,7 @@ Use `tools/shg-sync.py` to manage synchronization:
 python tools/shg-sync.py check              # Check if files match
 python tools/shg-sync.py sync-from-cli     # Copy CLI → shg-r (standard)
 python tools/shg-sync.py sync-to-cli       # Copy shg-r → CLI (dev only!)
-python tools/shg-sync.py update-description  # Update DESCRIPTION sync fields
+python tools/shg-sync.py update-description  # Update inst/SHG-SYNC sync fields
 python tools/shg-sync.py validate          # Pre-release validation
 ```
 
@@ -69,10 +71,13 @@ Two separate version numbers:
 - **R package version:** `DESCRIPTION` → `Version` (e.g., 0.0.3)
 - **Core engine version:** `src/version.h` → `SHG_CORE_VERSION`
 
-Also tracks CLI sync state in `DESCRIPTION`:
+Also tracks CLI sync state in **`inst/SHG-SYNC`** (DCF-style one row; not in `DESCRIPTION`, for CRAN compatibility):
+- `RWrapperVersion` - Independent R wrapper release
 - `SHGMostRecentTag` - Which CLI tag core code matches
 - `SHGCommitHash` - CLI commit hash
 - `SHGsrcHash` - MD5 hash of shared files
+
+Run `python tools/shg-sync.py update-description` to refresh the three `SHG*` lines from the sibling **shg-cli** checkout.
 
 ### When to Bump Versions
 
@@ -86,8 +91,8 @@ Also tracks CLI sync state in `DESCRIPTION`:
 
 1. Run `python tools/shg-sync.py validate` - ensure all checks pass
 2. Update `src/version.h` to match CLI (if syncing)
-3. Update `DESCRIPTION`:
-   - Bump `Version` field
+3. Update `DESCRIPTION` and `inst/SHG-SYNC`:
+   - Bump `Version` field in `DESCRIPTION` (and `RWrapperVersion` in `inst/SHG-SYNC` when the wrapper segment changes)
    - Run `python tools/shg-sync.py update-description`
 4. Run `R CMD check` (or `rcmdcheck::rcmdcheck(error_on = "warning")` to match **GitHub Actions**, which fails on any WARNING, not only errors)
 5. Create PR, wait for CI
