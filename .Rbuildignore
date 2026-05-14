@@ -33,3 +33,5 @@
 ^tmp/
 ^tests/testdata/NHIS-1965-2016/(csv-complete|legacy-complete)(?:/|$)
 ^tests/testdata/.*\.zip$
+^demo/
+^docs/
