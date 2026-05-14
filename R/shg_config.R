@@ -2,10 +2,36 @@
 
 #' @keywords internal
 #' @noRd
-.shg_build_run_info <- function(core_version = NA_character_) {
+.shg_merge_pkg_description <- function() {
   pd <- utils::packageDescription("SmokingHistoryGenerator")
-  if (!is.list(pd))
+  if (!is.list(pd)) {
     pd <- as.list(pd)
+  }
+  syncf <- system.file("SHG-SYNC", package = "SmokingHistoryGenerator")
+  if (!nzchar(syncf) || !file.exists(syncf)) {
+    return(pd)
+  }
+  ch <- tryCatch(
+    as.data.frame(read.dcf(syncf, keep.white = TRUE), stringsAsFactors = FALSE),
+    error = function(e) NULL
+  )
+  if (is.null(ch) || !nrow(ch)) {
+    return(pd)
+  }
+  for (nm in colnames(ch)) {
+    v <- ch[[nm]][1L]
+    if (!is.na(v) && nzchar(as.character(v))) {
+      pd[[nm]] <- as.character(v)
+    }
+  }
+  pd
+}
+
+
+#' @keywords internal
+#' @noRd
+.shg_build_run_info <- function(core_version = NA_character_) {
+  pd <- .shg_merge_pkg_description()
 
   si <- Sys.info()
   cores <- tryCatch(
@@ -40,7 +66,11 @@
     ),
     software_versions = list(
       shg_core_version = core_version,
-      r_package_version = if (!is.null(pd$Version)) as.character(pd$Version)[1] else as.character(utils::packageVersion("SmokingHistoryGenerator")),
+      r_package_version = if (!is.null(pd$Version)) {
+        as.character(pd$Version)[1]
+      } else {
+        as.character(utils::packageVersion("SmokingHistoryGenerator"))
+      },
       r_wrapper_version = if (!is.null(pd$RWrapperVersion)) as.character(pd$RWrapperVersion)[1] else NA_character_,
       shg_engine_tag = if (!is.null(pd$SHGMostRecentTag)) as.character(pd$SHGMostRecentTag)[1] else NA_character_,
       shg_commit_hash = if (!is.null(pd$SHGCommitHash)) as.character(pd$SHGCommitHash)[1] else NA_character_,
@@ -194,9 +224,7 @@
 #' @keywords internal
 #' @noRd
 .shg_package_repro_identity <- function(core_version = NA_character_, minimal = FALSE) {
-  pd <- utils::packageDescription("SmokingHistoryGenerator")
-  if (!is.list(pd))
-    pd <- as.list(pd)
+  pd <- .shg_merge_pkg_description()
 
   r_package_version <- if (!is.null(pd$Version)) {
     as.character(pd$Version)[1]
@@ -637,6 +665,8 @@ shg_config_bundle <- function(shg) {
 #' you used defaults or auto settings for segments. Thread count is intentionally
 #' omitted from the portable repro file (outcomes must not depend on it). Optional
 #' \code{results} adds content hashes and compact numeric summaries for verification.
+#' If \code{results} is omitted, the YAML has no \code{results} block and no
+#' \code{repro_digest} (only engine and cohort fields for portability).
 #'
 #' If the last run was not a fixed cohort simulation, or fixed cohort metadata are
 #' missing, saving fails with an error.
@@ -664,10 +694,10 @@ shg_config_bundle <- function(shg) {
 #' \dontrun{
 #' shg <- new(SHGInterface)
 #' shg$load_params(url = "/path/to/bundle.zip")
-#' shg$runSimFromFixedValues(1000, 0, 0, 2010)
+#' sim <- shg$runSimFromFixedValues(1000, 0, 0, 2010)
 #' shg$save_config("my-run.yml")
-#' # Alternate:
-#' # shg_save_config(shg, "my-run.yml")
+#' # With results$content_md5, results$summary, and repro_digest in the YAML:
+#' # shg_save_config(shg, "my-run-with-stats.yml", results = sim)
 #' }
 #' @export
 shg_save_config <- function(shg, path, quiet = FALSE, results = NULL) {

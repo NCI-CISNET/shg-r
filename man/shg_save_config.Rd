@@ -55,6 +55,8 @@ from that fixed cohort run. Engine fields (\code{number_of_segments},
 you used defaults or auto settings for segments. Thread count is intentionally
 omitted from the portable repro file (outcomes must not depend on it). Optional
 \code{results} adds content hashes and compact numeric summaries for verification.
+If \code{results} is omitted, the YAML has no \code{results} block and no
+\code{repro_digest} (only engine and cohort fields for portability).
 
 If the last run was not a fixed cohort simulation, or fixed cohort metadata are
 missing, saving fails with an error.
@@ -63,10 +65,10 @@ missing, saving fails with an error.
 \dontrun{
 shg <- new(SHGInterface)
 shg$load_params(url = "/path/to/bundle.zip")
-shg$runSimFromFixedValues(1000, 0, 0, 2010)
+sim <- shg$runSimFromFixedValues(1000, 0, 0, 2010)
 shg$save_config("my-run.yml")
-# Alternate:
-# shg_save_config(shg, "my-run.yml")
+# With results$content_md5, results$summary, and repro_digest in the YAML:
+# shg_save_config(shg, "my-run-with-stats.yml", results = sim)
 }
 }
 \seealso{
