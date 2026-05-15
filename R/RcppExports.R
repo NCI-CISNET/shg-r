@@ -43,8 +43,8 @@ NULL
 #' library(SmokingHistoryGenerator)
 #' shg <- new(SHGInterface)
 #' # Multi-cohort populations need full NHIS-style inputs (all cohort columns).
-#' # inst/extdata is CRAN-sized only; full bundle coming soon on Zenodo — see README.
-#' shg$input_data_folder <- "/path/to/NHIS-1965-2016/csv-complete"
+#' # inst/extdata/2018 is CRAN-sized only; full bundle coming soon on Zenodo — see README.
+#' shg$input_data_folder <- "/path/to/NHIS-1965-2018/csv-complete"
 #' N <- 10^6
 #' pop <- list(
 #'     race = rep(0, N),
@@ -57,10 +57,10 @@ NULL
 #' shg$number_of_segments <- -1 # auto-calculate (default), or set explicit value for reproducibility
 #' shg$num_threads <- -1  # -1 = auto (all cores), 1 = single-threaded
 #' smoking_history <- shg$runSimFromDataFrame(pop)
-#' 
+#'
 #' # Example with MersenneTwister and custom seeds (4 values)
 #' shg2 <- new(SHGInterface)
-#' shg2$input_data_folder <- system.file("extdata", package="SmokingHistoryGenerator")
+#' shg2$input_data_folder <- system.file("extdata", "2018", package="SmokingHistoryGenerator")
 #' shg2$rng_strategy <- "MersenneTwister"
 #' shg2$mt_seeds <- c(1898587603, 1468371936, 1551308340, 1590227640)
 #' smoking_history2 <- shg2$runSimFromFixedValues(1000, 0, 0, 1950)
@@ -78,7 +78,7 @@ NULL
 #' \dontrun{
 #' library(SmokingHistoryGenerator)
 #' shg <- new(SHGInterface)
-#' shg$input_data_folder <- system.file("extdata", package="SmokingHistoryGenerator")
+#' shg$input_data_folder <- system.file("extdata", "2018", package="SmokingHistoryGenerator")
 #' N <- 10^6
 #' smoking_history <- shg$runSimFromFixedValues(N, 0, 0, 1950)
 #' }
@@ -87,13 +87,13 @@ NULL
 #' @name LegacyRunWebVersion
 #' @title LegacyRunWebVersion method
 #' @description This method offers a way to configure and run a simulation from an input configuration file. Rather than return a R DataFrame, it produces results in an output file. It works in the same as calling the CLI version of the Smoking History Generator with a single input file parameter.
-#' @param input_file_name Path to a Legacy web-style configuration file. Paths inside the file are resolved relative to the R process working directory (the \code{input_data_folder} property is ignored). Sample text configs live under \code{tests/testdata/legacy-web-examples/} in the package source; for installed use, build a config with absolute paths from \code{system.file("extdata", package = "SmokingHistoryGenerator")}.
+#' @param input_file_name Path to a Legacy web-style configuration file. Paths inside the file are resolved relative to the R process working directory (the \code{input_data_folder} property is ignored). Sample text configs live under \code{tests/testdata/legacy-web-examples/} in the package source; for installed use, build a config with absolute paths from \code{system.file("extdata", "2018", package = "SmokingHistoryGenerator")}.
 #' @examples
 #' \dontrun{
 #' # Warning: LegacyRunWebVersion ignores Rcpp properties and uses only the config file.
 #' library(SmokingHistoryGenerator)
 #' shg <- new(SHGInterface)
-#' d <- system.file("extdata", package = "SmokingHistoryGenerator")
+#' d <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
 #' tf <- tempfile(fileext = ".txt")
 #' writeLines(c(
 #'   "RNGSTRATEGY=RngStream",

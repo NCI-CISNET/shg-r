@@ -4,7 +4,7 @@
 \alias{LegacyRunWebVersion}
 \title{LegacyRunWebVersion method}
 \arguments{
-\item{input_file_name}{Path to a Legacy web-style configuration file. Paths inside the file are resolved relative to the R process working directory (the \code{input_data_folder} property is ignored). Sample text configs live under \code{tests/testdata/legacy-web-examples/} in the package source; for installed use, build a config with absolute paths from \code{system.file("extdata", package = "SmokingHistoryGenerator")}.}
+\item{input_file_name}{Path to a Legacy web-style configuration file. Paths inside the file are resolved relative to the R process working directory (the \code{input_data_folder} property is ignored). Sample text configs live under \code{tests/testdata/legacy-web-examples/} in the package source; for installed use, build a config with absolute paths from \code{system.file("extdata", "2018", package = "SmokingHistoryGenerator")}.}
 }
 \description{
 This method offers a way to configure and run a simulation from an input configuration file. Rather than return a R DataFrame, it produces results in an output file. It works in the same as calling the CLI version of the Smoking History Generator with a single input file parameter.
@@ -14,7 +14,7 @@ This method offers a way to configure and run a simulation from an input configu
 # Warning: LegacyRunWebVersion ignores Rcpp properties and uses only the config file.
 library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
-d <- system.file("extdata", package = "SmokingHistoryGenerator")
+d <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
 tf <- tempfile(fileext = ".txt")
 writeLines(c(
   "RNGSTRATEGY=RngStream",
