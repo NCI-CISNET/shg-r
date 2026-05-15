@@ -201,7 +201,7 @@ def cmd_sync_to_cli():
 
 
 def cmd_update_description():
-    """Write shg-cli sync YAML to src/shg-cli-info.txt."""
+    """Write shg-cli sync YAML to src/shg-cli-info.txt (excluded from CRAN tarballs via .Rbuildignore)."""
     print("Updating src/shg-cli-info.txt with CLI sync info...\n")
 
     # Get CLI commit hash
@@ -228,7 +228,7 @@ def cmd_update_description():
     src_hash = md5_shared_files(CLI_SRC)
 
     body = (
-        "# Bundled shg-cli sync metadata (updated by: python tools/shg-sync.py update-description)\n"
+        "# shg-cli sync metadata (updated by: python tools/shg-sync.py update-description)\n"
         "shg-cli:\n"
         f"  MostRecentTag: {recent_tag}\n"
         f"  CommitHash: {commit_hash}\n"

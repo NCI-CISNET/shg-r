@@ -18,7 +18,8 @@ Description: An efficient R wrapper for the CISNET Smoking History Generator.
     The package Version field encodes the bundled engine and R wrapper releases
     in the form ENGINE-RWRAPPER (for example 6.5.2-1.0.0). Optional shg-cli sync
     metadata (tag, commit, shared-file hash) lives in src/shg-cli-info.txt (YAML under
-    shg-cli:); see tools/shg-sync.py update-description.
+    shg-cli:; omitted from CRAN tarballs via .Rbuildignore); see tools/shg-sync.py
+    update-description.
 RoxygenNote: 7.3.3
 Roxygen: list(markdown = TRUE)
 URL: https://github.com/NCI-CISNET/shg-r

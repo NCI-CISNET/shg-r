@@ -7,16 +7,20 @@
   if (!is.list(pd)) {
     pd <- as.list(pd)
   }
-  root <- tryCatch(
-    getNamespaceInfo(asNamespace("SmokingHistoryGenerator"), "path"),
-    error = function(e) NA_character_
-  )
-  if (is.na(root) || !nzchar(root)) {
-    return(pd)
+  desc <- system.file("DESCRIPTION", package = "SmokingHistoryGenerator")
+  pkg_root <- if (nzchar(desc)) dirname(desc) else ""
+  syncf <- if (nzchar(pkg_root)) {
+    file.path(pkg_root, "src", "shg-cli-info.txt")
+  } else {
+    ""
   }
-  syncf <- file.path(root, "src", "shg-cli-info.txt")
-  if (!file.exists(syncf)) {
-    return(pd)
+  if (!nzchar(syncf) || !file.exists(syncf)) {
+    instf <- system.file("shg-cli-info", package = "SmokingHistoryGenerator")
+    if (nzchar(instf) && file.exists(instf)) {
+      syncf <- instf
+    } else {
+      return(pd)
+    }
   }
   y <- tryCatch(yaml::yaml.load_file(syncf), error = function(e) NULL)
   if (!is.list(y)) {
