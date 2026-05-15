@@ -1620,7 +1620,7 @@ Rcpp::List SHGInterface::getReproConfig() {
 //' @title Use SHG Configuration
 //' @description Configures an existing SHG instance from a configuration object (typically obtained from getConfig()).
 //' @param config A list containing configuration parameters. Must include config_version. All parameters are validated.
-//' @details This method validates the config_version and all parameters before setting them. Unknown fields are warned about but allowed for future compatibility. Missing optional fields use defaults. Fields are applied in an order suitable for round-trips from getConfig(): number_of_segments and num_threads are set before rng_strategy (so switching to Mersenne Twister does not message when the saved list already has single-threaded settings), then seeds, then paths and other options. If the list has deprecated \code{run_multi_threaded} but no \code{num_threads}, it is mapped: FALSE -> \code{num_threads = 1}, TRUE -> \code{num_threads = -1}. If both are present, \code{num_threads} wins. Old saved lists may contain \code{lifetable_filename} instead of \code{mortality_filename}; that key is still accepted and applied as the mortality table path. If the list updates local input paths (\code{input_data_folder} or any per-table filename) but omits \code{params_bundle_source} / \code{params_mortality}, any previously recorded bundle provenance is cleared for the omitted key(s) so metadata cannot refer to an older zip after retargeting inputs.
+//' @details This method validates the config_version and all parameters before setting them. Unknown fields are warned about but allowed for future compatibility. Missing optional fields use defaults. Fields are applied in an order suitable for round-trips from getConfig(): number_of_segments and num_threads are set before rng_strategy (so switching to Mersenne Twister does not message when the saved list already has single-threaded settings), then seeds, then paths and other options. If the list has deprecated \code{run_multi_threaded} but no \code{num_threads}, it is mapped: FALSE -> \code{num_threads = 1}, TRUE -> \code{num_threads = -1}. If both are present, \code{num_threads} wins. If the list updates local input paths (\code{input_data_folder} or any per-table filename) but omits \code{params_bundle_source} / \code{params_mortality}, any previously recorded bundle provenance is cleared for the omitted key(s) so metadata cannot refer to an older zip after retargeting inputs.
 //' @examples
 //' \dontrun{
 //' library(SmokingHistoryGenerator)
@@ -1710,8 +1710,6 @@ void SHGInterface::useConfig(Rcpp::List config) {
    
    if (config.containsElementNamed("mortality_filename")) {
       set_mortality_filename(Rcpp::as<std::string>(config["mortality_filename"]));
-   } else if (config.containsElementNamed("lifetable_filename")) {
-      set_mortality_filename(Rcpp::as<std::string>(config["lifetable_filename"]));
    }
    
    if (config.containsElementNamed("cpd_filename")) {
@@ -1768,7 +1766,6 @@ void SHGInterface::useConfig(Rcpp::List config) {
       config.containsElementNamed("initiation_filename") ||
       config.containsElementNamed("cessation_filename") ||
       config.containsElementNamed("mortality_filename") ||
-      config.containsElementNamed("lifetable_filename") ||
       config.containsElementNamed("cpd_filename");
 
    if (touched_local_input_paths) {
@@ -1803,7 +1800,7 @@ void SHGInterface::useConfig(Rcpp::List config) {
    std::vector<std::string> known_fields = {
     "config_version", "rng_strategy", "number_of_segments", "num_threads", "run_multi_threaded",
     "seeds", "input_data_folder", "output_file", "initiation_filename", "cessation_filename",
-    "lifetable_filename", "mortality_filename", "cpd_filename", "immediate_cessation_year",
+    "mortality_filename", "cpd_filename", "immediate_cessation_year",
     "cohort_year", "repeat", "race", "sex", "timestamp",
     "individuals", "mortality",
     "params_bundle_source", "params_mortality", "package_repro",

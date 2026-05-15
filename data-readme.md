@@ -13,7 +13,7 @@ The CRAN package ships a **small csv-partial subset** under `inst/extdata/smokin
 | `mortality_filename` | `mortality/acm.csv` |
 | `cpd_filename` | `smoking/cpd.csv` |
 
-You may still point at **flat** filenames (e.g. `initiation.csv` next to `input_data_folder`) for custom layouts. Use `mortality_filename` to select `mortality/acm.csv` or `mortality/ocm-excl-lung-cancer.csv` as needed. Wide `.txt` tables (CLI / legacy web layout) remain supported when you set filenames and paths accordingly. Saved configs that still list `lifetable_filename` are accepted by `useConfig()` and mapped to `mortality_filename`.
+You may still point at **flat** filenames (e.g. `initiation.csv` next to `input_data_folder`) for custom layouts. Use `mortality_filename` to select `mortality/acm.csv` or `mortality/ocm-excl-lung-cancer.csv` as needed. Wide `.txt` tables (CLI / legacy web layout) remain supported when you set filenames and paths accordingly.
 
 After installation, locate the folder with:
 

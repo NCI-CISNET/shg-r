@@ -488,17 +488,6 @@ test_that("useConfig() warns on unknown fields", {
   expect_warning(shg_test$useConfig(config), "Unknown config field")
 })
 
-test_that("useConfig() accepts legacy lifetable_filename key", {
-  shg <- new(SHGInterface)
-  cfg <- list(
-    config_version = "1.0",
-    rng_strategy = "RngStream",
-    lifetable_filename = "mortality/acm.csv"
-  )
-  expect_silent(shg$useConfig(cfg))
-  expect_equal(shg$mortality_filename, "mortality/acm.csv")
-})
-
 test_that("useConfig() clears stale params provenance when input paths change without bundle keys", {
   shg <- new(SHGInterface)
   shg$params_bundle_source <- "https://example.invalid/bundle.zip"
