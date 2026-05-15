@@ -27,7 +27,7 @@
 #   SHG_LEGACY_TXT_INITIATION, SHG_LEGACY_TXT_CESSATION, SHG_LEGACY_TXT_CPD,
 #   SHG_LEGACY_TXT_ACM, SHG_LEGACY_TXT_OCM
 # Defaults: initiation.txt, cessation.txt, cpd.txt, acm.txt, ocm-excl-lung-cancer.txt
-# (see tests/testdata/NHIS-1965-2016/legacy-complete/). Absolute `SHG_LEGACY_TXT_ROOT` is kept
+# (see tests/testdata/NHIS-1965-2018/legacy-complete/). Absolute `SHG_LEGACY_TXT_ROOT` is kept
 # as given (not `normalizePath`'d first) so a symlink with a space-free path can target a
 # folder whose name contains spaces. Table lines in `input.txt` avoid expanding that symlink
 # when `file.path(root, name)` already exists; paths with spaces or quotes are double-quoted.

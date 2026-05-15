@@ -2,7 +2,7 @@ library(testthat)
 library(SmokingHistoryGenerator)
 
 nhis_testdata_root <- function() {
-  test_path("../testdata/NHIS-1965-2016")
+  test_path("../testdata/NHIS-1965-2018")
 }
 
 expect_nhis_partial_files <- function(dir, ext) {

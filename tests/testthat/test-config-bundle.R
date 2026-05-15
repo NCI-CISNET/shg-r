@@ -75,7 +75,7 @@ test_that("shg_apply_config maps mortality alias to params_mortality", {
 
 test_that("shg_apply_config preserves explicit paths when no params_bundle_source", {
   shg <- new(SHGInterface)
-  ext <- system.file("extdata", package = "SmokingHistoryGenerator")
+  ext <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
   shg_apply_config(shg, list(
     input_data_folder = ext,
     initiation_filename = "smoking/initiation.csv",

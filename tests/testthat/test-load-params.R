@@ -11,7 +11,7 @@ test_that("SHGInterface params_cache_dir matches shg_params_cache_dir()", {
 
 test_that("shg_params_summary returns parameter shape from configured files", {
   shg <- new(SHGInterface)
-  d <- system.file("extdata", package = "SmokingHistoryGenerator")
+  d <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
   shg$input_data_folder <- d
 
   s <- shg_params_summary(shg)

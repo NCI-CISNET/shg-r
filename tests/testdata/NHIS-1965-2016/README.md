@@ -22,7 +22,7 @@ shg <- new(SHGInterface)
 shg$input_data_folder <- "/path/to/shg-r/tests/testdata/NHIS-1965-2016"
 ```
 
-The **trimmed csv-partial** tables shipped with the package for CRAN checks live under `inst/extdata/smoking/` and `inst/extdata/mortality/`. Regenerate them from this tree’s `csv-complete/` with:
+The **trimmed csv-partial** tables that mirror the installed package layout live under `inst/extdata/2018/` (default) and, while it exists, `inst/extdata/2016/`. Regenerate them from this tree’s `csv-complete/` with:
 
 ```bash
 Rscript tools/trim-nhis-testdata.R

@@ -1,6 +1,6 @@
 test_that("RngStream fixed cohort: results and RNG fingerprint invariant to num_threads", {
   skip_on_cran()
-  data_folder <- system.file("extdata", package = "SmokingHistoryGenerator")
+  data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
   skip_if_not(nzchar(data_folder) && dir.exists(data_folder))
 
   n <- 100000L

@@ -3,7 +3,7 @@ library(testthat)
 
 test_that("runSimFromFixedValues with attach_run_info returns four-slot bundle", {
   shg <- new(SHGInterface)
-  shg$input_data_folder <- system.file("extdata", package = "SmokingHistoryGenerator")
+  shg$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
 
   out <- shg$runSimFromFixedValues(12L, 0L, 0L, 1950L, TRUE, NULL)
   expect_type(out, "list")
@@ -35,7 +35,7 @@ test_that("runSimFromFixedValues with attach_run_info returns four-slot bundle",
 
 test_that("shg_apply_config resets then overlays (sparse cohort_year clears sticky RNG)", {
   shg <- new(SHGInterface)
-  shg$input_data_folder <- system.file("extdata", package = "SmokingHistoryGenerator")
+  shg$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
 
   shg$rng_strategy <- "MersenneTwister"
   shg$reset_seeds_to_defaults()
@@ -116,7 +116,7 @@ test_that("shg_run bundle original_config preserves params bundle intent", {
   zip_path <- testthat::test_path("../testdata/usa-national@smok-2016.zip")
   skip_if_not(file.exists(zip_path))
   shg <- new(SHGInterface)
-  shg$input_data_folder <- system.file("extdata", package = "SmokingHistoryGenerator")
+  shg$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
   cfg <- list(
     params_bundle_source = zip_path,
     params_mortality = "ocm",
@@ -133,7 +133,7 @@ test_that("shg_run bundle original_config preserves params bundle intent", {
 
 test_that("shg_run with output_file returns bundle and captures output path", {
   shg <- new(SHGInterface)
-  shg$input_data_folder <- system.file("extdata", package = "SmokingHistoryGenerator")
+  shg$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
   output_path <- tempfile(fileext = ".csv")
   on.exit(unlink(output_path), add = TRUE)
 
@@ -184,7 +184,7 @@ test_that("shg_run auto-applies params when params_bundle_source is in config", 
 test_that("shg_run defaults omitted individuals to 1000", {
   skip_on_cran()
   shg <- new(SHGInterface)
-  shg$input_data_folder <- system.file("extdata", package = "SmokingHistoryGenerator")
+  shg$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
   out <- shg_run(shg, list(race = 0L, sex = 0L, cohort_year = 1950L), attach_run_info = FALSE)
   expect_s3_class(out, "data.frame")
   expect_equal(nrow(out), 1000L)
@@ -193,7 +193,7 @@ test_that("shg_run defaults omitted individuals to 1000", {
 test_that("shg_run defaults omitted race and sex to 0", {
   skip_on_cran()
   shg <- new(SHGInterface)
-  shg$input_data_folder <- system.file("extdata", package = "SmokingHistoryGenerator")
+  shg$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
   out <- shg_run(shg, list(cohort_year = 1950L), attach_run_info = TRUE)
   expect_equal(out$original_config$cohort_year, 1950L)
   expect_equal(out$repro_config$race, 0L)

@@ -12,7 +12,7 @@ shg <- new(SHGInterface)
 
 wd <- getwd()
 setwd(tempdir())
-d <- system.file("extdata", package = "SmokingHistoryGenerator")
+d <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
 tf <- tempfile("shg_legacy_", fileext = ".txt")
 writeLines(
   c(
