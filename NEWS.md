@@ -4,7 +4,8 @@
 
 ### Bundled inputs and YAML
 
-- **Layout:** `inst/extdata` stores smoking tables under `smoking/`, mortality under `mortality/`; factory defaults use relative paths (`smoking/initiation.csv`, …).
+- **Bundled inputs:** Default factory `input_data_folder` is `system.file("extdata", "2018", package = "SmokingHistoryGenerator")` (NHIS-1965–2018 csv-partial with cohort columns **1940, 1950, 2010**). `inst/extdata/2016/` is transitional; remove it with `find_default_data_path()`'s 2016 fallbacks in `src/wrapper.h` when dropping 2016-only XML fixtures under `tests/fixtures/2016/`. Regenerate the 2018 partial from `tests/testdata/NHIS-1965-2018/csv-complete/` using **`Rscript tools/refresh-nhis-2018-csv-partial.R`**.
+- **Layout:** Under each year folder, smoking tables live in `smoking/`, mortality in `mortality/`; factory defaults use relative paths (`smoking/initiation.csv`, …).
 - Portable / written YAML groups `params_bundle_source`, `params_mortality`, and optional folder paths under a `params:` map; `shg_load_config` / `shg_apply_config` accept nested or flat keys.
 
 ### Reproducibility
@@ -17,7 +18,7 @@
 
 ### Configuration
 
-- CLI sync metadata: `src/shg-cli-info.txt` (YAML map `shg-cli:` with `MostRecentTag`, `CommitHash`, `SrcHash`); `python tools/shg-sync.py update-description` refreshes it from the sibling shg-cli checkout. When loaded from a source tree, R merges these into the `packageDescription()` list as `SHGMostRecentTag`, `SHGCommitHash`, and `SHGsrcHash`. The old `RWrapperVersion` field is dropped.
+- CLI sync metadata: `src/shg-cli-info.txt` (YAML map `shg-cli:` with `MostRecentTag`, `CommitHash`, `SrcHash`; listed in `.Rbuildignore` so it is not shipped in CRAN source tarballs); `python tools/shg-sync.py update-description` refreshes it from the sibling shg-cli checkout. R merges these into the `packageDescription()` list as `SHGMostRecentTag`, `SHGCommitHash`, and `SHGsrcHash` when the file is present (for example `devtools::load_all()` from a checkout). The old `RWrapperVersion` field is dropped.
 - `shg_load_params()` (URLs): `shg.params.download.timeout_sec` (default 600) and `shg.params.download.connect_sec` (default 60) when httr2 is installed; clearer HTTP/network errors; HTML and non-zip responses detected before unzip.
 
 - `shg_reset_defaults()` / `shg$reset_to_factory_defaults()` restore engine fields to the same defaults as a fresh `SHGInterface`.

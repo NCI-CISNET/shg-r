@@ -12,7 +12,7 @@ shg <- new(SHGInterface)
 # This example uses many birth cohorts (1930–1949). You must point input_data_folder
 # at full NHIS-style tables with all cohort columns—not the small inst/extdata bundle.
 # Full public bundle: coming soon on Zenodo (see README “Input data: CRAN bundle vs full NHIS set”).
-shg$input_data_folder <- "/path/to/NHIS-1965-2016/csv-complete"
+shg$input_data_folder <- "/path/to/NHIS-1965-2018/csv-complete"
 
 # Set a custom seed for RngStream (6-element vector)
 # This is a single seed; SHG initiates 4 IID substreams for each segment based on this starting seed
@@ -37,7 +37,7 @@ MersenneTwister requires 4 separate seeds (one for each stream: initiation, cess
 ```r
 library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
-shg$input_data_folder <- system.file("extdata", package="SmokingHistoryGenerator")
+shg$input_data_folder <- system.file("extdata", "2018", package="SmokingHistoryGenerator")
 
 # Set custom seeds for MersenneTwister (4-element vector)
 # Seeds in order: initiation, cessation, life table, individual
@@ -57,7 +57,7 @@ You can retrieve the current seed(s) for the selected RNG strategy using `get_cu
 ```r
 library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
-shg$input_data_folder <- system.file("extdata", package="SmokingHistoryGenerator")
+shg$input_data_folder <- system.file("extdata", "2018", package="SmokingHistoryGenerator")
 
 # Set custom seeds
 shg$rng_strategy <- "RngStream"

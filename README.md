@@ -46,7 +46,7 @@ Intel Macs use `_macos-x64.tgz`. Windows and Linux assets use `.zip` / `*_linux-
 ## Loading parameter sets
 
 The SHG needs calibrated input files (initiation, cessation, CPD, and mortality tables).
-The package ships a small CRAN-sized subset under `inst/extdata/smoking/` and `inst/extdata/mortality/`; full NHIS-style tables
+The package ships a **default** CRAN-sized NHIS-1965–2018 csv-partial under `inst/extdata/2018/` (`smoking/`, `mortality/`). A narrower **`inst/extdata/2016/`** mirror remains **transitional** until 2016-only fixtures and docs references are removed. Full NHIS-style tables
 are distributed as **parameter bundles** via Zenodo (and GitHub Releases).
 
 ### Traditional workflow: local folder with already-uncompressed files
@@ -208,12 +208,12 @@ sim3_df <- sim3$results
 
 You can also use a pre-generated population instead of using fixed values for race, sex, cohort_year:
 
-If `birth_cohort` spans many distinct years (as in this illustration), you need **full** NHIS-style inputs—initiation, cessation, CPD, and mortality tables that include every cohort column your population uses. The trimmed CSVs under `inst/extdata` in the installed package do **not** cover that; they only bundle a few cohorts for CRAN. See [data-readme.md](data-readme.md) for full input-data options.
+If `birth_cohort` spans many distinct years (as in this illustration), you need **full** NHIS-style inputs—initiation, cessation, CPD, and mortality tables that include every cohort column your population uses. The trimmed CSVs under `inst/extdata/2018` (and the transitional `inst/extdata/2016` mirror, if present) do **not** cover that; they only bundle a few cohorts for CRAN. See [data-readme.md](data-readme.md) for full input-data options.
 
 ```r
 shg <- new(SHGInterface)
-# Full tables required for multi-year cohorts—not system.file("extdata", ...):
-shg$input_data_folder <- "/path/to/NHIS-1965-2016/csv-complete"
+# Full tables required for multi-year cohorts—not system.file("extdata", "2018", ...):
+shg$input_data_folder <- "/path/to/NHIS-1965-2018/csv-complete"
 N <- 10^5 # Individuals to simulate (REPEAT)
 pop <- list(
     race = rep(0, N),

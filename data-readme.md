@@ -4,7 +4,7 @@ The Smoking History Generator requires a calibrated parameter set to run: probab
 
 ## Bundled minimal set (CRAN)
 
-The CRAN package ships a **small csv-partial subset** under `inst/extdata/smoking/` and `inst/extdata/mortality/` (installed as `system.file("extdata", package = "SmokingHistoryGenerator")`). Default property values point at these **CSV** paths relative to `input_data_folder`:
+The CRAN package ships a **default** NHIS-1965–2018 csv-partial under `inst/extdata/2018/` (`smoking/`, `mortality/`): cohort columns **1940, 1950, 2010** (trimmed to race 0 / sex 0 rows that match the old `inst/extdata/2016` footprint). Regenerate from `tests/testdata/NHIS-1965-2018/csv-complete/` with **`Rscript tools/refresh-nhis-2018-csv-partial.R`**. A transitional **`inst/extdata/2016/`** mirror may still be present until 2016-only paths are deleted. Defaults use the **2018** bundle: `system.file("extdata", "2018", package = "SmokingHistoryGenerator")`. Default property values point at these **CSV** paths relative to `input_data_folder`:
 
 | SHG property | Default filename |
 | ------------- | ------------- |
@@ -18,7 +18,7 @@ You may still point at **flat** filenames (e.g. `initiation.csv` next to `input_
 After installation, locate the folder with:
 
 ```r
-inputs_dir <- system.file("extdata", package = "SmokingHistoryGenerator")
+inputs_dir <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
 ```
 
 `SHGInterface` uses that folder by default (`input_data_folder`). Override `input_data_folder` if your files live elsewhere.
@@ -177,4 +177,4 @@ MORTALITY_PROB=./path/to/ocm-excl-lung-cancer.csv
 CPD_DATA=./path/to/cpd.csv
 ```
 
-Sample Legacy web configs live under `tests/testdata/legacy-web-examples/` in the **source** tree. Paths in those files assume the **repository root** as the working directory, or replace them with absolute paths built from `system.file("extdata", package = "SmokingHistoryGenerator")`.
+Sample Legacy web configs live under `tests/testdata/legacy-web-examples/` in the **source** tree. Paths in those files assume the **repository root** as the working directory, or replace them with absolute paths built from `system.file("extdata", "2018", package = "SmokingHistoryGenerator")`.
