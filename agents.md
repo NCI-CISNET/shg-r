@@ -61,7 +61,7 @@ Use `tools/shg-sync.py` to manage synchronization:
 python tools/shg-sync.py check              # Check if files match
 python tools/shg-sync.py sync-from-cli     # Copy CLI → shg-r (standard)
 python tools/shg-sync.py sync-to-cli       # Copy shg-r → CLI (dev only!)
-python tools/shg-sync.py update-description  # Update inst/SHG-SYNC sync fields
+python tools/shg-sync.py update-description  # Refresh src/shg-cli-info.txt from shg-cli
 python tools/shg-sync.py validate          # Pre-release validation
 ```
 
@@ -71,13 +71,9 @@ Two separate version numbers:
 - **R package version:** `DESCRIPTION` → `Version` (e.g., 0.0.3)
 - **Core engine version:** `src/version.h` → `SHG_CORE_VERSION`
 
-Also tracks CLI sync state in **`inst/SHG-SYNC`** (DCF-style one row; not in `DESCRIPTION`, for CRAN compatibility):
-- `RWrapperVersion` - Independent R wrapper release
-- `SHGMostRecentTag` - Which CLI tag core code matches
-- `SHGCommitHash` - CLI commit hash
-- `SHGsrcHash` - MD5 hash of shared files
+CLI sync state is recorded under a top-level **`shg-cli:`** map in **`src/shg-cli-info.txt`**. YAML keys are **`MostRecentTag`**, **`CommitHash`**, and **`SrcHash`** (MD5 of shared engine files). When the package namespace path is a source checkout (for example `devtools::load_all()`), R merges these into the object returned by **`packageDescription()`** as **`SHGMostRecentTag`**, **`SHGCommitHash`**, and **`SHGsrcHash`** for existing helpers. A normal **library install** does not ship `src/`, so those fields are absent unless you read the file from the source tree (`DESCRIPTION` itself stays CRAN-clean).
 
-Run `python tools/shg-sync.py update-description` to refresh the three `SHG*` lines from the sibling **shg-cli** checkout.
+Run `python tools/shg-sync.py update-description` to refresh `src/shg-cli-info.txt` from the sibling **shg-cli** checkout.
 
 ### When to Bump Versions
 
@@ -91,8 +87,8 @@ Run `python tools/shg-sync.py update-description` to refresh the three `SHG*` li
 
 1. Run `python tools/shg-sync.py validate` - ensure all checks pass
 2. Update `src/version.h` to match CLI (if syncing)
-3. Update `DESCRIPTION` and `inst/SHG-SYNC`:
-   - Bump `Version` field in `DESCRIPTION` (and `RWrapperVersion` in `inst/SHG-SYNC` when the wrapper segment changes)
+3. Update `DESCRIPTION` and shg-cli sync files:
+   - Bump `Version` field in `DESCRIPTION` when the wrapper segment changes
    - Run `python tools/shg-sync.py update-description`
 4. Run `R CMD check` (or `rcmdcheck::rcmdcheck(error_on = "warning")` to match **GitHub Actions**, which fails on any WARNING, not only errors)
 5. Create PR, wait for CI

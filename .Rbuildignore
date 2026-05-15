@@ -1,7 +1,7 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^\.github$
-^LICENSE\.md$
+^license\.md$
 ^\.vscode$
 ^R-sandbox$
 ^launch\.json$
@@ -21,10 +21,10 @@
 ^CITATION\.cff$
 ^\.venv$
 ^\.venv/
-^AGENTS\.md$
-^RNG-SEEDS\.md$
-^UPDATE-PACKAGE\.md$
-^CONFIG-MANAGEMENT\.md$
+^agents\.md$
+^rng-seeds\.md$
+^update-package\.md$
+^config-management\.md$
 ^data-readme\.md$
 ^dev-readme\.md$
 ^legacy-readme\.md$

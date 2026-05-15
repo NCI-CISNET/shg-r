@@ -284,17 +284,17 @@ File output matches CLI's data format (semicolon-separated).
 
 ## Setting Random Number Generator Seeds
 
-For information on specifying custom seeds for reproducibility, see [RNG-SEEDS.md](RNG-SEEDS.md).
+For information on specifying custom seeds for reproducibility, see [rng-seeds.md](rng-seeds.md).
 
 ## Configuration Management
 
-The SHG package provides both intent-oriented config APIs (`getConfig()` / `useConfig()`) and reproducibility-focused YAML export (`save_config()`), making it easier to tune runs locally while still sharing exact portable reruns. For detailed documentation and examples, see [CONFIG-MANAGEMENT.md](CONFIG-MANAGEMENT.md).
+The SHG package provides both intent-oriented config APIs (`getConfig()` / `useConfig()`) and reproducibility-focused YAML export (`save_config()`), making it easier to tune runs locally while still sharing exact portable reruns. For detailed documentation and examples, see [config-management.md](config-management.md).
 
 ## Additional documentation
 
 - [Input data and parameter bundles](data-readme.md)  
   (CRAN subset vs full NHIS inputs, `load_params()`, cache behavior, ACM/OCM, custom files)
-- [Portable YAML configuration workflow](CONFIG-MANAGEMENT.md)  
+- [Portable YAML configuration workflow](config-management.md)  
   (save/load config for platform-agnostic reproducibility)
 - [Developer build and compile guidance](dev-readme.md)  
   (source builds, compile flags, local optimization options)

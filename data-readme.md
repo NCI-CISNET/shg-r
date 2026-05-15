@@ -160,7 +160,7 @@ out <- shg2$runSim(config)
 out_df <- out$results
 ```
 
-See [CONFIG-MANAGEMENT.md](CONFIG-MANAGEMENT.md) for the full workflow.
+See [config-management.md](config-management.md) for the full workflow.
 
 Configs saved **only** from `getConfig()` without loading parameters first do not record `params_bundle_source`; if the cache is cleared you must call `load_params()` yourself with the original URL or path.
 
