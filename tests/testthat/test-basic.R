@@ -1152,7 +1152,11 @@ test_that("NHIS csv-partial bundle lists expected filenames (checked in test-nhi
   nh <- test_path("../testdata/NHIS-1965-2018/csv-partial")
   skip_if_not(dir.exists(nh), "NHIS csv-partial fixtures missing (not in CRAN tarball; use full git checkout)")
   req <- c(
-    "initiation.csv", "cessation.csv", "cpd.csv", "acm.csv", "ocm-excl-lung-cancer.csv"
+    file.path("smoking", "initiation.csv"),
+    file.path("smoking", "cessation.csv"),
+    file.path("smoking", "cpd.csv"),
+    file.path("mortality", "acm.csv"),
+    file.path("mortality", "ocm-excl-lung-cancer.csv")
   )
   for (f in req) {
     expect_true(file.exists(file.path(nh, f)), info = f)
