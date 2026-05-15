@@ -1,0 +1,5 @@
+# Bundled shg-cli sync metadata (updated by: python tools/shg-sync.py update-description)
+shg-cli:
+  MostRecentTag: v6.5.2
+  CommitHash: 72c7d59
+  SrcHash: 768c9a839a4454d858504d6dffd43da6

@@ -7,22 +7,36 @@
   if (!is.list(pd)) {
     pd <- as.list(pd)
   }
-  syncf <- system.file("SHG-SYNC", package = "SmokingHistoryGenerator")
-  if (!nzchar(syncf) || !file.exists(syncf)) {
-    return(pd)
-  }
-  ch <- tryCatch(
-    as.data.frame(read.dcf(syncf, keep.white = TRUE), stringsAsFactors = FALSE),
-    error = function(e) NULL
+  root <- tryCatch(
+    getNamespaceInfo(asNamespace("SmokingHistoryGenerator"), "path"),
+    error = function(e) NA_character_
   )
-  if (is.null(ch) || !nrow(ch)) {
+  if (is.na(root) || !nzchar(root)) {
     return(pd)
   }
-  for (nm in colnames(ch)) {
-    v <- ch[[nm]][1L]
-    if (!is.na(v) && nzchar(as.character(v))) {
-      pd[[nm]] <- as.character(v)
-    }
+  syncf <- file.path(root, "src", "shg-cli-info.txt")
+  if (!file.exists(syncf)) {
+    return(pd)
+  }
+  y <- tryCatch(yaml::yaml.load_file(syncf), error = function(e) NULL)
+  if (!is.list(y)) {
+    return(pd)
+  }
+  cli <- y[["shg-cli"]]
+  if (!is.list(cli)) {
+    return(pd)
+  }
+  tag <- cli[["MostRecentTag"]]
+  if (!is.null(tag) && length(tag) >= 1L && nzchar(as.character(tag)[1])) {
+    pd$SHGMostRecentTag <- as.character(tag)[1]
+  }
+  commit <- cli[["CommitHash"]]
+  if (!is.null(commit) && length(commit) >= 1L && nzchar(as.character(commit)[1])) {
+    pd$SHGCommitHash <- as.character(commit)[1]
+  }
+  srch <- cli[["SrcHash"]]
+  if (!is.null(srch) && length(srch) >= 1L && nzchar(as.character(srch)[1])) {
+    pd$SHGsrcHash <- as.character(srch)[1]
   }
   pd
 }
@@ -71,7 +85,6 @@
       } else {
         as.character(utils::packageVersion("SmokingHistoryGenerator"))
       },
-      r_wrapper_version = if (!is.null(pd$RWrapperVersion)) as.character(pd$RWrapperVersion)[1] else NA_character_,
       shg_engine_tag = if (!is.null(pd$SHGMostRecentTag)) as.character(pd$SHGMostRecentTag)[1] else NA_character_,
       shg_commit_hash = if (!is.null(pd$SHGCommitHash)) as.character(pd$SHGCommitHash)[1] else NA_character_,
       shg_src_hash = if (!is.null(pd$SHGsrcHash)) as.character(pd$SHGsrcHash)[1] else NA_character_
@@ -290,7 +303,6 @@
   list(
     shg_core_version = core_version,
     r_package_version = r_package_version,
-    r_wrapper_version = if (!is.null(pd$RWrapperVersion)) as.character(pd$RWrapperVersion)[1] else NA_character_,
     shg_engine_tag = if (!is.null(pd$SHGMostRecentTag)) as.character(pd$SHGMostRecentTag)[1] else NA_character_,
     shg_commit_hash = if (!is.null(pd$SHGCommitHash)) as.character(pd$SHGCommitHash)[1] else NA_character_,
     shg_src_hash = if (!is.null(pd$SHGsrcHash)) as.character(pd$SHGsrcHash)[1] else NA_character_,
@@ -350,7 +362,10 @@
     return(invisible(FALSE))
   }
 
-  key_fields <- c("shg_core_version", "r_wrapper_version", "source_locator")
+  key_fields <- c(
+    "shg_core_version", "shg_engine_tag", "shg_commit_hash", "shg_src_hash",
+    "source_locator"
+  )
   diffs <- character(0)
   for (k in key_fields) {
     ev <- expected_repro[[k]]
