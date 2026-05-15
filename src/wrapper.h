@@ -20,12 +20,31 @@ std::string find_default_data_path() {
     // Depending on local testing environment or installed package environment, the path to the default data will vary
     // TODO: review
  
-    // Installed layout: inst/extdata/* -> .../extdata/
-    path = sys_file("extdata", Rcpp::_["package"] = "SmokingHistoryGenerator");
+    // Installed layout: inst/extdata/2018/{smoking,mortality}/ -> .../extdata/2018/ (default bundle)
+    path = sys_file("extdata", "2018", Rcpp::_["package"] = "SmokingHistoryGenerator");
     default_data_path = Rcpp::as<std::string>(path);
 
     if (default_data_path.length() == 0) {
         // pkgload::load_all() / devtools sometimes resolves inst/ before install
+        path = sys_file("inst", "extdata", "2018", Rcpp::_["package"] = "SmokingHistoryGenerator");
+        default_data_path = Rcpp::as<std::string>(path);
+    }
+    if (default_data_path.length() == 0) {
+        // Transitional: NHIS-1965-2016 csv-partial mirror under extdata/2016/. Remove this block
+        // (and inst/extdata/2016/) when only the 2018 bundle is shipped.
+        path = sys_file("extdata", "2016", Rcpp::_["package"] = "SmokingHistoryGenerator");
+        default_data_path = Rcpp::as<std::string>(path);
+    }
+    if (default_data_path.length() == 0) {
+        path = sys_file("inst", "extdata", "2016", Rcpp::_["package"] = "SmokingHistoryGenerator");
+        default_data_path = Rcpp::as<std::string>(path);
+    }
+    if (default_data_path.length() == 0) {
+        // Pre-2016/2018 split: tables under extdata/smoking/... (no year subfolder)
+        path = sys_file("extdata", Rcpp::_["package"] = "SmokingHistoryGenerator");
+        default_data_path = Rcpp::as<std::string>(path);
+    }
+    if (default_data_path.length() == 0) {
         path = sys_file("inst", "extdata", Rcpp::_["package"] = "SmokingHistoryGenerator");
         default_data_path = Rcpp::as<std::string>(path);
     }
