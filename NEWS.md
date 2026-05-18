@@ -4,7 +4,7 @@
 
 ### Bundled inputs and YAML
 
-- **Bundled inputs:** Default factory `input_data_folder` is `system.file("extdata", "2018", package = "SmokingHistoryGenerator")` (NHIS-1965–2018 csv-partial with cohort columns **1940, 1950, 2010**). `inst/extdata/2016/` is transitional; remove it with `find_default_data_path()`'s 2016 fallbacks in `src/wrapper.h` when dropping 2016-only XML fixtures under `tests/fixtures/2016/`. Regenerate the 2018 partial from `tests/testdata/NHIS-1965-2018/csv-complete/` using **`Rscript tools/refresh-nhis-2018-csv-partial.R`**.
+- **Bundled inputs:** Default factory `input_data_folder` is `system.file("extdata", "2018", package = "SmokingHistoryGenerator")` (NHIS-1965–2018 csv-partial with cohort columns **1940, 1950, 2010**). Removed transitional `inst/extdata/2016/`, NHIS-1965–2016 test fixtures, and `tests/fixtures/2016/` XML goldens; tests and docs use the 2018 tree only. Regenerate the 2018 partial from `tests/testdata/NHIS-1965-2018/csv-complete/` using **`Rscript tools/refresh-nhis-2018-csv-partial.R`**.
 - **Layout:** Under each year folder, smoking tables live in `smoking/`, mortality in `mortality/`; factory defaults use relative paths (`smoking/initiation.csv`, …).
 - Portable / written YAML groups `params_bundle_source`, `params_mortality`, and optional folder paths under a `params:` map; `shg_load_config` / `shg_apply_config` accept nested or flat keys.
 

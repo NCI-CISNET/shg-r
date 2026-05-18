@@ -9,7 +9,7 @@
 \packageDescription{SmokingHistoryGenerator}
 }
 \details{
-Default calibrated inputs ship under \code{system.file("extdata", "2018", package = "SmokingHistoryGenerator")} as \code{smoking/*.csv} and \code{mortality/*.csv} (NHIS-1965-2018 csv-partial). A transitional \code{extdata/2016/} mirror may remain until 2016-only fixtures are removed. Set \code{input_data_folder} and per-table filenames accordingly. Wide legacy \code{.txt} tables remain supported. Full NHIS-style tables are distributed separately (Zenodo; the installed README is at \code{system.file("README.md", package = "SmokingHistoryGenerator")}).
+Default calibrated inputs ship under \code{system.file("extdata", "2018", package = "SmokingHistoryGenerator")} as \code{smoking/*.csv} and \code{mortality/*.csv} (NHIS-1965-2018 csv-partial). Set \code{input_data_folder} and per-table filenames accordingly. Wide legacy \code{.txt} tables remain supported. Full NHIS-style tables are distributed separately (Zenodo; the installed README is at \code{system.file("README.md", package = "SmokingHistoryGenerator")}).
 }
 \author{
 \packageAuthor{SmokingHistoryGenerator}

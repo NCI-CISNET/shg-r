@@ -30,17 +30,7 @@ std::string find_default_data_path() {
         default_data_path = Rcpp::as<std::string>(path);
     }
     if (default_data_path.length() == 0) {
-        // Transitional: NHIS-1965-2016 csv-partial mirror under extdata/2016/. Remove this block
-        // (and inst/extdata/2016/) when only the 2018 bundle is shipped.
-        path = sys_file("extdata", "2016", Rcpp::_["package"] = "SmokingHistoryGenerator");
-        default_data_path = Rcpp::as<std::string>(path);
-    }
-    if (default_data_path.length() == 0) {
-        path = sys_file("inst", "extdata", "2016", Rcpp::_["package"] = "SmokingHistoryGenerator");
-        default_data_path = Rcpp::as<std::string>(path);
-    }
-    if (default_data_path.length() == 0) {
-        // Pre-2016/2018 split: tables under extdata/smoking/... (no year subfolder)
+        // Pre-2018 split: tables under extdata/smoking/... (no year subfolder)
         path = sys_file("extdata", Rcpp::_["package"] = "SmokingHistoryGenerator");
         default_data_path = Rcpp::as<std::string>(path);
     }

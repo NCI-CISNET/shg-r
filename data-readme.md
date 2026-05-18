@@ -4,7 +4,7 @@ The Smoking History Generator requires a calibrated parameter set to run: probab
 
 ## Bundled minimal set (CRAN)
 
-The CRAN package ships a **default** NHIS-1965–2018 csv-partial under `inst/extdata/2018/` (`smoking/`, `mortality/`): cohort columns **1940, 1950, 2010** (trimmed to race 0 / sex 0 rows that match the old `inst/extdata/2016` footprint). Regenerate from `tests/testdata/NHIS-1965-2018/csv-complete/` with **`Rscript tools/refresh-nhis-2018-csv-partial.R`**. A transitional **`inst/extdata/2016/`** mirror may still be present until 2016-only paths are deleted. Defaults use the **2018** bundle: `system.file("extdata", "2018", package = "SmokingHistoryGenerator")`. Default property values point at these **CSV** paths relative to `input_data_folder`:
+The CRAN package ships a **default** NHIS-1965–2018 csv-partial under `inst/extdata/2018/` (`smoking/`, `mortality/`): cohort columns **1940, 1950, 2010** (trimmed to race 0 / sex 0). Regenerate from `tests/testdata/NHIS-1965-2018/csv-complete/` with **`Rscript tools/refresh-nhis-2018-csv-partial.R`**. Defaults use `system.file("extdata", "2018", package = "SmokingHistoryGenerator")`. Default property values point at these **CSV** paths relative to `input_data_folder`:
 
 | SHG property | Default filename |
 | ------------- | ------------- |
@@ -23,7 +23,7 @@ inputs_dir <- system.file("extdata", "2018", package = "SmokingHistoryGenerator"
 
 `SHGInterface` uses that folder by default (`input_data_folder`). Override `input_data_folder` if your files live elsewhere.
 
-## Full NHIS 1965–2016 inputs (`load_params`)
+## Full NHIS 1965–2018 inputs (`load_params`)
 
 The **full** calibrated NHIS-style tables are **too large for CRAN**.
 They are distributed as **parameter bundles** — self-contained `.zip` archives
