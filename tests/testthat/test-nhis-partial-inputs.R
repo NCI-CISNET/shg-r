@@ -21,7 +21,7 @@ expect_nhis_legacy_partial <- function(dir) {
   for (f in c(
     "initiation.txt",
     "cessation.txt",
-    "cpd.csv",
+    "cpd.txt",
     "acm.txt",
     "ocm-excl-lung-cancer.txt"
   )) {
@@ -41,7 +41,7 @@ run_fixed_cohort <- function(dir, legacy_txt) {
     shg$cessation_filename <- "smoking/cessation.csv"
     shg$mortality_filename <- "mortality/acm.csv"
   }
-  shg$cpd_filename <- if (legacy_txt) "cpd.csv" else "smoking/cpd.csv"
+  shg$cpd_filename <- if (legacy_txt) "cpd.txt" else "smoking/cpd.csv"
   shg$rng_strategy <- "RngStream"
   shg$num_threads <- 1
   shg$number_of_segments <- 1
@@ -61,7 +61,7 @@ test_that("NHIS csv-partial fixture exists and runs (CSV tables, no dot-only CPD
   expect_true(all(out$smoking_initiation_age <= 99 | out$smoking_initiation_age == -999))
 })
 
-test_that("NHIS legacy-partial fixture exists and runs (wide .txt + preamble; CPD as .csv)", {
+test_that("NHIS legacy-partial fixture exists and runs (wide .txt + preamble)", {
   nhis_base <- nhis_testdata_root()
   skip_if_not(
     dir.exists(nhis_base),
