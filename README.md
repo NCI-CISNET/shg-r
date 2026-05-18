@@ -1,21 +1,22 @@
 # Smoking History Generator: R Interface<img src="./man/figures/cisnet-logo.svg" width="100px;" align="right">
-  <!-- badges: start -->
-  [![R-CMD-check](https://github.com/NCI-CISNET/shg-r/actions/workflows/R-CMD-check-all-OS.yaml/badge.svg)](https://github.com/NCI-CISNET/shg-r/actions/workflows/R-CMD-check-all-OS.yaml)
-  [![License: GPL-3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://choosealicense.com/licenses/gpl-3.0/)
-  <!-- badges: end -->
+
+[![R-CMD-check](https://github.com/NCI-CISNET/shg-r/actions/workflows/R-CMD-check-all-OS.yaml/badge.svg)](https://github.com/NCI-CISNET/shg-r/actions/workflows/R-CMD-check-all-OS.yaml)
+[![License: GPL-3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://choosealicense.com/licenses/gpl-3.0/)
 
 ## About
+
 This R package provides a convenient interface to the [CISNET](https://cisnet.cancer.gov/) Smoking History Generator. It can produce the identical outputs as the command-line version (CLI) of the Smoking History Generator in R and offers an easy way for modelers to access the Smoking History Generator directly in R.
 
 ## Getting Started
 
 ### Installation from CRAN
-_Note: Eventually this package will be hosted on CRAN. For now, you must install directly from Github (see below)_.
+
 ```r
-install.packages("SmokingHistoryGenerator") # Coming soon to CRAN
+install.packages("SmokingHistoryGenerator")
 ```
 
-### Installation from Github
+### Installation from GitHub
+
 ```r
 install.packages("pak")
 pak::pak("NCI-CISNET/shg-r")
@@ -25,7 +26,7 @@ pak::pak("NCI-CISNET/shg-r@[optional-branch-of-your-choice]")
 
 ### Precompiled binary from GitHub Releases (optional)
 
-Releases ship per-OS binaries from `R CMD INSTALL --build` (see [.github/workflows/release-draft-on-tag.yaml](.github/workflows/release-draft-on-tag.yaml)). **Download the asset in your browser** from [Releases](https://github.com/NCI-CISNET/shg-r/releases) (no GitHub token), then install from the saved file.
+Releases ship per-OS binaries from `R CMD INSTALL --build`. **Download the asset in your browser** from [Releases](https://github.com/NCI-CISNET/shg-r/releases) (no GitHub token), then install from the saved file.
 
 **macOS (Apple Silicon)** — use the exact downloaded filename (including ` (1)` if the browser added it). **R 4.6+** no longer accepts `type = "binary"` for macOS CRAN builds; pass this session’s native binary type (or use `R CMD INSTALL` below):
 
@@ -47,7 +48,7 @@ Intel Macs use `_macos-x64.tgz`. Windows and Linux assets use `.zip` / `*_linux-
 
 The SHG needs calibrated input files (initiation, cessation, CPD, and mortality tables).
 The package ships a **default** CRAN-sized NHIS-1965–2018 csv-partial under `inst/extdata/2018/` (`smoking/`, `mortality/`). Full NHIS-style tables
-are distributed as **parameter bundles** via Zenodo (and GitHub Releases).
+are distributed as **parameter bundles** via Zenodo (and GitHub Releases). See `?shg_load_params` for bundle URLs, ACM vs OCM mortality, authentication, and cache behavior.
 
 ### Traditional workflow: local folder with already-uncompressed files
 
@@ -117,12 +118,13 @@ run_cfg <- list(
 ```
 
 The bundle is downloaded/extracted once and cached locally; subsequent calls reuse the cache.
-See [`data-readme.md`](data-readme.md) for all supported URL forms, the mortality toggle (ACM vs OCM), private-repo authentication, and cache management.
 
 ---
 
 ## Basic usage
+
 Using a config list that includes a parameter bundle source (recommended), you can launch a smoking history simulation as follows:
+
 ```r
 library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
@@ -208,7 +210,7 @@ sim3_df <- sim3$results
 
 You can also use a pre-generated population instead of using fixed values for race, sex, cohort_year:
 
-If `birth_cohort` spans many distinct years (as in this illustration), you need **full** NHIS-style inputs—initiation, cessation, CPD, and mortality tables that include every cohort column your population uses. The trimmed CSVs under `inst/extdata/2018` do **not** cover that; they only bundle a few cohorts for CRAN. See [data-readme.md](data-readme.md) for full input-data options.
+If `birth_cohort` spans many distinct years (as in this illustration), you need **full** NHIS-style inputs—initiation, cessation, CPD, and mortality tables that include every cohort column your population uses. The trimmed CSVs under `inst/extdata/2018` do **not** cover that; they only bundle a few cohorts for CRAN. Use `shg_load_params()` or set `input_data_folder` to a directory with complete tables.
 
 ```r
 shg <- new(SHGInterface)
@@ -230,10 +232,11 @@ RNGSTREAM_SIM_POP <- shg$runSimFromDataFrame(pop)
 ```
 
 **Note on RNG strategies:**
+
 - **RngStream** (default): Recommended for all use cases, especially multi-segment and parallel simulations. Supports multiple segments and multi-threading while maintaining IID properties.
 - **MersenneTwister**: Legacy RNG for backward compatibility. **Restricted to single-segment, single-threaded execution** due to limitations in maintaining IID properties across segments. Attempting to use MersenneTwister with `number_of_segments > 1` or `num_threads != 1` will result in an error.
 
-If you want to produce identical results as with legacy versions of the SHG command line version (v6.3.5 and earlier), you must select the Mersenne Twister strategy (see the legacy CLI documentation distributed with those releases):
+If you want to produce identical results as with legacy versions of the SHG command line version (v6.3.5 and earlier), you must select the Mersenne Twister strategy:
 
 ```r
 library(SmokingHistoryGenerator)
@@ -282,26 +285,18 @@ bundle <- shg$runSim(run_cfg)
 
 File output matches CLI's data format (semicolon-separated).
 
-## Setting Random Number Generator Seeds
+## Random number generator seeds
 
-For information on specifying custom seeds for reproducibility, see [rng-seeds.md](rng-seeds.md).
+Set seeds on the `SHGInterface` before running (for example `shg$seed_init`, `shg$seed_cess`, `shg$seed_mortality`, `shg$seed_misc`). Use `getReproConfig()` after a run to inspect the effective values used. See `?SHGInterface` and `?getReproConfig`.
 
-## Configuration Management
+## Configuration management
 
-The SHG package provides both intent-oriented config APIs (`getConfig()` / `useConfig()`) and reproducibility-focused YAML export (`save_config()`), making it easier to tune runs locally while still sharing exact portable reruns. For detailed documentation and examples, see [config-management.md](config-management.md).
-
-## Additional documentation
-
-- [Input data and parameter bundles](data-readme.md)  
-  (CRAN subset vs full NHIS inputs, `load_params()`, cache behavior, ACM/OCM, custom files)
-- [Portable YAML configuration workflow](config-management.md)  
-  (save/load config for platform-agnostic reproducibility)
-- [Developer build and compile guidance](dev-readme.md)  
-  (source builds, compile flags, local optimization options)
-- [Legacy mode details](legacy-readme.md)
+Use `shg_apply_config()` for intent-oriented updates, `getConfig()` / `useConfig()` to read or replace settings, and `shg_write_config_yaml()` / `shg_load_config()` to save or reload portable YAML for exact reruns.
 
 ## Contributors
+
 The Smoking History Generator CLI (Command Line Interface) was developed in the early 2000s and maintained by several contributors since that time.
+
 - Original author: Martin Krapcho
 - Contributors: Ben Racine, Alexander Gaenko, John Clarke
 - R package wrapper author: John Clarke
@@ -309,19 +304,24 @@ The Smoking History Generator CLI (Command Line Interface) was developed in the 
 - NCI contact: Rocky Feuer
 
 ## Publications
+
 You can find a complete set of publications about the Smoking History Generator via [CISNET](https://cisnet.cancer.gov/) and project-specific resource pages linked from there.
 
 ## Funding
+
 Funding for the CISNET Smoking History Generator and the Rcpp wrapper came from the following National Cancer Institute (NCI) grants.
+
 - U01CA253858
 - U01CA199284
 - U01CA152956
 - U01CA097415
 
 ## License
+
 You may not use the Software or Datasets for commercial purposes without prior written consent from the CISNET Lung Working Group and without entering into a separate license agreement regarding such commercial use. Contact: Rafael Meza Rodriguez [rmeza@bccrc.ca](mailto:rmeza@bccrc.ca) and Jamie Tam [jamie.tam@yale.edu](mailto:jamie.tam@yale.edu).
 
 The **software** is released under the [GPL-3](https://choosealicense.com/licenses/gpl-3.0/). The **test input tables** shipped with the package are released under the [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) license.
 
 ## Copyright Notice
+
 © 2026 CISNET Lung Working Group. All rights reserved.

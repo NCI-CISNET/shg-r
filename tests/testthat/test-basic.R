@@ -191,16 +191,14 @@ test_that("RngStream simulation output in R does not differ from C++ fixtures", 
   expect_equal(RS_output_B$cessation, "2050")
   expect_equal(RS_fixture_B$cessation, "2050")
 })
-shg$rng_strategy <- "MersenneTwister"
-MT_SIM <- shg$runSimFromFixedValues(N, 0, 0, 1940)
 
-shg$rng_strategy <- "RngStream"
-RS_SIM <- shg$runSimFromFixedValues(N, 0, 0, 1940)
-
-MT_STATS <- get_stats_from_df(MT_SIM)
-RS_STATS <- get_stats_from_df(RS_SIM)
-
-test_that("Comparison between MT-SIM and RNGSTREAM-SIM", {
+test_that("MT vs RngStream and fixed vs dataframe entry points agree", {
+  shg$rng_strategy <- "MersenneTwister"
+  MT_SIM <- shg$runSimFromFixedValues(N, 0, 0, 1940)
+  shg$rng_strategy <- "RngStream"
+  RS_SIM <- shg$runSimFromFixedValues(N, 0, 0, 1940)
+  MT_STATS <- get_stats_from_df(MT_SIM)
+  RS_STATS <- get_stats_from_df(RS_SIM)
   expect_equal(dim(RS_SIM), dim(MT_SIM))
   expect_equal(MT_STATS$mean_initiation, RS_STATS$mean_initiation, tolerance = 0.01)
   # MT vs RngStream can differ more on cessation means for sparse older cohorts at N=1e4
@@ -209,36 +207,26 @@ test_that("Comparison between MT-SIM and RNGSTREAM-SIM", {
   # If MT_STATS and RS_STATS are equal, it would indicate there is a problem with the RNG
   # Results should be very similar but *not* identical
   expect_false(isTRUE(all.equal(MT_STATS, RS_STATS)))
-})
 
-pop <- list(
+  pop <- list(
     race = rep(0, N),
     sex = rep(0, N),
     birth_cohort = rep(1940, N)
-)
+  )
+  shg$rng_strategy <- "MersenneTwister"
+  MT_SIM_POP <- shg$runSimFromDataFrame(pop)
+  shg$rng_strategy <- "RngStream"
+  RS_SIM_POP <- shg$runSimFromDataFrame(pop)
+  MT_STATS_POP <- get_stats_from_df(MT_SIM_POP)
+  RS_STATS_POP <- get_stats_from_df(RS_SIM_POP)
 
-shg$rng_strategy <- "MersenneTwister"
-MT_SIM_POP <- shg$runSimFromDataFrame(pop)
-
-shg$rng_strategy <- "RngStream"
-RS_SIM_POP <- shg$runSimFromDataFrame(pop)
-
-MT_STATS_POP <- get_stats_from_df(MT_SIM_POP)
-RS_STATS_POP <- get_stats_from_df(RS_SIM_POP)
-
-test_that("Comparison between MT-SIM and RNGSTREAM-SIM with runSimFromDataFrame", {
   expect_equal(MT_STATS_POP$mean_initiation, RS_STATS_POP$mean_initiation, tolerance = 0.01)
-  # Same MT vs RngStream cessation noise as fixed-values comparison above
   expect_equal(MT_STATS_POP$mean_cessation, RS_STATS_POP$mean_cessation, tolerance = 1)
   expect_equal(MT_STATS_POP$age_at_death, RS_STATS_POP$age_at_death, tolerance = 0.01)
-})
 
-test_that("Comparison between runSimFromDataFrame and runSimFromFixedValues for MersenneTwister", {
   expect_identical(MT_STATS_POP$mean_initiation, MT_STATS$mean_initiation)
   expect_identical(MT_STATS_POP$mean_cessation, MT_STATS$mean_cessation)
   expect_identical(MT_STATS_POP$age_at_death, MT_STATS$age_at_death)
-})
-test_that("Comparison between runSimFromDataFrame and runSimFromFixedValues for RngStream", {
   expect_identical(RS_STATS_POP$mean_initiation, RS_STATS$mean_initiation)
   expect_identical(RS_STATS_POP$mean_cessation, RS_STATS$mean_cessation)
   expect_identical(RS_STATS_POP$age_at_death, RS_STATS$age_at_death)

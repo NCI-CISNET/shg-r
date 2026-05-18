@@ -2,7 +2,7 @@ Package: SmokingHistoryGenerator
 Type: Package
 Title: R Package for the Smoking History Generator
 Version: 6.5.2-1.0.0
-Date: 2026-05-04
+Date: 2026-05-18
 Authors@R: c(
     person("John", "Clarke", email = "john.clarke@cornerstonenw.com", role = c("aut", "cre"),
            comment = "Author and maintainer of R package wrapper for the SHG"),
@@ -14,12 +14,8 @@ Authors@R: c(
            comment = "Co-author of the original SHG")
   )
 Maintainer: John Clarke <john.clarke@cornerstonenw.com>
-Description: An efficient R wrapper for the CISNET Smoking History Generator.
-    The package Version field encodes the bundled engine and R wrapper releases
-    in the form ENGINE-RWRAPPER (for example 6.5.2-1.0.0). Optional shg-cli sync
-    metadata (tag, commit, shared-file hash) lives in src/shg-cli-info.txt (YAML under
-    shg-cli:; omitted from CRAN tarballs via .Rbuildignore); see tools/shg-sync.py
-    update-description.
+Description: An efficient R wrapper for the Smoking History Generator from the
+    Cancer Intervention and Surveillance Modeling Network (CISNET).
 RoxygenNote: 7.3.3
 Roxygen: list(markdown = TRUE)
 URL: https://github.com/NCI-CISNET/shg-r

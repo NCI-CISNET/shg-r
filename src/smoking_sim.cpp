@@ -984,6 +984,15 @@ bool path_is_csv(const char* path) {
    return (c1 == 'c' || c1 == 'C') && (c2 == 's' || c2 == 'S') && (c3 == 'v' || c3 == 'V');
 }
 
+// Binary mode for CSV so ftell/fseek rewinds work on Windows; text mode for legacy .txt.
+FILE* fopen_input_table(const char* path, bool is_csv) {
+   return fopen(path, is_csv ? "rb" : "r");
+}
+
+void strip_line_terminator(char* line) {
+   if (line) line[strcspn(line, "\r\n")] = '\0';
+}
+
 } // namespace
 
 // CSV dispatch note: LoadProbabilityData, LoadCPDFile and LoadMortalityFile below
@@ -1029,13 +1038,12 @@ std::lock_guard<std::mutex> lock(dataMutex);
          throw SimException("Error", "The initiation probability file must be loaded before the Cigarettes per day data file.\n");
 
       // TODO: can we easily switch between compressed and uncompressed files? Can R packages just uncompress upon loading the package?
-      pCpdFile = fopen(sCpdFile, "r");
+      const bool bIsCsv = path_is_csv(sCpdFile);
+      pCpdFile = fopen_input_table(sCpdFile, bIsCsv);
       if (pCpdFile == NULL) {
 	      snprintf(sErrorMessage, sizeof(sErrorMessage), "The specified input file '%s' does not exist\n or could not be opened.\n", sCpdFile);
 	      throw SimException("Error", sErrorMessage);
 	   }
-
-      const bool bIsCsv = path_is_csv(sCpdFile);
 
       if (bIsCsv) {
          // CSV layout: single header row "RACE,SEX,START_YOB,END_YOB,AGE,CAT1,...,CATn".
@@ -1044,7 +1052,7 @@ std::lock_guard<std::mutex> lock(dataMutex);
             snprintf(sErrorMessage, sizeof(sErrorMessage), "Error reading CSV header of file %s", sCpdFile);
             throw SimException("Error", sErrorMessage);
          }
-         sInputLine[strcspn(sInputLine, "\r\n")] = '\0';
+         strip_line_terminator(sInputLine);
          long nCols = 0;
          for (pTokenPtr = strtok(sInputLine, ","); pTokenPtr != NULL; pTokenPtr = strtok(NULL, ","))
             nCols++;
@@ -1059,7 +1067,7 @@ std::lock_guard<std::mutex> lock(dataMutex);
          const long dataStart = ftell(pCpdFile);
          wMinAgeValue = LONG_MAX; wMaxAgeValue = LONG_MIN;
          while (fgets(sInputLine, 3000, pCpdFile) != NULL) {
-            sInputLine[strcspn(sInputLine, "\r\n")] = '\0';
+            strip_line_terminator(sInputLine);
             pTokenPtr = strtok(sInputLine, ","); if (!pTokenPtr) continue;  // race
             pTokenPtr = strtok(NULL, ",");                                  // sex
             pTokenPtr = strtok(NULL, ",");                                  // start_yob
@@ -1166,9 +1174,7 @@ std::lock_guard<std::mutex> lock(dataMutex);
       glCpdRowsLoaded = 0;
 
       while (fgets(sInputLine, 3000, pCpdFile) != NULL) {
-         // Drop CR/LF so the last CSV field compares as "." on Windows (CRLF) line endings;
-         // otherwise ".\r" is not recognized as missing and atof can yield 0.
-         sInputLine[strcspn(sInputLine, "\r\n")] = '\0';
+         strip_line_terminator(sInputLine);
 
          lNumLinesRead++;
 
@@ -1502,13 +1508,12 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
             "Attempt to load Cessation Probabilities before Initiation probabilities.\nInitiation data must be loaded first.\n");
       }
 
-      pProbabilityFile = fopen(sDataFileName, "r");
+      const bool bIsCsv = path_is_csv(sDataFileName);
+      pProbabilityFile = fopen_input_table(sDataFileName, bIsCsv);
       if (pProbabilityFile == NULL) {
 	      snprintf(sErrorMessage, sizeof(sErrorMessage), "The specified input file '%s' does not exist\n or could not be opened.\n\n", sDataFileName);
 	      throw SimException("Error", sErrorMessage);
 	   }
-
-      const bool bIsCsv = path_is_csv(sDataFileName);
 
       if (bIsCsv) {
          // CSV layout: single header row "RACE,SEX,AGE,<cohort columns>".
@@ -1544,6 +1549,7 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
          const long dataStart = ftell(pProbabilityFile);
          short maxR = 0, maxS = 0, minA = SHRT_MAX, maxA = 0;
          while (fgets(sInputLine, 3000, pProbabilityFile) != NULL) {
+            strip_line_terminator(sInputLine);
             pTokenPtr = strtok(sInputLine, ","); if (!pTokenPtr) continue;
             const short r = (short)atoi(pTokenPtr);
             pTokenPtr = strtok(NULL, ",");       if (!pTokenPtr) continue;
@@ -1739,6 +1745,7 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
       // Read in the Probability Data Lines
       lNumLinesRead = 0;
       while (fgets(sInputLine, 3000, pProbabilityFile) != NULL) {
+         strip_line_terminator(sInputLine);
          lNumLinesRead++;
          pTokenPtr  = strtok(sInputLine, ",");
          wRaceValue = atoi(pTokenPtr);
@@ -1830,13 +1837,12 @@ std::lock_guard<std::mutex> lock(dataMutex);
       if (gdInitiationProbs == NULL)
          throw SimException("Error", "Initiation Probabilies must be loaded before the mortality probabilities.\n");
 
-      pMortalityFile = fopen(sMortalityFileName, "r");
+      const bool bIsCsv = path_is_csv(sMortalityFileName);
+      pMortalityFile = fopen_input_table(sMortalityFileName, bIsCsv);
       if (pMortalityFile == NULL) {
 	      snprintf(sErrorMessage, sizeof(sErrorMessage), "The specified input file '%s' does not exist\n or could not be opened.\n\n", sMortalityFileName);
 	      throw SimException("Error", sErrorMessage);
 	   }
-
-      const bool bIsCsv = path_is_csv(sMortalityFileName);
 
       if (bIsCsv) {
          // CSV layout: single header row "RACE,SEX,YOB,AGE,NS,CS_CAT1,...".
@@ -1846,9 +1852,11 @@ std::lock_guard<std::mutex> lock(dataMutex);
             snprintf(sErrorMessage, sizeof(sErrorMessage), "Error reading CSV header of file %s", sMortalityFileName);
             throw SimException("Error", sErrorMessage);
          }
+         strip_line_terminator(sInputLine);
          const long dataStart = ftell(pMortalityFile);
          short minY = SHRT_MAX, maxY = 0, minA = SHRT_MAX, maxA = 0;
          while (fgets(sInputLine, 3000, pMortalityFile) != NULL) {
+            strip_line_terminator(sInputLine);
             pTokenPtr = strtok(sInputLine, ","); if (!pTokenPtr) continue;  // race
             pTokenPtr = strtok(NULL, ",");                                  // sex
             pTokenPtr = strtok(NULL, ",");       if (!pTokenPtr) continue;  // yob
@@ -1949,7 +1957,7 @@ std::lock_guard<std::mutex> lock(dataMutex);
       // Read in the Probability Data Lines
       lNumLinesRead = 0;
       while (fgets(sInputLine, 3000, pMortalityFile)!=NULL) {
-
+         strip_line_terminator(sInputLine);
          lNumLinesRead++;
          pTokenPtr  = strtok(sInputLine, ",");
          wRaceValue = atoi(pTokenPtr);

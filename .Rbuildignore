@@ -6,7 +6,8 @@
 ^R-sandbox$
 ^launch\.json$
 ^out$
-^\.R-lib/
+^\.R-lib
+^\.Rd2pdf
 ^\.DS_Store$
 ^\.RDataTmp$
 ^\.Rhistory$
@@ -30,9 +31,11 @@
 ^legacy-readme\.md$
 ^SmokingHistoryGenerator\.Rcheck$
 ^SmokingHistoryGenerator_.*\.tar\.gz$
-^tmp/
+^tmp
 ^tests/testdata/NHIS-1965-2018/(csv-complete|legacy-complete)(?:/|$)
 ^tests/testdata/.*\.zip$
-^demo/
-^docs/
+^demo
+^docs
 ^src/shg-cli-info\.txt$
+^tests/testthat/_snaps
+^tests/testdata/NHIS-1965-2016
