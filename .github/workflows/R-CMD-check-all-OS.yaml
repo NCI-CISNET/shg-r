@@ -1,6 +1,6 @@
 # Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
 # Windows, macOS, and Ubuntu jobs run in parallel after checkout ref resolution.
-# Windows uses windows-2022 + R-devel to approximate CRAN r-devel-windows-x86_64.
+# Windows: windows-latest + R-release (existing) and windows-2022 + R-devel (CRAN r-devel-windows-x86_64).
 # CRAN-like checks use --as-cran with --no-manual (no PDF manual / no TinyTeX); the draft release
 # workflow uses the same check/build flags — see release-draft-on-tag.yaml.
 # Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
@@ -35,8 +35,23 @@ permissions:
 
 jobs:
   R-CMD-check-windows:
-    runs-on: windows-2022
-    name: windows-2022 (R-devel)${{ inputs.ref && format(' [{0}]', inputs.ref) || '' }}
+    runs-on: ${{ matrix.config.os }}
+    name: ${{ matrix.config.label }}${{ inputs.ref && format(' [{0}]', inputs.ref) || '' }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - os: windows-latest
+            r: release
+            label: windows-latest (R-release)
+            crlf_stress: false
+            artifact_suffix: windows-release
+          - os: windows-2022
+            r: devel
+            label: windows-2022 (R-devel)
+            crlf_stress: true
+            artifact_suffix: windows-cran-devel
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -66,7 +81,7 @@ jobs:
 
       - uses: r-lib/actions/setup-r@v2
         with:
-          r-version: devel
+          r-version: ${{ matrix.config.r }}
           use-public-rspm: true
 
       - uses: r-lib/actions/setup-r-dependencies@v2
@@ -75,6 +90,7 @@ jobs:
           needs: check
 
       - name: CRLF stress for bundled CSVs (Windows)
+        if: matrix.config.crlf_stress
         shell: pwsh
         run: |
           $paths = @('inst/extdata', 'tests/testdata')
@@ -99,7 +115,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: rcheck-tests-windows
+          name: rcheck-tests-${{ matrix.config.artifact_suffix }}
           if-no-files-found: ignore
           path: |
             **/*.Rcheck/tests/
