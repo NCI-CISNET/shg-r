@@ -8,7 +8,7 @@ message: 'To cite package "SmokingHistoryGenerator" in publications use:'
 type: software
 license: GPL-3.0-only
 title: 'SmokingHistoryGenerator: R wrapper for the Smoking History Generator'
-version: 6.5.2-1.0.0
+version: 6.5.3-1.0.0
 abstract: This package is an efficient R wrapper for the CISNET Smoking History Generator.
 authors:
 - family-names: Clarke
@@ -22,7 +22,7 @@ authors:
   given-names: Alexander
 repository-code: https://github.com/NCI-CISNET/shg-r
 url: https://github.com/NCI-CISNET/shg-r
-date-released: '2026-05-11'
+date-released: '2026-05-18'
 contact:
 - family-names: Clarke
   given-names: John
