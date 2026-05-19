@@ -40,7 +40,7 @@ library(SmokingHistoryGenerator)
 
 CRAN incoming checks use flavor **`r-devel-windows-x86_64`** (R-devel on 64-bit Windows). You cannot replicate CRAN’s exact farm in GitHub Actions, but you can get close before submitting.
 
-1. **GitHub Actions** — [`.github/workflows/R-CMD-check-all-OS.yaml`](.github/workflows/R-CMD-check-all-OS.yaml) runs two Windows jobs in parallel: **`windows-latest (R-release)`** (existing) and **`windows-2022 (R-devel)`** (CRAN preflight: `--as-cran` plus CRLF stress on bundled CSVs under `inst/extdata/` and `tests/testdata/`). Ensure **`windows-2022 (R-devel)`** is green on your RC branch before uploading to CRAN.
+1. **GitHub Actions** — [`.github/workflows/R-CMD-check-all-OS.yaml`](.github/workflows/R-CMD-check-all-OS.yaml) runs **one** workflow per PR (no duplicate push+pull_request). Jobs run **in order**, stopping at the first failure: **ubuntu-latest** → **windows-latest (R-release)** → **windows-2022 (R-devel)** (CRAN preflight with CRLF stress on bundled CSVs) → **macos-latest**. Open a PR against `main`/`master`/`v*-rc` (or use **workflow_dispatch** to run on a branch without a PR). Ensure **`windows-2022 (R-devel)`** is green before uploading to CRAN.
 
 2. **Local tarball check** — From the package root:
 
