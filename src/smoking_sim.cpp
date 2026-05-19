@@ -1848,14 +1848,14 @@ std::lock_guard<std::mutex> lock(dataMutex);
          // CSV layout: single header row "RACE,SEX,YOB,AGE,NS,CS_CAT1,...".
          // Min/max year and min/max age are inferred from body rows; number of
          // smoking-status columns is fixed (COL_NumColumns).
-         if (fgets(sInputLine, 3000, pMortalityFile) == NULL) {
+         if (fgets(sInputLine, sizeof(sInputLine), pMortalityFile) == NULL) {
             snprintf(sErrorMessage, sizeof(sErrorMessage), "Error reading CSV header of file %s", sMortalityFileName);
             throw SimException("Error", sErrorMessage);
          }
          strip_line_terminator(sInputLine);
          const long dataStart = ftell(pMortalityFile);
          short minY = SHRT_MAX, maxY = 0, minA = SHRT_MAX, maxA = 0;
-         while (fgets(sInputLine, 3000, pMortalityFile) != NULL) {
+         while (fgets(sInputLine, sizeof(sInputLine), pMortalityFile) != NULL) {
             strip_line_terminator(sInputLine);
             pTokenPtr = strtok(sInputLine, ","); if (!pTokenPtr) continue;  // race
             pTokenPtr = strtok(NULL, ",");                                  // sex
@@ -1879,7 +1879,7 @@ std::lock_guard<std::mutex> lock(dataMutex);
 
       } else {
          // Legacy .txt layout: line 1 = first data line, docs, dim row.
-         if (fgets(sInputLine, 3000, pMortalityFile) == NULL) {
+         if (fgets(sInputLine, sizeof(sInputLine), pMortalityFile) == NULL) {
             snprintf(sErrorMessage, sizeof(sErrorMessage), "Error reading first DATA line of file %s", sMortalityFileName);
             throw SimException("Error", sErrorMessage);
          }
@@ -1893,14 +1893,14 @@ std::lock_guard<std::mutex> lock(dataMutex);
          }
 
          for (i = 2; i < wFirstDataLine; i++) {
-            if (fgets(sInputLine, 3000, pMortalityFile) == NULL) {
+            if (fgets(sInputLine, sizeof(sInputLine), pMortalityFile) == NULL) {
                snprintf(sErrorMessage, sizeof(sErrorMessage), "Error in  file %s, End of File reached before location of first data line as specified in line 1\n",
                   sMortalityFileName);
                throw SimException("Error", sErrorMessage);
             }
          }
 
-         if (fgets(sInputLine, 3000, pMortalityFile) == NULL) {
+         if (fgets(sInputLine, sizeof(sInputLine), pMortalityFile) == NULL) {
             snprintf(sErrorMessage, sizeof(sErrorMessage), "Error reading first DATA line of file %s", sMortalityFileName);
             throw SimException("Error", sErrorMessage);
          }
@@ -1956,7 +1956,7 @@ std::lock_guard<std::mutex> lock(dataMutex);
 
       // Read in the Probability Data Lines
       lNumLinesRead = 0;
-      while (fgets(sInputLine, 3000, pMortalityFile)!=NULL) {
+      while (fgets(sInputLine, sizeof(sInputLine), pMortalityFile)!=NULL) {
          strip_line_terminator(sInputLine);
          lNumLinesRead++;
          pTokenPtr  = strtok(sInputLine, ",");
