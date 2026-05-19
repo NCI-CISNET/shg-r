@@ -35,7 +35,7 @@
 # SHG_PARAMS_ZIP so
 # `shg_load_params()` can resolve the bundle; table paths are then overridden to these files.
 #
-# Requires tests/testdata/usa-national@smok-2016.zip (or SHG_PARAMS_ZIP) for full
+# Requires tests/testdata/usa-national@smok-2018-mort-2016.zip (or SHG_PARAMS_ZIP) for full
 # cohort/sex coverage; uses one R_USER_CACHE_DIR under out_dir for all scenarios.
 
 suppressPackageStartupMessages({
@@ -94,13 +94,13 @@ if (!nzchar(cli_bin) || !file.exists(cli_bin)) {
   )
 }
 
-zip_default <- file.path(repo_root, "tests", "testdata", "usa-national@smok-2016.zip")
+zip_default <- file.path(repo_root, "tests", "testdata", "usa-national@smok-2018-mort-2016.zip")
 zip_path <- Sys.getenv("SHG_PARAMS_ZIP", zip_default)
 zip_path <- normalizePath(zip_path, winslash = "/", mustWork = FALSE)
 if (!file.exists(zip_path)) {
   stop(
     "Parameter bundle not found: ", zip_path,
-    "\nSet SHG_PARAMS_ZIP to usa-national@smok-2016.zip or another compatible zip.",
+    "\nSet SHG_PARAMS_ZIP to usa-national@smok-2018-mort-2016.zip or another compatible zip.",
     call. = FALSE
   )
 }

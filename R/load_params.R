@@ -90,7 +90,7 @@
 #' # base_url + snapshot (Zenodo)
 #' shg$load_params(
 #'   base_url = "https://zenodo.org/records/xxxx/files",
-#'   snapshot  = "usa-national@smok-2016"
+#'   snapshot  = "usa-national@smok-2018-mort-2016"
 #' )
 #'
 #' # base_url + path (GitHub Releases alternative form)
@@ -105,7 +105,7 @@
 #' # Private repo: set GITHUB_PAT in the environment before calling load_params()
 #'
 #' # Local zip by absolute path (no download; extracted to cache on first call)
-#' shg$load_params(url = "/path/to/usa-national@smok-2016.zip")
+#' shg$load_params(url = "/path/to/usa-national@smok-2018-mort-2016.zip")
 #'
 #' # Re-download/re-extract after clearing the cache
 #' shg_clear_params_cache()

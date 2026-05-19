@@ -59,7 +59,7 @@ files and want to point SHG directly at those inputs.
 library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
 
-shg$input_data_folder   <- "/path/to/usa-national@smok-2016"
+shg$input_data_folder   <- "/path/to/usa-national@smok-2018-mort-2016"
 shg$initiation_filename <- "smoking/initiation.csv"
 shg$cessation_filename  <- "smoking/cessation.csv"
 shg$cpd_filename        <- "smoking/cpd.csv"
@@ -84,8 +84,9 @@ For now this example uses a local zip path; later this can point to a Zenodo URL
 library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
 
-# Local zip path for now (replace with Zenodo URL when published)
-zip_path <- "/path/to/usa-national@smok-2016.zip"
+# Local zip path for now (replace with Zenodo URL when published).
+# Git checkout: tests/testdata/usa-national@smok-2018-mort-2016.zip
+zip_path <- "/path/to/usa-national@smok-2018-mort-2016.zip"
 
 run_cfg <- list(
   params_bundle_source = zip_path,
@@ -108,7 +109,7 @@ Future Zenodo variant (same pattern; replace `xxxx` with the published record id
 
 ```r
 run_cfg <- list(
-  params_bundle_source = "https://zenodo.org/records/xxxx/files/usa-national@smok-2016.zip",
+  params_bundle_source = "https://zenodo.org/records/xxxx/files/usa-national@smok-2018-mort-2016.zip",
   params_mortality = "acm",
   individuals = 1e5,
   race = 0,
@@ -130,7 +131,7 @@ library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
 
 # Local zip path for now (replace with Zenodo URL when published)
-zip_path <- "/path/to/usa-national@smok-2016.zip"
+zip_path <- "/path/to/usa-national@smok-2018-mort-2016.zip"
 
 N <- 10^5 # Individuals to simulate (REPEAT)
 race = 0 # All races combined
@@ -269,7 +270,7 @@ library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
 
 run_cfg <- list(
-  params_bundle_source = "/path/to/usa-national@smok-2016.zip",
+  params_bundle_source = "/path/to/usa-national@smok-2018-mort-2016.zip",
   params_mortality = "acm",
   cohort_year = 1950,
   output_file = "/path/to/output-fixed.csv"

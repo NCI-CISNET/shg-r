@@ -19,7 +19,7 @@ resolve_demo_zip <- function() {
 
   # 2) local repo checkout path (works for developers)
   candidate <- normalizePath(
-    file.path(getwd(), "tests", "testdata", "usa-national@smok-2016.zip"),
+    file.path(getwd(), "tests", "testdata", "usa-national@smok-2018-mort-2016.zip"),
     winslash = "/",
     mustWork = FALSE
   )
@@ -28,7 +28,7 @@ resolve_demo_zip <- function() {
   stop(
     "No parameter bundle configured for demo.\n",
     "Set SHG_PARAMS_ZIP to a local bundle path or URL, e.g.:\n",
-    "  Sys.setenv(SHG_PARAMS_ZIP = '/path/to/usa-national@smok-2016.zip')\n",
+    "  Sys.setenv(SHG_PARAMS_ZIP = '/path/to/usa-national@smok-2018-mort-2016.zip')\n",
     "then re-run demo('portable-yaml-workflow', package='SmokingHistoryGenerator').",
     call. = FALSE
   )

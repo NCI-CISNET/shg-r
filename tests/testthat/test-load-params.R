@@ -136,7 +136,7 @@ test_that(".shg_assert_downloaded_zip rejects empty file", {
 })
 
 test_that(".shg_assert_downloaded_zip accepts a real parameter zip", {
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2016.zip")
+  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
   skip_if_not(file.exists(zip_path))
 
   expect_identical(
@@ -283,9 +283,9 @@ test_that(".shg_snapshot_root falls back to cache_path when no subdir", {
 test_that("load_params end-to-end: local zip extracted and paths configured", {
   skip_on_cran()
 
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2016.zip")
+  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
   skip_if_not(file.exists(zip_path),
-              "Local parameter zip not present (tests/testdata/usa-national@smok-2016.zip)")
+              "Local parameter zip not present (tests/testdata/usa-national@smok-2018-mort-2016.zip)")
 
   # Use a dedicated temp cache so this test does not pollute the real cache
   # and cleans up after itself regardless of pass/fail.
@@ -314,9 +314,9 @@ test_that("load_params end-to-end: local zip extracted and paths configured", {
 test_that("load_params end-to-end: ocm mortality from local zip", {
   skip_on_cran()
 
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2016.zip")
+  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
   skip_if_not(file.exists(zip_path),
-              "Local parameter zip not present (tests/testdata/usa-national@smok-2016.zip)")
+              "Local parameter zip not present (tests/testdata/usa-national@smok-2018-mort-2016.zip)")
 
   tmp_cache <- tempfile("shg_test_cache_ocm_")
   dir.create(tmp_cache)
@@ -339,9 +339,9 @@ test_that("load_params end-to-end: ocm mortality from local zip", {
 test_that("load_params: second call reuses cache (no re-extraction)", {
   skip_on_cran()
 
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2016.zip")
+  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
   skip_if_not(file.exists(zip_path),
-              "Local parameter zip not present (tests/testdata/usa-national@smok-2016.zip)")
+              "Local parameter zip not present (tests/testdata/usa-national@smok-2018-mort-2016.zip)")
 
   tmp_cache <- tempfile("shg_test_cache_reuse_")
   dir.create(tmp_cache)

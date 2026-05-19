@@ -22,13 +22,14 @@ message("Package root: ", pkg_root)
 library(SmokingHistoryGenerator)
 
 zip_path <- normalizePath(
-  file.path(pkg_root, "tests", "testdata", "usa-national@smok-2016.zip"),
+  file.path(pkg_root, "tests", "testdata", "usa-national@smok-2018-mort-2016.zip"),
   winslash = "/",
   mustWork = TRUE
 )
 message("Zip: ", zip_path)
 
-zip_path <- "http://localhost:5173/shg-data/bundles/usa-national@smok-2016.zip"
+# Optional HTTP bundle (uncomment to override local path):
+# zip_path <- "http://localhost:5173/shg-data/bundles/usa-national@smok-2018-mort-2016.zip"
 
 shg <- new(SHGInterface)
 run_cfg <- list(

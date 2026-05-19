@@ -113,7 +113,7 @@ test_that(".shg_results_summary_for_repro excludes NA initiation from never and 
 
 test_that("shg_run bundle original_config preserves params bundle intent", {
   skip_on_cran()
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2016.zip")
+  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
   skip_if_not(file.exists(zip_path))
   shg <- new(SHGInterface)
   shg$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
@@ -154,7 +154,7 @@ test_that("shg_run with output_file returns bundle and captures output path", {
 
 test_that("shg_run auto-applies params when params_bundle_source is in config", {
   skip_on_cran()
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2016.zip")
+  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
   skip_if_not(file.exists(zip_path))
 
   tmp_cache <- tempfile("shg_run_auto_apply_")

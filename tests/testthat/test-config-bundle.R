@@ -3,7 +3,7 @@ library(testthat)
 
 test_that(".shg_params_paths_exist is false when any core table file is missing", {
   skip_on_cran()
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2016.zip")
+  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
   skip_if_not(file.exists(zip_path))
 
   tmp_cache <- tempfile("shg_cfg_paths_exist_")
@@ -26,7 +26,7 @@ test_that(".shg_params_paths_exist is false when any core table file is missing"
 
 test_that("shg_apply_config loads bundle via params_bundle_source", {
   skip_on_cran()
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2016.zip")
+  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
   skip_if_not(file.exists(zip_path))
 
   tmp_cache <- tempfile("shg_apply_cfg_bundle_")
@@ -51,7 +51,7 @@ test_that("shg_apply_config loads bundle via params_bundle_source", {
 
 test_that("shg_apply_config maps mortality alias to params_mortality", {
   skip_on_cran()
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2016.zip")
+  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
   skip_if_not(file.exists(zip_path))
 
   tmp_cache <- tempfile("shg_apply_cfg_mort_alias_")
@@ -100,7 +100,7 @@ test_that("shg_config_bundle adds NA provenance without load_params", {
 
 test_that("shg_config_bundle records source after load_params (local zip)", {
   skip_on_cran()
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2016.zip")
+  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
   skip_if_not(file.exists(zip_path))
 
   tmp_cache <- tempfile("shg_cfg_bundle_")
@@ -123,7 +123,7 @@ test_that("shg_config_bundle records source after load_params (local zip)", {
 
 test_that("shg_use_config_bundle re-extracts when cache folder exists but files gone", {
   skip_on_cran()
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2016.zip")
+  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
   skip_if_not(file.exists(zip_path))
 
   tmp_cache <- tempfile("shg_cfg_rehydr_")
@@ -157,7 +157,7 @@ test_that("shg_use_config_bundle re-extracts when cache folder exists but files 
 
 test_that("YAML config: cache reuse, clear cache, load_config re-fetches", {
   skip_on_cran()
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2016.zip")
+  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
   skip_if_not(file.exists(zip_path))
 
   tmp_cache <- tempfile("shg_cfg_e2e_")
@@ -205,7 +205,7 @@ test_that("YAML config: cache reuse, clear cache, load_config re-fetches", {
 
 test_that("shg_load_config restores config and can re-fetch after cache clear", {
   skip_on_cran()
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2016.zip")
+  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
   skip_if_not(file.exists(zip_path))
 
   tmp_cache <- tempfile("shg_cfg_load_params_config_")
@@ -239,7 +239,7 @@ test_that("shg_load_config restores config and can re-fetch after cache clear", 
 
 test_that("SHGInterface$load_config and runSim delegate correctly", {
   skip_on_cran()
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2016.zip")
+  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
   skip_if_not(file.exists(zip_path))
 
   tmp_cache <- tempfile("shg_cfg_load_config_method_")
@@ -278,7 +278,7 @@ test_that("SHGInterface$load_config and runSim delegate correctly", {
 
 test_that("SHGInterface$save_config matches shg_save_config output", {
   skip_on_cran()
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2016.zip")
+  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
   skip_if_not(file.exists(zip_path))
 
   tmp_cache <- tempfile("shg_cfg_save_method_")
@@ -306,7 +306,7 @@ test_that("SHGInterface$save_config matches shg_save_config output", {
 
 test_that("shg_save_config writes repro-effective engine settings", {
   skip_on_cran()
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2016.zip")
+  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
   skip_if_not(file.exists(zip_path))
 
   tmp_cache <- tempfile("shg_cfg_repro_effective_")
@@ -341,7 +341,7 @@ test_that("shg_save_config writes repro-effective engine settings", {
 
 test_that("shg_save_config errors after population run following fixed cohort run", {
   skip_on_cran()
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2016.zip")
+  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
   skip_if_not(file.exists(zip_path))
 
   tmp_cache <- tempfile("shg_cfg_save_pop_invalidate_")
@@ -373,7 +373,7 @@ test_that("shg_save_config errors after population run following fixed cohort ru
 
 test_that("shg_save_config errors when run metadata not recorded", {
   skip_on_cran()
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2016.zip")
+  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
   skip_if_not(file.exists(zip_path))
 
   tmp_cache <- tempfile("shg_cfg_save_fail_")
@@ -396,7 +396,7 @@ test_that("shg_save_config errors when run metadata not recorded", {
 
 test_that("shg_write_config_yaml nests bundle keys under params and normalize flattens", {
   skip_on_cran()
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2016.zip")
+  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
   skip_if_not(file.exists(zip_path))
 
   tf <- tempfile(fileext = ".yml")

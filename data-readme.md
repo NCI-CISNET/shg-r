@@ -55,16 +55,16 @@ input-file paths on the instance in one call.
 ```r
 shg$load_params(
   base_url = "https://zenodo.org/records/xxxx/files",
-  snapshot  = "usa-national@smok-2016"
+  snapshot  = "usa-national@smok-2018-mort-2016"
 )
-# resolves to: https://zenodo.org/records/xxxx/files/usa-national@smok-2016.zip
+# resolves to: https://zenodo.org/records/xxxx/files/usa-national@smok-2018-mort-2016.zip
 ```
 
 #### GitHub Releases — full URL
 
 ```r
 shg$load_params(
-  url = "https://github.com/NCI-CISNET/shg-params/releases/download/usa-national@smok-2016/usa-national@smok-2016.zip"
+  url = "https://github.com/NCI-CISNET/shg-params/releases/download/usa-national@smok-2018-mort-2016/usa-national@smok-2018-mort-2016.zip"
 )
 ```
 
@@ -73,7 +73,7 @@ shg$load_params(
 ```r
 shg$load_params(
   base_url = "https://github.com/NCI-CISNET/shg-params/releases/download",
-  path     = "usa-national@smok-2016/usa-national@smok-2016.zip"
+  path     = "usa-national@smok-2018-mort-2016/usa-national@smok-2018-mort-2016.zip"
 )
 ```
 
@@ -83,8 +83,12 @@ If you already have the bundle on disk, pass the absolute path directly
 (no download step; the zip is extracted to the cache on first use):
 
 ```r
-shg$load_params(url = "/path/to/usa-national@smok-2016.zip")
+shg$load_params(url = "/path/to/usa-national@smok-2018-mort-2016.zip")
 ```
+
+In a **git checkout** of this repo, the same bundle used by tests and demos is at
+`tests/testdata/usa-national@smok-2018-mort-2016.zip` (smoking tables from the
+2018 NHIS release, mortality from 2016).
 
 ### Mortality table: ACM vs OCM
 
@@ -95,10 +99,10 @@ re-points `mortality_filename` to the already-cached file.
 
 ```r
 # All-cause mortality (default)
-shg$load_params(base_url = "...", snapshot = "usa-national@smok-2016")
+shg$load_params(base_url = "...", snapshot = "usa-national@smok-2018-mort-2016")
 
 # Other-cause mortality
-shg$load_params(base_url = "...", snapshot = "usa-national@smok-2016",
+shg$load_params(base_url = "...", snapshot = "usa-national@smok-2018-mort-2016",
                 mortality = "ocm")
 ```
 
@@ -140,7 +144,7 @@ Use `shg_params_summary()` to inspect the configured parameter-table shape
 
 ```r
 shg <- new(SHGInterface)
-shg$load_params(url = "/path/to/usa-national@smok-2016.zip")
+shg$load_params(url = "/path/to/usa-national@smok-2018-mort-2016.zip")
 shg_params_summary(shg)
 ```
 
