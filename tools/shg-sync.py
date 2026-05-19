@@ -6,7 +6,7 @@ Usage:
     python shg-sync.py check              # Compare shared files, report differences
     python shg-sync.py sync-from-cli     # Copy shared files: CLI → shg-r
     python shg-sync.py sync-to-cli       # Copy shared files: shg-r → CLI (dev only)
-    python shg-sync.py update-description # Update DESCRIPTION sync fields
+    python shg-sync.py update-description # Update src/shg-cli-info.txt from sibling shg-cli
     python shg-sync.py validate           # Pre-release validation
 
 Assumes shg-cli and shg-r are sibling directories.
@@ -201,8 +201,8 @@ def cmd_sync_to_cli():
 
 
 def cmd_update_description():
-    """Update DESCRIPTION file with CLI sync information."""
-    print("Updating DESCRIPTION with CLI sync info...\n")
+    """Write shg-cli sync YAML to src/shg-cli-info.txt (excluded from CRAN tarballs via .Rbuildignore)."""
+    print("Updating src/shg-cli-info.txt with CLI sync info...\n")
 
     # Get CLI commit hash
     try:
@@ -227,26 +227,22 @@ def cmd_update_description():
     # Calculate hash of shared files from CLI
     src_hash = md5_shared_files(CLI_SRC)
 
-    # Update DESCRIPTION
-    description_path = SHG_R_ROOT / "DESCRIPTION"
-    with open(description_path, "r") as f:
-        lines = f.readlines()
+    body = (
+        "# shg-cli sync metadata (updated by: python tools/shg-sync.py update-description)\n"
+        "shg-cli:\n"
+        f"  MostRecentTag: {recent_tag}\n"
+        f"  CommitHash: {commit_hash}\n"
+        f"  SrcHash: {src_hash}\n"
+    )
 
-    with open(description_path, "w") as f:
-        for line in lines:
-            if line.startswith("SHGMostRecentTag:"):
-                f.write(f"SHGMostRecentTag: {recent_tag}\n")
-            elif line.startswith("SHGCommitHash:"):
-                f.write(f"SHGCommitHash: {commit_hash}\n")
-            elif line.startswith("SHGsrcHash:"):
-                f.write(f"SHGsrcHash: {src_hash}\n")
-            else:
-                f.write(line)
+    out_path = SHG_R_ROOT / "src" / "shg-cli-info.txt"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(body, encoding="utf-8")
 
-    print(f"  SHGMostRecentTag: {recent_tag}")
-    print(f"  SHGCommitHash: {commit_hash}")
-    print(f"  SHGsrcHash: {src_hash}")
-    print("\n✓ DESCRIPTION updated.")
+    print(f"  shg-cli.MostRecentTag: {recent_tag}")
+    print(f"  shg-cli.CommitHash: {commit_hash}")
+    print(f"  shg-cli.SrcHash: {src_hash}")
+    print(f"\n✓ {out_path.relative_to(SHG_R_ROOT)} updated.")
     return 0
 
 

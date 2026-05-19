@@ -1,8 +1,7 @@
 # Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
-# Windows, macOS, and Ubuntu jobs run in parallel after checkout ref resolution.
-# CRAN-like checks use --as-cran with --no-manual (no PDF manual / no TinyTeX); the draft release
-# workflow uses the same check/build flags — see release-draft-on-tag.yaml.
-# Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
+# Sequential OS checks: ubuntu-latest first, then Windows (release, then CRAN devel), then macOS.
+# pull_request only for feature/RC branches (avoids duplicate push+PR runs); push only on main/master.
+# CRAN-like checks use --as-cran with --no-manual; see release-draft-on-tag.yaml.
 on:
   workflow_dispatch:
     branches:
@@ -13,26 +12,32 @@ on:
         required: false
         type: string
         default: ""
+  pull_request:
+    branches:
+      - main
+      - master
+      - 'v*-rc'
   push:
     branches:
-      - ci/windows-debug
+      - main
+      - master
 
 name: R CMD check (all OS)
 run-name: R CMD check (all OS) — ${{ inputs.ref || github.ref_name }}
+
+concurrency:
+  group: r-cmd-check-all-os-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
   actions: write
 
 jobs:
-  R-CMD-check-windows:
-    runs-on: windows-latest
-    name: windows-latest${{ inputs.ref && format(' [{0}]', inputs.ref) || ' (release)' }}
-
-    env:
-      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
-      R_KEEP_PKG_SOURCE: yes
-
+  resolve-ref:
+    runs-on: ubuntu-latest
+    outputs:
+      ref: ${{ steps.pick_checkout_ref.outputs.ref }}
     steps:
       - id: pick_checkout_ref
         shell: bash
@@ -49,9 +54,19 @@ jobs:
           echo "Resolved checkout ref: ${out}"
           echo "ref=${out}" >> "${GITHUB_OUTPUT}"
 
+  check-ubuntu:
+    needs: resolve-ref
+    runs-on: ubuntu-latest
+    name: ubuntu-latest (release)
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+
+    steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ steps.pick_checkout_ref.outputs.ref }}
+          ref: ${{ needs.resolve-ref.outputs.ref }}
 
       - uses: r-lib/actions/setup-pandoc@v2
 
@@ -76,52 +91,30 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: rcheck-tests-windows
+          name: rcheck-tests-ubuntu-latest
           if-no-files-found: ignore
           path: |
             **/*.Rcheck/tests/
 
-  R-CMD-check-unix:
-    runs-on: ${{ matrix.config.os }}
-
-    name: ${{ matrix.config.os }}${{ inputs.ref && format(' [{0}]', inputs.ref) || format(' ({0})', matrix.config.r) }}
-
-    strategy:
-      fail-fast: true
-      matrix:
-        config:
-          - {os: macos-latest, r: 'release'}
-          - {os: ubuntu-latest, r: 'release'}
+  check-windows-release:
+    needs: check-ubuntu
+    runs-on: windows-latest
+    name: windows-latest (R-release)
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
 
     steps:
-      - id: pick_checkout_ref
-        shell: bash
-        env:
-          INPUT_REF: ${{ inputs.ref }}
-          FALLBACK_REF: ${{ github.ref }}
-        run: |
-          set -euo pipefail
-          if [[ -n "${INPUT_REF}" ]]; then
-            out="${INPUT_REF}"
-          else
-            out="${FALLBACK_REF}"
-          fi
-          echo "Resolved checkout ref: ${out}"
-          echo "ref=${out}" >> "${GITHUB_OUTPUT}"
-
       - uses: actions/checkout@v4
         with:
-          ref: ${{ steps.pick_checkout_ref.outputs.ref }}
+          ref: ${{ needs.resolve-ref.outputs.ref }}
 
       - uses: r-lib/actions/setup-pandoc@v2
 
       - uses: r-lib/actions/setup-r@v2
         with:
-          r-version: ${{ matrix.config.r }}
+          r-version: release
           use-public-rspm: true
 
       - uses: r-lib/actions/setup-r-dependencies@v2
@@ -140,7 +133,105 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: rcheck-tests-${{ matrix.config.os }}
+          name: rcheck-tests-windows-release
+          if-no-files-found: ignore
+          path: |
+            **/*.Rcheck/tests/
+
+  check-windows-cran-devel:
+    needs: check-windows-release
+    runs-on: windows-2022
+    name: windows-2022 (R-devel)
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve-ref.outputs.ref }}
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: devel
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::rcmdcheck
+          needs: check
+
+      - name: CRLF stress for bundled CSVs (Windows)
+        shell: pwsh
+        run: |
+          $paths = @('inst/extdata', 'tests/testdata')
+          foreach ($root in $paths) {
+            if (-not (Test-Path $root)) { continue }
+            Get-ChildItem -Path $root -Recurse -Filter '*.csv' | ForEach-Object {
+              $text = [IO.File]::ReadAllText($_.FullName)
+              $text = $text -replace "`r`n", "`n"
+              $text = $text -replace "`n", "`r`n"
+              [IO.File]::WriteAllText($_.FullName, $text)
+            }
+          }
+
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          args: 'c("--no-manual", "--as-cran")'
+          upload-snapshots: true
+          build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
+          error-on: '"warning"'
+
+      - name: Upload Rcheck tests (full testthat output) on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rcheck-tests-windows-cran-devel
+          if-no-files-found: ignore
+          path: |
+            **/*.Rcheck/tests/
+
+  check-macos:
+    needs: check-windows-cran-devel
+    runs-on: macos-latest
+    name: macos-latest (release)
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve-ref.outputs.ref }}
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::rcmdcheck
+          needs: check
+
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          args: 'c("--no-manual", "--as-cran")'
+          upload-snapshots: true
+          build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
+          error-on: '"warning"'
+
+      - name: Upload Rcheck tests (full testthat output) on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rcheck-tests-macos-latest
           if-no-files-found: ignore
           path: |
             **/*.Rcheck/tests/

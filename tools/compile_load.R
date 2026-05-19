@@ -6,7 +6,7 @@ devtools::load_all()
 library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
 
-# Run from package source root; config paths are repo-relative (inst/extdata/...).
+# Run from package source root; config paths are repo-relative (inst/extdata/2018/...).
 # shg$LegacyRunWebVersion("tests/testdata/legacy-web-examples/test_input_example_MersenneTwister.txt")
 shg$LegacyRunWebVersion("tests/testdata/legacy-web-examples/test_input_example_RngStream.txt")
 

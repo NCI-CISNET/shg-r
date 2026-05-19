@@ -5,10 +5,11 @@ using namespace std;
 
 // Note that the CLI SHG version might specify default paths differently
 #define R_DEFAULT_DATA_DIR "./extdata/"
-#define R_INITIATION_DATA_FILE "initiation.csv"
-#define R_CESSATION_DATA_FILE "cessation.csv"
-#define R_OTHER_COD_DATA_FILE "ocm-excl-lung-cancer.csv"
-#define R_CPD_DATA_FILE "cpd.csv"
+#define R_INITIATION_DATA_FILE "smoking/initiation.csv"
+#define R_CESSATION_DATA_FILE "smoking/cessation.csv"
+#define R_ACM_DATA_FILE "mortality/acm.csv"
+#define R_OTHER_COD_DATA_FILE "mortality/ocm-excl-lung-cancer.csv"
+#define R_CPD_DATA_FILE "smoking/cpd.csv"
 
 std::string find_default_data_path() {
     Rcpp::Environment base("package:base");
@@ -19,12 +20,21 @@ std::string find_default_data_path() {
     // Depending on local testing environment or installed package environment, the path to the default data will vary
     // TODO: review
  
-    // Installed layout: inst/extdata/* -> .../extdata/
-    path = sys_file("extdata", Rcpp::_["package"] = "SmokingHistoryGenerator");
+    // Installed layout: inst/extdata/2018/{smoking,mortality}/ -> .../extdata/2018/ (default bundle)
+    path = sys_file("extdata", "2018", Rcpp::_["package"] = "SmokingHistoryGenerator");
     default_data_path = Rcpp::as<std::string>(path);
 
     if (default_data_path.length() == 0) {
         // pkgload::load_all() / devtools sometimes resolves inst/ before install
+        path = sys_file("inst", "extdata", "2018", Rcpp::_["package"] = "SmokingHistoryGenerator");
+        default_data_path = Rcpp::as<std::string>(path);
+    }
+    if (default_data_path.length() == 0) {
+        // Pre-2018 split: tables under extdata/smoking/... (no year subfolder)
+        path = sys_file("extdata", Rcpp::_["package"] = "SmokingHistoryGenerator");
+        default_data_path = Rcpp::as<std::string>(path);
+    }
+    if (default_data_path.length() == 0) {
         path = sys_file("inst", "extdata", Rcpp::_["package"] = "SmokingHistoryGenerator");
         default_data_path = Rcpp::as<std::string>(path);
     }
@@ -46,14 +56,39 @@ public:
     SHGInterface(Rcpp::List config);
     // Function to run simulations in parallel and combine results
     bool isValidDataFrame(Rcpp::DataFrame& dfPopulation);
-    Rcpp::DataFrame runSimFromFixedValues(int repeat, short wRace, short wSex, short wYearBirth);
-    Rcpp::DataFrame runSimFromDataFrame(Rcpp::DataFrame dfPopulation);
+    Rcpp::RObject runSimFromFixedValues(int repeat, short wRace, short wSex, short wYearBirth);
+    Rcpp::RObject runSimFromFixedValues(int repeat, short wRace, short wSex, short wYearBirth,
+                                       std::string output_file_path);
+    Rcpp::RObject runSimFromFixedValues(int repeat, short wRace, short wSex, short wYearBirth,
+                                       bool attach_run_info,
+                                       Rcpp::Nullable<Rcpp::List> original_config);
+    Rcpp::RObject runSimFromFixedValues(int repeat, short wRace, short wSex, short wYearBirth,
+                                       bool attach_run_info,
+                                       Rcpp::Nullable<Rcpp::List> original_config,
+                                       std::string output_file_path);
+    Rcpp::RObject runSimFromDataFrame(Rcpp::DataFrame dfPopulation);
+    Rcpp::RObject runSimFromDataFrame(Rcpp::DataFrame dfPopulation,
+                                      std::string output_file_path);
+    Rcpp::RObject runSimFromDataFrame(Rcpp::DataFrame dfPopulation,
+                                      bool attach_run_info,
+                                      std::string output_file_path);
+    Rcpp::RObject runSimFromDataFrame(Rcpp::DataFrame dfPopulation,
+                                      bool attach_run_info,
+                                      Rcpp::Nullable<Rcpp::List> original_config);
+    Rcpp::RObject runSimFromDataFrame(Rcpp::DataFrame dfPopulation,
+                                      bool attach_run_info,
+                                      Rcpp::Nullable<Rcpp::List> original_config,
+                                      std::string output_file_path);
 
     string input_data_folder = find_default_data_path();
     string initiation_filename = R_INITIATION_DATA_FILE;
     string cessation_filename = R_CESSATION_DATA_FILE;
-    string lifetable_filename = R_OTHER_COD_DATA_FILE;
-    string cpd_filename = R_CPD_DATA_FILE;    
+    string mortality_filename_ = R_ACM_DATA_FILE;
+    string cpd_filename = R_CPD_DATA_FILE;
+    /** Last load_params() source URL or local zip path (R package only; empty if unset). */
+    string params_bundle_source_ = "";
+    /** Last load_params() mortality choice: "acm" or "ocm" (empty if unset). */
+    string params_mortality_ = "";
     int immediate_cessation_year = 0;
 
     bool fileExists(const char* filename);
@@ -69,6 +104,23 @@ public:
     // Seed storage for RNG strategies (store MT seeds as double for exact R round-trip on all platforms).
     vector<double> mt_seeds;  // 4 seeds for MersenneTwister (initiation, cessation, life table, individual)
     vector<unsigned long> rngstream_seed;  // 6-element seed array for RngStream
+    // Effective runtime settings captured from the most recent simulation call.
+    bool has_effective_runtime_config_ = false;
+    int last_effective_number_of_segments_ = -1;
+    int last_effective_num_threads_ = -1;
+    // Last inferred single-cohort simulation context (if available).
+    bool has_last_cohort_year_ = false;
+    int last_cohort_year_ = 0;
+    // Last runSimFromFixedValues request (if available).
+    bool has_last_fixed_run_ = false;
+    int last_fixed_repeat_ = 0;
+    short last_fixed_race_ = 0;
+    short last_fixed_sex_ = 0;
+    /** runSimFromFixedValues sets this true immediately before delegating to runSimFromDataFrame. */
+    bool next_dataframe_call_is_fixed_cohort_ = false;
+    bool last_completed_sim_was_fixed_cohort_ = false;
+
+    bool last_completed_sim_was_fixed_cohort() const { return last_completed_sim_was_fixed_cohort_; }
 
     // Getters and Setters
     int get_number_of_segments() {return number_of_segments;};
@@ -95,11 +147,16 @@ public:
     string get_cessation_filename() {return cessation_filename;};
     void set_cessation_filename(string filename) {cessation_filename = filename;};
 
-    string get_lifetable_filename() {return lifetable_filename;};
-    void set_lifetable_filename(string filename) {lifetable_filename = filename;};
-    /** Same backing field as lifetable_filename; preferred name (mortality / ACM vs OCM). */
-    string get_mortality_filename() {return lifetable_filename;};
-    void set_mortality_filename(string filename) {lifetable_filename = filename;};
+    string get_mortality_filename() {return mortality_filename_;};
+    void set_mortality_filename(string filename) {mortality_filename_ = filename;};
+
+    string get_params_bundle_source() { return params_bundle_source_; };
+    void set_params_bundle_source(string s) { params_bundle_source_ = s; };
+    string get_params_mortality() { return params_mortality_; };
+    void set_params_mortality(string s) { params_mortality_ = s; };
+
+    /** Root directory for load_params() zip cache (R tools::R_user_dir); read-only from R. */
+    std::string get_params_cache_dir();
 
     string get_cpd_filename() { return cpd_filename;};
     void set_cpd_filename(string filename) {cpd_filename = filename;};
@@ -131,8 +188,6 @@ public:
     long last_cpd_min_age = 0;
     long last_cpd_max_age = 0;
     int last_num_intensity_grps = 0;
-    long last_cpd_rows_loaded = 0;
-    long last_cpd_rows_skipped = 0;
     int last_first_cohort_start = 0;
     int last_first_cohort_end = 0;
     int last_last_cohort_start = 0;
@@ -168,8 +223,17 @@ public:
     // Configuration management
     Rcpp::List getConfig(bool debug);
     Rcpp::List getConfig();  // Wrapper without debug parameter (defaults to false)
+    Rcpp::List getReproConfig(bool debug);
+    Rcpp::List getReproConfig();  // Wrapper without debug parameter (defaults to false)
     void useConfig(Rcpp::List config);
+    void reset_to_factory_defaults();
+    std::string get_shg_core_version() const;
+    Rcpp::List buildConfig(bool debug, bool use_effective_runtime, bool require_effective_runtime);
 
+private:
+    Rcpp::RObject finalizeSimOutput(Rcpp::DataFrame df,
+                                    bool attach_run_info,
+                                    const Rcpp::List& original_config);
 };
 
 

@@ -11,17 +11,17 @@ runSimFromDataFrame offers a way to configure and run a simulation from an exist
 }
 \details{
 On Windows, \code{output_file} (direct disk output) cannot be combined with
-         multi-threaded execution (\code{num_threads} not equal to \code{1}). The call stops with an error
-         before loading inputs or writing files. Use the default in-memory DataFrame return value, or set
-         \code{num_threads <- 1} to write a file.
+multi-threaded execution (\code{num_threads} not equal to \code{1}). The call stops with an error
+before loading inputs or writing files. Use the default in-memory DataFrame return value, or set
+\code{num_threads <- 1} to write a file.
 }
 \examples{
 \dontrun{
 library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
 # Multi-cohort populations need full NHIS-style inputs (all cohort columns).
-# inst/extdata is CRAN-sized only; full bundle coming soon on Zenodo — see README.
-shg$input_data_folder <- "/path/to/NHIS-1965-2016/csv-complete"
+# inst/extdata/2018 is CRAN-sized only; full bundle coming soon on Zenodo — see README.
+shg$input_data_folder <- "/path/to/NHIS-1965-2018/csv-complete"
 N <- 10^6
 pop <- list(
     race = rep(0, N),
@@ -37,7 +37,7 @@ smoking_history <- shg$runSimFromDataFrame(pop)
 
 # Example with MersenneTwister and custom seeds (4 values)
 shg2 <- new(SHGInterface)
-shg2$input_data_folder <- system.file("extdata", package="SmokingHistoryGenerator")
+shg2$input_data_folder <- system.file("extdata", "2018", package="SmokingHistoryGenerator")
 shg2$rng_strategy <- "MersenneTwister"
 shg2$mt_seeds <- c(1898587603, 1468371936, 1551308340, 1590227640)
 smoking_history2 <- shg2$runSimFromFixedValues(1000, 0, 0, 1950)

@@ -1,0 +1,5 @@
+# shg-cli sync metadata (updated by: python tools/shg-sync.py update-description)
+shg-cli:
+  MostRecentTag: v6.5.3
+  CommitHash: a042c36
+  SrcHash: 9deb0f22537ea9a8c73f818acc5a4207

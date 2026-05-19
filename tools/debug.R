@@ -12,17 +12,17 @@ shg <- new(SHGInterface)
 
 wd <- getwd()
 setwd(tempdir())
-d <- system.file("extdata", package = "SmokingHistoryGenerator")
+d <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
 tf <- tempfile("shg_legacy_", fileext = ".txt")
 writeLines(
   c(
     "RNGSTRATEGY=MersenneTwister",
     "SEED_INIT=12345", "SEED_CESS=12345", "SEED_MORTALITY=12345", "SEED_MISC=12345",
     "RACE=0", "SEX=0", "YOB=1950", "CESSATION_YR=0", "REPEAT=100",
-    paste0("INIT_PROB=", file.path(d, "initiation.csv")),
-    paste0("CESS_PROB=", file.path(d, "cessation.csv")),
-    paste0("MORTALITY_PROB=", file.path(d, "ocm-excl-lung-cancer.csv")),
-    paste0("CPD_DATA=", file.path(d, "cpd.csv")),
+    paste0("INIT_PROB=", file.path(d, "smoking", "initiation.csv")),
+    paste0("CESS_PROB=", file.path(d, "smoking", "cessation.csv")),
+    paste0("MORTALITY_PROB=", file.path(d, "mortality", "ocm-excl-lung-cancer.csv")),
+    paste0("CPD_DATA=", file.path(d, "smoking", "cpd.csv")),
     paste0("OUTPUTFILE=", tempfile("mt_out_", fileext = ".txt")),
     paste0("ERRORFILE=", tempfile("mt_err_", fileext = ".txt"))
   ),

@@ -1,0 +1,3 @@
+# Keep NHIS CSV tables LF in git; Windows checkouts stay consistent with CRAN tarballs.
+inst/extdata/**/*.csv text eol=lf
+tests/testdata/**/*.csv text eol=lf
