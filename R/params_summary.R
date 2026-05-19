@@ -238,11 +238,10 @@ shg_params_summary <- function(shg) {
   is_nonzero <- !is.na(vals_num) & abs(vals_num) >= 1e-14
 
   group_stats <- lapply(split(seq_len(nrow(early)), grp), function(ix) {
-    row_mask <- rep(ix, each = ncol(vals))
     list(
-      has_nonzero = any(is_nonzero[row_mask], na.rm = TRUE),
-      has_zero = any(is_zero[row_mask], na.rm = TRUE),
-      has_dot = any(is_dot[row_mask], na.rm = TRUE)
+      has_nonzero = any(is_nonzero[ix, , drop = FALSE], na.rm = TRUE),
+      has_zero = any(is_zero[ix, , drop = FALSE], na.rm = TRUE),
+      has_dot = any(is_dot[ix, , drop = FALSE], na.rm = TRUE)
     )
   })
 
