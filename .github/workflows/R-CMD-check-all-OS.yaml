@@ -1,5 +1,6 @@
 # Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
 # Windows, macOS, and Ubuntu jobs run in parallel after checkout ref resolution.
+# Windows uses windows-2022 + R-devel to approximate CRAN r-devel-windows-x86_64.
 # CRAN-like checks use --as-cran with --no-manual (no PDF manual / no TinyTeX); the draft release
 # workflow uses the same check/build flags — see release-draft-on-tag.yaml.
 # Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
@@ -15,7 +16,15 @@ on:
         default: ""
   push:
     branches:
+      - main
+      - master
+      - 'v*-rc'
       - ci/windows-debug
+  pull_request:
+    branches:
+      - main
+      - master
+      - 'v*-rc'
 
 name: R CMD check (all OS)
 run-name: R CMD check (all OS) — ${{ inputs.ref || github.ref_name }}
@@ -26,8 +35,8 @@ permissions:
 
 jobs:
   R-CMD-check-windows:
-    runs-on: windows-latest
-    name: windows-latest${{ inputs.ref && format(' [{0}]', inputs.ref) || ' (release)' }}
+    runs-on: windows-2022
+    name: windows-2022 (R-devel)${{ inputs.ref && format(' [{0}]', inputs.ref) || '' }}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -57,13 +66,27 @@ jobs:
 
       - uses: r-lib/actions/setup-r@v2
         with:
-          r-version: release
+          r-version: devel
           use-public-rspm: true
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::rcmdcheck
           needs: check
+
+      - name: CRLF stress for bundled CSVs (Windows)
+        shell: pwsh
+        run: |
+          $paths = @('inst/extdata', 'tests/testdata')
+          foreach ($root in $paths) {
+            if (-not (Test-Path $root)) { continue }
+            Get-ChildItem -Path $root -Recurse -Filter '*.csv' | ForEach-Object {
+              $text = [IO.File]::ReadAllText($_.FullName)
+              $text = $text -replace "`r`n", "`n"
+              $text = $text -replace "`n", "`r`n"
+              [IO.File]::WriteAllText($_.FullName, $text)
+            }
+          }
 
       - uses: r-lib/actions/check-r-package@v2
         with:

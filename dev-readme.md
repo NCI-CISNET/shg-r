@@ -36,6 +36,24 @@ devtools::load_all()
 library(SmokingHistoryGenerator)
 ```
 
+## CRAN Windows preflight
+
+CRAN incoming checks use flavor **`r-devel-windows-x86_64`** (R-devel on 64-bit Windows). You cannot replicate CRAN’s exact farm in GitHub Actions, but you can get close before submitting.
+
+1. **GitHub Actions** — [`.github/workflows/R-CMD-check-all-OS.yaml`](.github/workflows/R-CMD-check-all-OS.yaml) runs **`windows-2022`** with **`r-version: devel`**, `R CMD check --as-cran`, and a CRLF stress step on bundled CSVs under `inst/extdata/` and `tests/testdata/`. Ensure the **`windows-2022 (R-devel)`** job is green on your RC branch before uploading to CRAN.
+
+2. **Local tarball check** — From the package root:
+
+   ```bash
+   ./tools/build-cran-submission.sh
+   ```
+
+   On Windows, run `R CMD check --as-cran` on the resulting `.tar.gz` if you have a VM or machine available.
+
+3. **win-builder** (closest manual dry run) — Build the same source tarball, then upload it to [win-builder](https://win-builder.r-project.org/) and review the **R-devel / x86_64** result email. This is optional but recommended before a first submission or after engine changes.
+
+Shared engine changes must stay in sync with **shg-cli** (`python tools/shg-sync.py check`).
+
 ## CRAN-style `R CMD check` on your machine
 
 - **Reserved `inst/` paths:** Do not ship ad hoc files under `inst/html/` — R uses
