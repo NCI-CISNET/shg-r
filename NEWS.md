@@ -1,5 +1,10 @@
 # SmokingHistoryGenerator
 
+## 6.5.3-1.0.0 (2026-05-18)
+
+- Synced core engine from shg-cli v6.5.3.
+- Windows: open bundled CSV tables in binary mode so `ftell`/`fseek` dimension scans work; strip CR/LF on all CSV lines in CPD, initiation/cessation, and mortality loaders so missing `"."` fields parse correctly with CRLF.
+
 ## 6.5.2-1.0.0 (2026-05-11)
 
 ### Bundled inputs and YAML
