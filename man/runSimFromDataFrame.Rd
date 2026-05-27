@@ -7,15 +7,13 @@
 \item{dfPopulation}{The input dataframe with named columns for race, sex, and birth_cohort}
 }
 \value{
-By default, a data.frame of simulated smoking histories; with attach_run_info, a list bundle.
-
-By default, a \code{data.frame} with one row per input individual (same order)
-and columns \code{smoking_initiation_age} (\code{-999} = never smoker),
-\code{smoking_cessation_age}, \code{age_at_death}, and \code{cigarettes_per_day}
-(character intensity codes). Constant \code{race}, \code{sex}, or
-\code{birth_cohort} are omitted when uniform. With \code{attach_run_info = TRUE},
-a list with \code{results}, \code{original_config}, \code{repro_config}, and
-\code{run_info}.
+If \code{attach_run_info = FALSE}, a \code{data.frame} with one row per input
+individual (same order) and columns \code{smoking_initiation_age} (\code{-999} =
+never smoker), \code{smoking_cessation_age}, \code{age_at_death}, and
+\code{cigarettes_per_day}. Constant \code{race}, \code{sex}, or \code{birth_cohort}
+are omitted when uniform. If \code{attach_run_info = TRUE}, the same four-component
+bundle as \code{\link{shg_run}} (\code{results}, \code{original_config},
+\code{repro_config}, \code{run_info}); see that help page for definitions.
 }
 \description{
 runSimFromDataFrame offers a way to configure and run a simulation from an existing R dataframe. It returns a dataframe of simulated smoking histories with the same number of rows and order as the input dataframe.

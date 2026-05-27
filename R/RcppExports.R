@@ -39,7 +39,6 @@ NULL
 #'          before loading inputs or writing files. Use the default in-memory DataFrame return value, or set
 #'          \code{num_threads <- 1} to write a file.
 #' @param dfPopulation The input dataframe with named columns for race, sex, and birth_cohort
-#' @return By default, a data.frame of simulated smoking histories; with attach_run_info, a list bundle.
 NULL
 
 #' @name runSimFromFixedValues
@@ -49,7 +48,6 @@ NULL
 #' @param race (default = 0 and refers to all races combined)
 #' @param sex (0 for male, 1, for female)
 #' @param cohort_year (four digit birth cohort year)
-#' @return By default, a data.frame of simulated smoking histories; with attach_run_info, a list bundle.
 NULL
 
 #' @name LegacyRunWebVersion
@@ -105,14 +103,6 @@ NULL
 #' @description Configures an existing SHG instance from a configuration object (typically obtained from getConfig()).
 #' @param config A list containing configuration parameters. Must include config_version. All parameters are validated.
 #' @details This method validates the config_version and all parameters before setting them. Unknown fields are warned about but allowed for future compatibility. Missing optional fields use defaults. Fields are applied in an order suitable for round-trips from getConfig(): number_of_segments and num_threads are set before rng_strategy (so switching to Mersenne Twister does not message when the saved list already has single-threaded settings), then seeds, then paths and other options. If the list has deprecated \code{run_multi_threaded} but no \code{num_threads}, it is mapped: FALSE -> \code{num_threads = 1}, TRUE -> \code{num_threads = -1}. If both are present, \code{num_threads} wins. If the list updates local input paths (\code{input_data_folder} or any per-table filename) but omits \code{smok_params_source}, \code{mort_params_source}, and \code{mort_params_type}, any previously recorded bundle provenance is cleared for the omitted key(s) so metadata cannot refer to an older zip after retargeting inputs.
-#' @examples
-#' shg1 <- new(SHGInterface)
-#' shg1$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
-#' shg1$rng_strategy <- "RngStream"
-#' shg1$number_of_segments <- 4
-#' config <- shg1$getConfig()
-#' shg2 <- new(SHGInterface)
-#' shg2$useConfig(config)
 NULL
 
 #' Rcpp SHG Interface Class

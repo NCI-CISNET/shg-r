@@ -26,12 +26,5 @@ shg1$number_of_segments <- 4
 config <- shg1$getConfig()
 shg2 <- new(SHGInterface)
 shg2$useConfig(config)
-shg1 <- new(SHGInterface)
-shg1$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
-shg1$rng_strategy <- "RngStream"
-shg1$number_of_segments <- 4
-config <- shg1$getConfig()
-shg2 <- new(SHGInterface)
-shg2$useConfig(config)
 shg2$rng_strategy
 }

@@ -13,13 +13,11 @@
 \item{cohort_year}{(four digit birth cohort year)}
 }
 \value{
-By default, a data.frame of simulated smoking histories; with attach_run_info, a list bundle.
-
-By default, a \code{data.frame} of \code{repeat} simulated individuals with
-columns \code{smoking_initiation_age} (\code{-999} = never smoker),
-\code{smoking_cessation_age}, \code{age_at_death}, and \code{cigarettes_per_day}.
-With \code{attach_run_info = TRUE}, a list with \code{results},
-\code{original_config}, \code{repro_config}, and \code{run_info}.
+If \code{attach_run_info = FALSE}, a \code{data.frame} of \code{repeat}
+simulated individuals with columns \code{smoking_initiation_age} (\code{-999} =
+never smoker), \code{smoking_cessation_age}, \code{age_at_death}, and
+\code{cigarettes_per_day}. If \code{attach_run_info = TRUE}, the same four-component
+bundle as \code{\link{shg_run}}; see that help page for definitions.
 }
 \description{
 runSimFromFixedValues offers a way to configure and run a simulation from fixed values for race, sex, and birth year cohort rather than passing a data frame. It returns a dataframe of simulated smoking histories for n individuals.
