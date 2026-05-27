@@ -28,6 +28,12 @@ NULL
 #'   \code{birth_cohort} are omitted when uniform. With \code{attach_run_info = TRUE},
 #'   a list with \code{results}, \code{original_config}, \code{repro_config}, and
 #'   \code{run_info}.
+#' @examples
+#' shg <- new(SHGInterface)
+#' shg$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
+#' pop <- data.frame(race = 0, sex = 0, birth_cohort = 1950)
+#' hist <- shg$runSimFromDataFrame(pop)
+#' head(hist)
 NULL
 
 #' @name runSimFromFixedValues
@@ -36,6 +42,11 @@ NULL
 #'   \code{smoking_cessation_age}, \code{age_at_death}, and \code{cigarettes_per_day}.
 #'   With \code{attach_run_info = TRUE}, a list with \code{results},
 #'   \code{original_config}, \code{repro_config}, and \code{run_info}.
+#' @examples
+#' shg <- new(SHGInterface)
+#' shg$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
+#' hist <- shg$runSimFromFixedValues(500, 0, 0, 1950)
+#' head(hist)
 NULL
 
 #' @name LegacyRunWebVersion
@@ -44,7 +55,39 @@ NULL
 #'   as specified in the configuration file (properties on the R object are ignored).
 NULL
 
+#' @name getConfig
+#' @examples
+#' shg <- new(SHGInterface)
+#' shg$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
+#' shg$rng_strategy <- "RngStream"
+#' shg$number_of_segments <- 4
+#' config <- shg$getConfig()
+#' names(config)
+NULL
+
+#' @name getReproConfig
+#' @examples
+#' \donttest{
+#' shg <- new(SHGInterface)
+#' shg$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
+#' shg$runSimFromFixedValues(500, 0, 0, 1950)
+#' repro <- shg$getReproConfig()
+#' names(repro)
+#' }
+NULL
+
 #' @name useConfig
 #' @return No return value. Called for side effects: updates fields on the \code{SHGInterface}
 #'   instance to match \code{config} (typically from \code{\link{getConfig}}).
+#' @examples
+#' \donttest{
+#' shg1 <- new(SHGInterface)
+#' shg1$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
+#' shg1$rng_strategy <- "RngStream"
+#' shg1$number_of_segments <- 4
+#' config <- shg1$getConfig()
+#' shg2 <- new(SHGInterface)
+#' shg2$useConfig(config)
+#' shg2$rng_strategy
+#' }
 NULL

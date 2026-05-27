@@ -15,9 +15,7 @@ as specified in the configuration file (properties on the R object are ignored).
 This method offers a way to configure and run a simulation from an input configuration file. Rather than return a R DataFrame, it produces results in an output file. It works in the same as calling the CLI version of the Smoking History Generator with a single input file parameter.
 }
 \examples{
-\dontrun{
-# Warning: LegacyRunWebVersion ignores Rcpp properties and uses only the config file.
-library(SmokingHistoryGenerator)
+\donttest{
 shg <- new(SHGInterface)
 d <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
 tf <- tempfile(fileext = ".txt")

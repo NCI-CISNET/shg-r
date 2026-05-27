@@ -14,19 +14,9 @@
 #'   CPD minimum age are effectively ignorable (all zeros and/or dots), or if
 #'   there are non-zero initiation values that may indicate a mismatch.
 #' @examples
-#' \dontrun{
 #' shg <- new(SHGInterface)
-#' shg$load_params(smoking_url = "/path/to/smok.zip", mortality_url = "/path/to/mort.zip")
+#' shg$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
 #' shg_params_summary(shg)
-#'
-#' # manual paths also work
-#' shg$input_data_folder <- "/path/to/params-root"
-#' shg$initiation_filename <- "smoking/initiation.csv"
-#' shg$cessation_filename <- "smoking/cessation.csv"
-#' shg$mortality_filename <- "mortality/acm.csv"
-#' shg$cpd_filename <- "smoking/cpd.csv"
-#' shg_params_summary(shg)
-#' }
 #' @export
 shg_params_summary <- function(shg) {
   s <- shg$get_data_shape()

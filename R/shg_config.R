@@ -749,13 +749,15 @@ shg_config_bundle <- function(shg) {
 #' @return \code{path}, invisibly.
 #' @seealso \code{\link{shg_load_config}}, \code{\link{shg_run}}
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' shg <- new(SHGInterface)
-#' shg$load_params(smoking_url = "/path/to/smok.zip", mortality_url = "/path/to/mort.zip")
-#' sim <- shg$runSimFromFixedValues(1000, 0, 0, 2010)
-#' shg$save_config("my-run.yml")
-#' # With results$content_md5, results$summary, and repro_digest in the YAML:
-#' # shg_save_config(shg, "my-run-with-stats.yml", results = sim)
+#' shg$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
+#' shg$smok_params_source <- "example-smoking"
+#' shg$mort_params_source <- "example-mortality"
+#' shg$mort_params_type <- "acm"
+#' sim <- shg$runSimFromFixedValues(500, 0, 0, 1950)
+#' tf <- tempfile(fileext = ".yml")
+#' shg_save_config(shg, tf, results = sim)
 #' }
 #' @export
 shg_save_config <- function(shg, path, quiet = FALSE, results = NULL) {

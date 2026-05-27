@@ -7,6 +7,8 @@
 \item{dfPopulation}{The input dataframe with named columns for race, sex, and birth_cohort}
 }
 \value{
+By default, a data.frame of simulated smoking histories; with attach_run_info, a list bundle.
+
 By default, a \code{data.frame} with one row per input individual (same order)
 and columns \code{smoking_initiation_age} (\code{-999} = never smoker),
 \code{smoking_cessation_age}, \code{age_at_death}, and \code{cigarettes_per_day}
@@ -25,30 +27,9 @@ before loading inputs or writing files. Use the default in-memory DataFrame retu
 \code{num_threads <- 1} to write a file.
 }
 \examples{
-\dontrun{
-library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
-# Multi-cohort populations need full NHIS-style inputs (all cohort columns).
-# inst/extdata/2018 is CRAN-sized only; full bundle coming soon on Zenodo — see README.
-shg$input_data_folder <- "/path/to/NHIS-1965-2018/csv-complete"
-N <- 10^6
-pop <- list(
-    race = rep(0, N),
-    sex = sample(x = c(0, 1), size = N, prob = c(0.5, 0.5), replace = TRUE),
-    birth_cohort = rep(1930:1949, N / 20)
-)
-shg$rng_strategy <- "RngStream"
-# Optionally set a custom seed for RngStream (6 values)
-shg$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
-shg$number_of_segments <- -1 # auto-calculate (default), or set explicit value for reproducibility
-shg$num_threads <- -1  # -1 = auto (all cores), 1 = single-threaded
-smoking_history <- shg$runSimFromDataFrame(pop)
-
-# Example with MersenneTwister and custom seeds (4 values)
-shg2 <- new(SHGInterface)
-shg2$input_data_folder <- system.file("extdata", "2018", package="SmokingHistoryGenerator")
-shg2$rng_strategy <- "MersenneTwister"
-shg2$mt_seeds <- c(1898587603, 1468371936, 1551308340, 1590227640)
-smoking_history2 <- shg2$runSimFromFixedValues(1000, 0, 0, 1950)
-}
+shg$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
+pop <- data.frame(race = 0, sex = 0, birth_cohort = 1950)
+hist <- shg$runSimFromDataFrame(pop)
+head(hist)
 }

@@ -13,6 +13,8 @@
 \item{cohort_year}{(four digit birth cohort year)}
 }
 \value{
+By default, a data.frame of simulated smoking histories; with attach_run_info, a list bundle.
+
 By default, a \code{data.frame} of \code{repeat} simulated individuals with
 columns \code{smoking_initiation_age} (\code{-999} = never smoker),
 \code{smoking_cessation_age}, \code{age_at_death}, and \code{cigarettes_per_day}.
@@ -23,11 +25,8 @@ With \code{attach_run_info = TRUE}, a list with \code{results},
 runSimFromFixedValues offers a way to configure and run a simulation from fixed values for race, sex, and birth year cohort rather than passing a data frame. It returns a dataframe of simulated smoking histories for n individuals.
 }
 \examples{
-\dontrun{
-library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
-shg$input_data_folder <- system.file("extdata", "2018", package="SmokingHistoryGenerator")
-N <- 10^6
-smoking_history <- shg$runSimFromFixedValues(N, 0, 0, 1950)
-}
+shg$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
+hist <- shg$runSimFromFixedValues(500, 0, 0, 1950)
+head(hist)
 }

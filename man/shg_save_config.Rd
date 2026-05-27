@@ -61,13 +61,15 @@ If the last run was not a fixed cohort simulation, or fixed cohort metadata are
 missing, saving fails with an error.
 }
 \examples{
-\dontrun{
+\donttest{
 shg <- new(SHGInterface)
-shg$load_params(smoking_url = "/path/to/smok.zip", mortality_url = "/path/to/mort.zip")
-sim <- shg$runSimFromFixedValues(1000, 0, 0, 2010)
-shg$save_config("my-run.yml")
-# With results$content_md5, results$summary, and repro_digest in the YAML:
-# shg_save_config(shg, "my-run-with-stats.yml", results = sim)
+shg$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
+shg$smok_params_source <- "example-smoking"
+shg$mort_params_source <- "example-mortality"
+shg$mort_params_type <- "acm"
+sim <- shg$runSimFromFixedValues(500, 0, 0, 1950)
+tf <- tempfile(fileext = ".yml")
+shg_save_config(shg, tf, results = sim)
 }
 }
 \seealso{
