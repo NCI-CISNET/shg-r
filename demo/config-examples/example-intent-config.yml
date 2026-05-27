@@ -1,0 +1,7 @@
+config_version: "1.0"
+rng_strategy: RngStream
+params:
+  smok_params_source: tests/testdata/usa-national@smok-NHIS-2018.zip
+  mort_params_source: tests/testdata/usa-national@mort-v1.0.0.zip
+  mort_params_type: acm
+cohort_year: 1950

@@ -4,7 +4,7 @@
 #   demo("portable-yaml-workflow", package = "SmokingHistoryGenerator")
 #
 # This demonstrates scientific reproducibility with a portable config:
-# 1) apply config with params_bundle_source (which restores bundle tables)
+# 1) apply config with smok_params_source + mort_params_source
 # 2) run a fixed cohort simulation
 # 3) collect bundled outputs (results + original_config + repro_config + run_info)
 # 4) write sparse + repro YAML with one writer
@@ -12,38 +12,42 @@
 
 library(SmokingHistoryGenerator)
 
-resolve_demo_zip <- function() {
-  # 1) allow explicit override (local path or URL)
-  z <- Sys.getenv("SHG_PARAMS_ZIP", "")
-  if (nzchar(z)) return(z)
+resolve_demo_param_zips <- function() {
+  smok_env <- Sys.getenv("SHG_SMOK_PARAMS_ZIP", "")
+  mort_env <- Sys.getenv("SHG_MORT_PARAMS_ZIP", "")
+  if (nzchar(smok_env) && nzchar(mort_env)) {
+    return(list(smok = smok_env, mort = mort_env))
+  }
 
-  # 2) local repo checkout path (works for developers)
-  candidate <- normalizePath(
-    file.path(getwd(), "tests", "testdata", "usa-national@smok-2018-mort-2016.zip"),
-    winslash = "/",
-    mustWork = FALSE
-  )
-  if (file.exists(candidate)) return(candidate)
+  td <- file.path(getwd(), "tests", "testdata")
+  smok <- normalizePath(file.path(td, "usa-national@smok-NHIS-2018.zip"),
+                        winslash = "/", mustWork = FALSE)
+  mort <- normalizePath(file.path(td, "usa-national@mort-v1.0.0.zip"),
+                        winslash = "/", mustWork = FALSE)
+  if (file.exists(smok) && file.exists(mort)) {
+    return(list(smok = smok, mort = mort))
+  }
 
   stop(
-    "No parameter bundle configured for demo.\n",
-    "Set SHG_PARAMS_ZIP to a local bundle path or URL, e.g.:\n",
-    "  Sys.setenv(SHG_PARAMS_ZIP = '/path/to/usa-national@smok-2018-mort-2016.zip')\n",
-    "then re-run demo('portable-yaml-workflow', package='SmokingHistoryGenerator').",
+    "No parameter bundles configured for demo.\n",
+    "Set SHG_SMOK_PARAMS_ZIP and SHG_MORT_PARAMS_ZIP, or run from a git checkout ",
+    "with tests/testdata/usa-national@smok-NHIS-2018.zip and usa-national@mort-v1.0.0.zip.",
     call. = FALSE
   )
 }
 
-zip_path <- resolve_demo_zip()
+zips <- resolve_demo_param_zips()
 config_path <- tempfile("shg-portable-config-", fileext = ".yml")
 
-cat("Bundle source:", zip_path, "\n")
+cat("Smoking bundle:", zips$smok, "\n")
+cat("Mortality bundle:", zips$mort, "\n")
 cat("Portable YAML:", config_path, "\n")
 
 shg <- new(SHGInterface)
 run_cfg <- list(
-  params_bundle_source = zip_path,
-  params_mortality = "ocm",
+  smok_params_source = zips$smok,
+  mort_params_source = zips$mort,
+  mort_params_type = "ocm",
   individuals = 100000,
   race = 0,
   sex = 0,
