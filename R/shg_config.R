@@ -117,7 +117,7 @@
   keys <- c(
     "config_version", "rng_strategy", "number_of_segments", "seeds",
     "repeat", "race", "sex", "cohort_year", "immediate_cessation_year",
-    "params_mortality", "params_bundle_source"
+    "smok_params_source", "mort_params_source", "mort_params_type"
   )
   out <- vector("list", length(keys))
   names(out) <- keys
@@ -413,9 +413,10 @@ shg_reset_defaults <- function(shg) {
 #' Apply a sparse or complete configuration (defaults first, then overlay)
 #'
 #' Resets the instance with \code{\link{shg_reset_defaults}}, then applies
-#' \code{config}. When \code{params_bundle_source} is set, derived table paths are
-#' stripped and parameters are restored via \code{\link{shg_load_params}} (same
-#' idea as \code{\link{shg_load_config}}). Otherwise settings are applied with
+#' \code{config}. When \code{smok_params_source} and \code{mort_params_source} are
+#' set, derived table paths are stripped and parameters are restored via
+#' \code{\link{shg_load_params}} (same idea as \code{\link{shg_load_config}}).
+#' Otherwise settings are applied with
 #' \code{shg$useConfig()} only; explicit \code{input_data_folder} / per-table
 #' filenames in \code{config} are preserved.
 #'
@@ -432,14 +433,8 @@ shg_apply_config <- function(shg, config = list()) {
     cfg[["config_version"]] <- "1.0"
   repro_meta <- cfg$package_repro
   cfg$package_repro <- NULL
-  meta_src <- cfg$params_bundle_source
-  src <- ""
-  if (!is.null(meta_src) && length(meta_src) == 1L) {
-    s <- trimws(as.character(meta_src)[1])
-    if (!is.na(s) && nzchar(s))
-      src <- s
-  }
-  strip_paths <- nzchar(src)
+  .shg_reject_removed_config_keys(cfg)
+  strip_paths <- .shg_config_has_param_sources(cfg)
   .shg_reset_then_apply_config_list(shg, cfg, repro_meta, strip_derived_paths = strip_paths)
   invisible(shg)
 }
@@ -448,16 +443,16 @@ shg_apply_config <- function(shg, config = list()) {
 #' Write a configuration list to YAML
 #'
 #' Strips audit-only keys when present, then drops redundant input paths when
-#' \code{params_bundle_source} is set (same idea as portable save). Sparse lists
-#' serialize as-is (minimal keys only).
+#' \code{smok_params_source} and \code{mort_params_source} are set (same idea as
+#' portable save). Sparse lists serialize as-is (minimal keys only).
 #'
 #' Parameter provenance and table paths are grouped under a \code{params} mapping
-#' when present (\code{params_bundle_source} / \code{params_mortality} and/or
-#' \code{input_data_folder} with per-table filenames). \code{\link{shg_load_config}}
-#' and \code{\link{shg_apply_config}} accept both nested and legacy flat keys.
+#' when present (\code{smok_params_source}, \code{mort_params_source},
+#' \code{mort_params_type}, and/or \code{input_data_folder} with per-table filenames).
+#' \code{\link{shg_load_config}} and \code{\link{shg_apply_config}} accept nested or flat keys.
 #'
-#' For full portable fixed-cohort bundles, \code{config} should include
-#' \code{params_bundle_source} and complete \code{repeat}, \code{race},
+#' For full portable fixed-cohort bundles, \code{config} should include both
+#' parameter sources and complete \code{repeat}, \code{race},
 #' \code{sex}, \code{cohort_year} (see \code{\link{shg_save_config}}).
 #'
 #' @param config Named list (\code{original_config}, \code{repro_config}, or any intent list).
@@ -490,10 +485,56 @@ shg_write_config_yaml <- function(config, path) {
 
 .shg_param_keys_under_params <- function() {
   c(
-    "params_bundle_source", "params_mortality",
+    "smok_params_source", "mort_params_source", "mort_params_type",
     "input_data_folder", "initiation_filename", "cessation_filename",
     "mortality_filename", "cpd_filename"
   )
+}
+
+
+.shg_reject_removed_config_keys <- function(cfg) {
+  if (!is.null(cfg$params_bundle_source) && length(cfg$params_bundle_source) == 1L &&
+      !is.na(cfg$params_bundle_source) && nzchar(trimws(as.character(cfg$params_bundle_source)[1]))) {
+    stop(
+      "params_bundle_source was removed; use smok_params_source and mort_params_source ",
+      "(separate shg-params smoking and mortality zips).",
+      call. = FALSE
+    )
+  }
+  if (!is.null(cfg$params_mortality) && length(cfg$params_mortality) == 1L &&
+      !is.na(cfg$params_mortality) && nzchar(trimws(as.character(cfg$params_mortality)[1]))) {
+    stop(
+      "params_mortality was renamed to mort_params_type.",
+      call. = FALSE
+    )
+  }
+  invisible(TRUE)
+}
+
+
+.shg_config_scalar_char <- function(x) {
+  if (is.null(x) || length(x) != 1L)
+    return("")
+  s <- trimws(as.character(x)[1])
+  if (is.na(s) || !nzchar(s))
+    return("")
+  s
+}
+
+
+.shg_parse_mort_params_type <- function(cfg) {
+  raw <- cfg$mort_params_type
+  if (is.null(raw) || length(raw) != 1L || is.na(raw[1]) ||
+      !nzchar(trimws(as.character(raw)[1]))) {
+    return("acm")
+  }
+  match.arg(trimws(as.character(raw)[1]), c("acm", "ocm"))
+}
+
+
+.shg_config_has_param_sources <- function(cfg) {
+  nzchar(.shg_config_scalar_char(cfg$smok_params_source)) &&
+    nzchar(.shg_config_scalar_char(cfg$mort_params_source))
 }
 
 
@@ -560,8 +601,7 @@ shg_write_config_yaml <- function(config, path) {
   )
   out <- cfg[!names(cfg) %in% drop_always]
 
-  pbs <- out$params_bundle_source
-  has_bundle <- !is.null(pbs) && length(pbs) == 1L && !is.na(pbs) && nzchar(trimws(as.character(pbs)))
+  has_bundle <- .shg_config_has_param_sources(out)
   if (isTRUE(has_bundle)) {
     path_drop <- c(
       "input_data_folder", "initiation_filename", "cessation_filename",
@@ -632,7 +672,7 @@ shg_write_config_yaml <- function(config, path) {
     "race", "sex", "cohort_year", "immediate_cessation_year",
     "number_of_segments", "num_threads", "seeds",
     "params",
-    "params_bundle_source", "params_mortality",
+    "smok_params_source", "mort_params_source", "mort_params_type",
     "input_data_folder", "initiation_filename", "cessation_filename",
     "mortality_filename", "cpd_filename",
     "package_repro",
@@ -661,12 +701,11 @@ shg_config_bundle <- function(shg) {
 
 #' Save a portable reproducibility config as YAML
 #'
-#' Writes a YAML file containing \code{params_bundle_source}, mortality choice,
-#' engine settings (RNG, seeds, effective segment count), fixed-run parameters
-#' (\code{repeat}, \code{race}, \code{sex}, \code{cohort_year}), and
-#' \code{immediate_cessation_year}. Omits derived paths (\code{input_data_folder},
-#' per-table filenames) so the bundle stays portable; those paths are restored by
-#' \code{\link{shg_load_params}} when loading from \code{params_bundle_source}.
+#' Writes a YAML file containing \code{smok_params_source}, \code{mort_params_source},
+#' \code{mort_params_type}, engine settings (RNG, seeds, effective segment count),
+#' fixed-run parameters (\code{repeat}, \code{race}, \code{sex}, \code{cohort_year}),
+#' and \code{immediate_cessation_year}. Omits derived paths so the bundle stays
+#' portable; those paths are restored by \code{\link{shg_load_params}}.
 #'
 #' @details
 #' \strong{Prefer the method form} \code{shg$save_config(path)} (same implementation).
@@ -712,7 +751,7 @@ shg_config_bundle <- function(shg) {
 #' @examples
 #' \dontrun{
 #' shg <- new(SHGInterface)
-#' shg$load_params(url = "/path/to/bundle.zip")
+#' shg$load_params(smoking_url = "/path/to/smok.zip", mortality_url = "/path/to/mort.zip")
 #' sim <- shg$runSimFromFixedValues(1000, 0, 0, 2010)
 #' shg$save_config("my-run.yml")
 #' # With results$content_md5, results$summary, and repro_digest in the YAML:
@@ -748,8 +787,8 @@ shg_save_config <- function(shg, path, quiet = FALSE, results = NULL) {
 #'
 #' Reads the YAML file, applies engine settings with \code{useConfig()}, then
 #' restores parameter tables via \code{\link{shg_load_params}} when the cache is
-#' missing or stale (using \code{params_bundle_source} and \code{params_mortality}
-#' stored in the file).
+#' missing or stale (using \code{smok_params_source}, \code{mort_params_source}, and
+#' \code{mort_params_type} stored in the file).
 #'
 #' Private GitHub downloads use the \code{GITHUB_PAT} environment variable when
 #' needed (same as \code{\link{shg_load_params}}).
@@ -826,20 +865,14 @@ shg_run <- function(shg, config, attach_run_info = TRUE) {
   if (!is.list(config))
     stop("'config' must be a list or a path to YAML.")
 
-  bundle_src <- config[["params_bundle_source"]]
-  has_bundle_src <- !is.null(bundle_src) &&
-    length(bundle_src) == 1L &&
-    !is.na(bundle_src[[1]]) &&
-    nzchar(trimws(as.character(bundle_src[[1]])))
-  if (isTRUE(has_bundle_src)) {
-    # One-step run for config-first workflows: hydrate params and apply config
-    # before simulation when bundle provenance is supplied in run config.
+  .shg_reject_removed_config_keys(config)
+  if (isTRUE(.shg_config_has_param_sources(config))) {
     shg_apply_config(shg, config)
   }
 
   original_config <- config
-  if (!is.null(original_config[["mortality"]]) && is.null(original_config[["params_mortality"]]))
-    original_config[["params_mortality"]] <- original_config[["mortality"]]
+  if (!is.null(original_config[["mortality"]]) && is.null(original_config[["mort_params_type"]]))
+    original_config[["mort_params_type"]] <- original_config[["mortality"]]
   original_config[["mortality"]] <- NULL
 
   if (is.null(config[["repeat"]]) && !is.null(config[["individuals"]]))
@@ -878,7 +911,7 @@ shg_run <- function(shg, config, attach_run_info = TRUE) {
   output_file <- as.character(output_file[[1]])
 
   # Windows: wrapper forbids disk output with multi-threaded defaults (num_threads != 1).
-  # shg_run does not call shg_apply_config() unless params_bundle_source is set, so the
+  # shg_run does not call shg_apply_config() unless param sources are set, so the
   # interface keeps num_threads=-1 unless we align here when num_threads was omitted.
   if (nzchar(output_file) && .Platform$OS.type == "windows" &&
       is.null(config[["num_threads"]])) {
@@ -914,27 +947,18 @@ shg_run <- function(shg, config, attach_run_info = TRUE) {
                                                cfg,
                                                repro_meta,
                                                strip_derived_paths) {
-  meta_src <- cfg$params_bundle_source
-  meta_mot_raw <- cfg$params_mortality
-  if (is.null(meta_mot_raw) || length(meta_mot_raw) != 1L ||
-      is.na(meta_mot_raw[1]) || !nzchar(trimws(as.character(meta_mot_raw)[1]))) {
-    meta_mot <- "acm"
-  } else {
-    meta_mot <- match.arg(trimws(as.character(meta_mot_raw)[1]), c("acm", "ocm"))
-  }
-
-  src <- ""
-  if (!is.null(meta_src) && length(meta_src) == 1L) {
-    s <- trimws(as.character(meta_src)[1])
-    if (!is.na(s) && nzchar(s))
-      src <- s
-  }
+  .shg_reject_removed_config_keys(cfg)
+  meta_mot <- .shg_parse_mort_params_type(cfg)
+  smok_src <- .shg_config_scalar_char(cfg$smok_params_source)
+  mort_src <- .shg_config_scalar_char(cfg$mort_params_source)
+  has_sources <- nzchar(smok_src) && nzchar(mort_src)
 
   shg$reset_to_factory_defaults()
 
-  if (nzchar(src) && !is.na(src)) {
-    shg$params_bundle_source <- src
-    shg$params_mortality <- meta_mot
+  if (has_sources) {
+    shg$smok_params_source <- smok_src
+    shg$mort_params_source <- mort_src
+    shg$mort_params_type <- meta_mot
   }
 
   cfg_use <- cfg
@@ -942,31 +966,35 @@ shg_run <- function(shg, config, attach_run_info = TRUE) {
     cfg_use <- .shg_strip_derived_input_paths(cfg_use)
   cfg_use <- .shg_strip_bundle_for_useconfig(cfg_use)
 
-  if (nzchar(src) && !is.na(src))
+  if (has_sources)
     shg$input_data_folder <- ""
 
   shg$useConfig(cfg_use)
 
   need <- !.shg_params_paths_exist(shg)
 
-  if (nzchar(src) && !is.na(src)) {
-    if (need) {
-      cache_path <- .shg_params_cache_path(src)
-      cache_intact <- dir.exists(cache_path) && {
-        snap <- tryCatch(.shg_snapshot_root(cache_path), error = function(e) cache_path)
-        file.exists(file.path(snap, "smoking", "initiation.csv"))
-      }
-      if (!cache_intact) {
-        message("Parameter cache or paths missing; re-loading bundle from:\n  ", src)
-        if (dir.exists(cache_path))
-          unlink(cache_path, recursive = TRUE)
-      }
+  if (has_sources) {
+    combined <- .shg_params_combined_cache_path(smok_src, mort_src)
+    if (need && !.shg_merged_cache_intact(combined, meta_mot)) {
+      message(
+        "Parameter cache or paths missing; re-loading bundles from:\n  ",
+        smok_src, "\n  ", mort_src
+      )
+      if (dir.exists(combined))
+        unlink(combined, recursive = TRUE)
     }
-    shg_load_params(shg, url = src, mortality = meta_mot)
+    shg_load_params(
+      shg,
+      smoking_url = smok_src,
+      mortality_url = mort_src,
+      mort_params_type = meta_mot
+    )
   } else if (need) {
     warning(
-      "Configured paths are missing on disk and no params_bundle_source was saved; ",
-      "call shg_load_params() first, or save with shg$save_config() after load_params()."
+      "Configured paths are missing on disk and no smok_params_source/mort_params_source ",
+      "were saved; call shg_load_params() first, or save with shg$save_config() after ",
+      "load_params().",
+      call. = FALSE
     )
   }
 
@@ -987,7 +1015,7 @@ shg_run <- function(shg, config, attach_run_info = TRUE) {
 
 .shg_strip_bundle_for_useconfig <- function(bundle) {
   drop <- c(
-    "params_bundle_source", "params_mortality", "mortality",
+    "smok_params_source", "mort_params_source", "mort_params_type", "mortality",
     "N", "individuals",
     "package_repro",
     "rng_state_fingerprint", "package_version", "package_source",
@@ -1014,12 +1042,22 @@ shg_run <- function(shg, config, attach_run_info = TRUE) {
   )
   out <- cfg[!names(cfg) %in% drop]
 
-  if (is.null(out$params_bundle_source) || length(out$params_bundle_source) != 1 ||
-      is.na(out$params_bundle_source))
+  smok <- out$smok_params_source
+  mort <- out$mort_params_source
+  if (is.null(smok) || length(smok) != 1 || is.na(smok) || !nzchar(trimws(as.character(smok)))) {
     stop(
-      "Cannot save portable config: params_bundle_source is missing or NA. ",
-      "Call shg_load_params() (or shg$load_params()) first."
+      "Cannot save portable config: smok_params_source is missing or NA. ",
+      "Call shg_load_params() (or shg$load_params()) first.",
+      call. = FALSE
     )
+  }
+  if (is.null(mort) || length(mort) != 1 || is.na(mort) || !nzchar(trimws(as.character(mort)))) {
+    stop(
+      "Cannot save portable config: mort_params_source is missing or NA. ",
+      "Call shg_load_params() (or shg$load_params()) first.",
+      call. = FALSE
+    )
+  }
 
   req_run <- c("repeat", "race", "sex", "cohort_year")
   na_run <- character(0)
@@ -1072,10 +1110,12 @@ shg_run <- function(shg, config, attach_run_info = TRUE) {
   x[["individuals"]] <- NULL
   x[["N"]] <- NULL
 
-  if (is.null(x$params_mortality) || (length(x$params_mortality) == 1 && is.na(x$params_mortality))) {
+  .shg_reject_removed_config_keys(x)
+
+  if (is.null(x$mort_params_type) || (length(x$mort_params_type) == 1 && is.na(x$mort_params_type))) {
     mo <- x[["mortality"]]
     if (!is.null(mo))
-      x$params_mortality <- mo
+      x$mort_params_type <- mo
   }
   x[["mortality"]] <- NULL
 

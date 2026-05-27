@@ -16,7 +16,7 @@
 #' @examples
 #' \dontrun{
 #' shg <- new(SHGInterface)
-#' shg$load_params(url = "/path/to/usa-national@smok-2018-mort-2016.zip")
+#' shg$load_params(smoking_url = "/path/to/smok.zip", mortality_url = "/path/to/mort.zip")
 #' shg_params_summary(shg)
 #'
 #' # manual paths also work
