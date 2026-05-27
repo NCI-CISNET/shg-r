@@ -14,8 +14,9 @@
 #' @field initiation_filename Set or get the initiation filename
 #' @field cessation_filename Set or get the cessation filename
 #' @field mortality_filename Set or get the mortality probabilities filename (e.g. acm.csv or ocm-excl-lung-cancer.csv)
-#' @field params_bundle_source URL or local path of the last load_params() zip (empty if unset)
-#' @field params_mortality Mortality choice from last load_params(): acm or ocm (empty if unset)
+#' @field smok_params_source URL or local path of the last load_params() smoking zip (empty if unset)
+#' @field mort_params_source URL or local path of the last load_params() mortality zip (empty if unset)
+#' @field mort_params_type Mortality table from last load_params(): acm or ocm (empty if unset)
 #' @field params_cache_dir Read-only. Directory where load_params() stores extracted bundles (same as shg_params_cache_dir()). Delete this folder to clear the cache manually.
 #' @field cpd_filename Set or get the cpd filename
 #' @field immediate_cessation_year Set or get Immediate Cessation Year; If 0, no immediate cessation
@@ -57,7 +58,7 @@ NULL
 #' shg$number_of_segments <- -1 # auto-calculate (default), or set explicit value for reproducibility
 #' shg$num_threads <- -1  # -1 = auto (all cores), 1 = single-threaded
 #' smoking_history <- shg$runSimFromDataFrame(pop)
-#'
+#' 
 #' # Example with MersenneTwister and custom seeds (4 values)
 #' shg2 <- new(SHGInterface)
 #' shg2$input_data_folder <- system.file("extdata", "2018", package="SmokingHistoryGenerator")
@@ -115,7 +116,7 @@ NULL
 #' @title Get SHG Configuration
 #' @description Returns the current configuration of the SHG instance as an R list. Can include debug information when debug=TRUE.
 #' @param debug Logical. If TRUE, includes additional debug information such as RNG state fingerprint, package version, system info, and memory usage. If not provided, defaults to FALSE.
-#' @return A list containing the current intent configuration including: config_version, rng_strategy, number_of_segments, num_threads, seeds, input file paths (including mortality_filename), params_bundle_source and params_mortality (from load_params, else NA), immediate_cessation_year, inferred cohort_year (single-cohort runs; otherwise NA), repeat/race/sex after runSimFromFixedValues (otherwise NA), and timestamp. This method returns currently applied values (including unresolved auto values such as -1 for segments/threads). Use \code{getReproConfig()} to export effective runtime values from the last completed simulation. seeds always returns concrete values (explicit user seeds or defaults). If debug=TRUE, also includes rng_state_fingerprint, package_version, package_source, r_version, platform, and memory_usage.
+#' @return A list containing the current intent configuration including: config_version, rng_strategy, number_of_segments, num_threads, seeds, input file paths (including mortality_filename), smok_params_source, mort_params_source, and mort_params_type (from load_params, else NA), immediate_cessation_year, inferred cohort_year (single-cohort runs; otherwise NA), repeat/race/sex after runSimFromFixedValues (otherwise NA), and timestamp. This method returns currently applied values (including unresolved auto values such as -1 for segments/threads). Use \code{getReproConfig()} to export effective runtime values from the last completed simulation. seeds always returns concrete values (explicit user seeds or defaults). If debug=TRUE, also includes rng_state_fingerprint, package_version, package_source, r_version, platform, and memory_usage.
 #' @examples
 #' \dontrun{
 #' library(SmokingHistoryGenerator)
@@ -154,7 +155,7 @@ NULL
 #' @title Use SHG Configuration
 #' @description Configures an existing SHG instance from a configuration object (typically obtained from getConfig()).
 #' @param config A list containing configuration parameters. Must include config_version. All parameters are validated.
-#' @details This method validates the config_version and all parameters before setting them. Unknown fields are warned about but allowed for future compatibility. Missing optional fields use defaults. Fields are applied in an order suitable for round-trips from getConfig(): number_of_segments and num_threads are set before rng_strategy (so switching to Mersenne Twister does not message when the saved list already has single-threaded settings), then seeds, then paths and other options. If the list has deprecated \code{run_multi_threaded} but no \code{num_threads}, it is mapped: FALSE -> \code{num_threads = 1}, TRUE -> \code{num_threads = -1}. If both are present, \code{num_threads} wins. If the list updates local input paths (\code{input_data_folder} or any per-table filename) but omits \code{params_bundle_source} / \code{params_mortality}, any previously recorded bundle provenance is cleared for the omitted key(s) so metadata cannot refer to an older zip after retargeting inputs.
+#' @details This method validates the config_version and all parameters before setting them. Unknown fields are warned about but allowed for future compatibility. Missing optional fields use defaults. Fields are applied in an order suitable for round-trips from getConfig(): number_of_segments and num_threads are set before rng_strategy (so switching to Mersenne Twister does not message when the saved list already has single-threaded settings), then seeds, then paths and other options. If the list has deprecated \code{run_multi_threaded} but no \code{num_threads}, it is mapped: FALSE -> \code{num_threads = 1}, TRUE -> \code{num_threads = -1}. If both are present, \code{num_threads} wins. If the list updates local input paths (\code{input_data_folder} or any per-table filename) but omits \code{smok_params_source}, \code{mort_params_source}, and \code{mort_params_type}, any previously recorded bundle provenance is cleared for the omitted key(s) so metadata cannot refer to an older zip after retargeting inputs.
 #' @examples
 #' \dontrun{
 #' library(SmokingHistoryGenerator)

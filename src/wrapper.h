@@ -85,10 +85,12 @@ public:
     string cessation_filename = R_CESSATION_DATA_FILE;
     string mortality_filename_ = R_ACM_DATA_FILE;
     string cpd_filename = R_CPD_DATA_FILE;
-    /** Last load_params() source URL or local zip path (R package only; empty if unset). */
-    string params_bundle_source_ = "";
-    /** Last load_params() mortality choice: "acm" or "ocm" (empty if unset). */
-    string params_mortality_ = "";
+    /** Last load_params() smoking zip URL or path (R package only; empty if unset). */
+    string smok_params_source_ = "";
+    /** Last load_params() mortality zip URL or path (empty if unset). */
+    string mort_params_source_ = "";
+    /** Last load_params() mortality table: "acm" or "ocm" (empty if unset). */
+    string mort_params_type_ = "";
     int immediate_cessation_year = 0;
 
     bool fileExists(const char* filename);
@@ -150,10 +152,12 @@ public:
     string get_mortality_filename() {return mortality_filename_;};
     void set_mortality_filename(string filename) {mortality_filename_ = filename;};
 
-    string get_params_bundle_source() { return params_bundle_source_; };
-    void set_params_bundle_source(string s) { params_bundle_source_ = s; };
-    string get_params_mortality() { return params_mortality_; };
-    void set_params_mortality(string s) { params_mortality_ = s; };
+    string get_smok_params_source() { return smok_params_source_; };
+    void set_smok_params_source(string s) { smok_params_source_ = s; };
+    string get_mort_params_source() { return mort_params_source_; };
+    void set_mort_params_source(string s) { mort_params_source_ = s; };
+    string get_mort_params_type() { return mort_params_type_; };
+    void set_mort_params_type(string s) { mort_params_type_ = s; };
 
     /** Root directory for load_params() zip cache (R tools::R_user_dir); read-only from R. */
     std::string get_params_cache_dir();

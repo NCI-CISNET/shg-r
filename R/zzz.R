@@ -11,20 +11,16 @@ loadModule("SmokingSimulator", TRUE)  # Module name
 # correctly under both devtools::load_all() and a fully installed package.
 evalqOnLoad({
   SHGInterface$methods(
-    load_params = function(url       = NULL,
-                           base_url  = NULL,
-                           snapshot  = NULL,
-                           path      = NULL,
-                           mortality = c("acm", "ocm")) {
+    load_params = function(smoking_url = NULL,
+                           mortality_url = NULL,
+                           mort_params_type = c("acm", "ocm")) {
       get("shg_load_params",
           envir     = asNamespace("SmokingHistoryGenerator"),
           inherits  = FALSE)(
         .self,
-        url      = url,
-        base_url = base_url,
-        snapshot = snapshot,
-        path     = path,
-        mortality = mortality
+        smoking_url = smoking_url,
+        mortality_url = mortality_url,
+        mort_params_type = mort_params_type
       )
     },
     load_config = function(path) {
