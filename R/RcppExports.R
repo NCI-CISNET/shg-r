@@ -57,7 +57,6 @@ NULL
 #' @description This method offers a way to configure and run a simulation from an input configuration file. Rather than return a R DataFrame, it produces results in an output file. It works in the same as calling the CLI version of the Smoking History Generator with a single input file parameter.
 #' @param input_file_name Path to a Legacy web-style configuration file. Paths inside the file are resolved relative to the R process working directory (the \code{input_data_folder} property is ignored). Sample text configs live under \code{tests/testdata/legacy-web-examples/} in the package source; for installed use, build a config with absolute paths from \code{system.file("extdata", "2018", package = "SmokingHistoryGenerator")}.
 #' @examples
-#' \donttest{
 #' shg <- new(SHGInterface)
 #' d <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
 #' tf <- tempfile(fileext = ".txt")
@@ -73,7 +72,6 @@ NULL
 #'   paste0("ERRORFILE=", tempfile("err_", fileext = ".txt"))
 #' ), tf)
 #' shg$LegacyRunWebVersion(tf)
-#' }
 NULL
 
 #' Get current SHG configuration
@@ -95,11 +93,10 @@ NULL
 #' and segment layout; consumers default to auto threads when reloading). Errors if no
 #' simulation has completed on the instance.
 #' @examples
-#' \donttest{
 #' shg <- new(SHGInterface)
+#' shg$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
 #' shg$runSimFromFixedValues(500, 0, 0, 1950)
 #' repro <- shg$getReproConfig()
-#' }
 NULL
 
 #' Configure SHG instance from config object
@@ -109,16 +106,13 @@ NULL
 #' @param config A list containing configuration parameters. Must include config_version. All parameters are validated.
 #' @details This method validates the config_version and all parameters before setting them. Unknown fields are warned about but allowed for future compatibility. Missing optional fields use defaults. Fields are applied in an order suitable for round-trips from getConfig(): number_of_segments and num_threads are set before rng_strategy (so switching to Mersenne Twister does not message when the saved list already has single-threaded settings), then seeds, then paths and other options. If the list has deprecated \code{run_multi_threaded} but no \code{num_threads}, it is mapped: FALSE -> \code{num_threads = 1}, TRUE -> \code{num_threads = -1}. If both are present, \code{num_threads} wins. If the list updates local input paths (\code{input_data_folder} or any per-table filename) but omits \code{smok_params_source}, \code{mort_params_source}, and \code{mort_params_type}, any previously recorded bundle provenance is cleared for the omitted key(s) so metadata cannot refer to an older zip after retargeting inputs.
 #' @examples
-#' \donttest{
 #' shg1 <- new(SHGInterface)
+#' shg1$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
 #' shg1$rng_strategy <- "RngStream"
 #' shg1$number_of_segments <- 4
 #' config <- shg1$getConfig()
-#' 
-#' # Create new instance and apply config
 #' shg2 <- new(SHGInterface)
 #' shg2$useConfig(config)
-#' }
 NULL
 
 #' Rcpp SHG Interface Class

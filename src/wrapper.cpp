@@ -1332,9 +1332,7 @@ bool SHGInterface::fileExists(const char* filename) {
 //' @title LegacyRunWebVersion method
 //' @description This method offers a way to configure and run a simulation from an input configuration file. Rather than return a R DataFrame, it produces results in an output file. It works in the same as calling the CLI version of the Smoking History Generator with a single input file parameter.
 //' @param input_file_name Path to a Legacy web-style configuration file. Paths inside the file are resolved relative to the R process working directory (the \code{input_data_folder} property is ignored). Sample text configs live under \code{tests/testdata/legacy-web-examples/} in the package source; for installed use, build a config with absolute paths from \code{system.file("extdata", "2018", package = "SmokingHistoryGenerator")}.
-//' @value No return value. Called for side effects (writes OUTPUTFILE and ERRORFILE from the config).
 //' @examples
-//' \donttest{
 //' shg <- new(SHGInterface)
 //' d <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
 //' tf <- tempfile(fileext = ".txt")
@@ -1350,7 +1348,6 @@ bool SHGInterface::fileExists(const char* filename) {
 //'   paste0("ERRORFILE=", tempfile("err_", fileext = ".txt"))
 //' ), tf)
 //' shg$LegacyRunWebVersion(tf)
-//' }
 void SHGInterface::LegacyRunWebVersion(const char *sInputFileName)
 {
    // Paths inside config file are relative to the current working directory
@@ -1367,16 +1364,6 @@ void SHGInterface::LegacyRunWebVersion(const char *sInputFileName)
 //' @description Returns the current configuration of the SHG instance as an R list. Can include debug information when debug=TRUE.
 //' @param debug Logical. If TRUE, includes additional debug information such as RNG state fingerprint, package version, system info, and memory usage. If not provided, defaults to FALSE.
 //' @return A list containing the current intent configuration including: config_version, rng_strategy, number_of_segments, num_threads, seeds, input file paths (including mortality_filename), smok_params_source, mort_params_source, and mort_params_type (from load_params, else NA), immediate_cessation_year, inferred cohort_year (single-cohort runs; otherwise NA), repeat/race/sex after runSimFromFixedValues (otherwise NA), and timestamp. This method returns currently applied values (including unresolved auto values such as -1 for segments/threads). Use \code{getReproConfig()} to export effective runtime values from the last completed simulation. seeds always returns concrete values (explicit user seeds or defaults). If debug=TRUE, also includes rng_state_fingerprint, package_version, package_source, r_version, platform, and memory_usage.
-//' @examples
-//' shg <- new(SHGInterface)
-//' shg$rng_strategy <- "RngStream"
-//' shg$number_of_segments <- 4
-//' config <- shg$getConfig()
-//' # Save config for later use
-//' saveRDS(config, "my_config.rds")
-//' # Get config with debug info
-//' debug_config <- shg$getConfig(debug = TRUE)
-//' }
 Rcpp::List SHGInterface::buildConfig(bool debug, bool use_effective_runtime, bool require_effective_runtime) {
    if (require_effective_runtime && !has_effective_runtime_config_) {
       Rcpp::stop(
@@ -1571,11 +1558,10 @@ Rcpp::List SHGInterface::getConfig() {
 //' and segment layout; consumers default to auto threads when reloading). Errors if no
 //' simulation has completed on the instance.
 //' @examples
-//' \donttest{
 //' shg <- new(SHGInterface)
+//' shg$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
 //' shg$runSimFromFixedValues(500, 0, 0, 1950)
 //' repro <- shg$getReproConfig()
-//' }
 Rcpp::List SHGInterface::getReproConfig(bool debug) {
    return buildConfig(debug, true, true);
 }
@@ -1590,19 +1576,15 @@ Rcpp::List SHGInterface::getReproConfig() {
 //' @title Use SHG Configuration
 //' @description Configures an existing SHG instance from a configuration object (typically obtained from getConfig()).
 //' @param config A list containing configuration parameters. Must include config_version. All parameters are validated.
-//' @value No return value. Called for side effects (updates the SHGInterface instance).
 //' @details This method validates the config_version and all parameters before setting them. Unknown fields are warned about but allowed for future compatibility. Missing optional fields use defaults. Fields are applied in an order suitable for round-trips from getConfig(): number_of_segments and num_threads are set before rng_strategy (so switching to Mersenne Twister does not message when the saved list already has single-threaded settings), then seeds, then paths and other options. If the list has deprecated \code{run_multi_threaded} but no \code{num_threads}, it is mapped: FALSE -> \code{num_threads = 1}, TRUE -> \code{num_threads = -1}. If both are present, \code{num_threads} wins. If the list updates local input paths (\code{input_data_folder} or any per-table filename) but omits \code{smok_params_source}, \code{mort_params_source}, and \code{mort_params_type}, any previously recorded bundle provenance is cleared for the omitted key(s) so metadata cannot refer to an older zip after retargeting inputs.
 //' @examples
-//' \donttest{
 //' shg1 <- new(SHGInterface)
+//' shg1$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
 //' shg1$rng_strategy <- "RngStream"
 //' shg1$number_of_segments <- 4
 //' config <- shg1$getConfig()
-//' 
-//' # Create new instance and apply config
 //' shg2 <- new(SHGInterface)
 //' shg2$useConfig(config)
-//' }
 void SHGInterface::useConfig(Rcpp::List config) {
    last_completed_sim_was_fixed_cohort_ = false;
    has_effective_runtime_config_ = false;

@@ -12,12 +12,12 @@ Authors@R: c(
            comment = "Co-author of the original SHG"),
     person("Alexander", "Gaenko", role = "aut",
            comment = "Co-author of the original SHG"),
-    person("Makoto", "Matsumoto", role = "ctb",
-           comment = "Mersenne Twister PRNG (mt19937) in the simulation engine"),
-    person("Takuji", "Nishimura", role = "ctb",
-           comment = "Mersenne Twister PRNG (mt19937) in the simulation engine"),
-    person("Pierre", "L'Ecuyer", role = "ctb",
-           comment = "RngStream MRG32k3a RNG in the simulation engine")
+    person("Makoto", "Matsumoto", role = c("ctb", "cph"),
+           comment = "Mersenne Twister mt19937 (src/mersenne_class.*); copyright notice in source"),
+    person("Takuji", "Nishimura", role = c("ctb", "cph"),
+           comment = "Mersenne Twister mt19937 (src/mersenne_class.*); copyright notice in source"),
+    person("Pierre", "L'Ecuyer", role = c("ctb", "cph"),
+           comment = "RngStream MRG32k3a (src/RngStream.*); copyright notice in source")
   )
 Maintainer: John Clarke <john.clarke@cornerstonenw.com>
 Description: Efficient R interface to the Cancer Intervention and Surveillance

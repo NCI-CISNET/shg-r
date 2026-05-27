@@ -749,7 +749,6 @@ shg_config_bundle <- function(shg) {
 #' @return \code{path}, invisibly.
 #' @seealso \code{\link{shg_load_config}}, \code{\link{shg_run}}
 #' @examples
-#' \donttest{
 #' shg <- new(SHGInterface)
 #' shg$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
 #' shg$smok_params_source <- "example-smoking"
@@ -758,7 +757,6 @@ shg_config_bundle <- function(shg) {
 #' sim <- shg$runSimFromFixedValues(500, 0, 0, 1950)
 #' tf <- tempfile(fileext = ".yml")
 #' shg_save_config(shg, tf, results = sim)
-#' }
 #' @export
 shg_save_config <- function(shg, path, quiet = FALSE, results = NULL) {
   if (!isTRUE(shg$last_completed_sim_was_fixed_cohort())) {

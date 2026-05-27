@@ -67,20 +67,17 @@ NULL
 
 #' @name getReproConfig
 #' @examples
-#' \donttest{
 #' shg <- new(SHGInterface)
 #' shg$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
 #' shg$runSimFromFixedValues(500, 0, 0, 1950)
 #' repro <- shg$getReproConfig()
 #' names(repro)
-#' }
 NULL
 
 #' @name useConfig
 #' @return No return value. Called for side effects: updates fields on the \code{SHGInterface}
 #'   instance to match \code{config} (typically from \code{\link{getConfig}}).
 #' @examples
-#' \donttest{
 #' shg1 <- new(SHGInterface)
 #' shg1$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
 #' shg1$rng_strategy <- "RngStream"
@@ -89,5 +86,4 @@ NULL
 #' shg2 <- new(SHGInterface)
 #' shg2$useConfig(config)
 #' shg2$rng_strategy
-#' }
 NULL

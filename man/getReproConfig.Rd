@@ -20,16 +20,13 @@ Returns a configuration list that captures effective runtime settings from the l
 Get reproducibility-focused SHG configuration from last run
 }
 \examples{
-\donttest{
 shg <- new(SHGInterface)
+shg$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
 shg$runSimFromFixedValues(500, 0, 0, 1950)
 repro <- shg$getReproConfig()
-}
-\donttest{
 shg <- new(SHGInterface)
 shg$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
 shg$runSimFromFixedValues(500, 0, 0, 1950)
 repro <- shg$getReproConfig()
 names(repro)
-}
 }
