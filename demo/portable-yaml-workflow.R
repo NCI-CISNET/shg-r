@@ -12,31 +12,13 @@
 
 library(SmokingHistoryGenerator)
 
-resolve_demo_param_zips <- function() {
-  smok_env <- Sys.getenv("SHG_SMOK_PARAMS_ZIP", "")
-  mort_env <- Sys.getenv("SHG_MORT_PARAMS_ZIP", "")
-  if (nzchar(smok_env) && nzchar(mort_env)) {
-    return(list(smok = smok_env, mort = mort_env))
-  }
-
-  td <- file.path(getwd(), "tests", "testdata")
-  smok <- normalizePath(file.path(td, "usa-national@smok-NHIS-2018.zip"),
-                        winslash = "/", mustWork = FALSE)
-  mort <- normalizePath(file.path(td, "usa-national@mort-v1.0.0.zip"),
-                        winslash = "/", mustWork = FALSE)
-  if (file.exists(smok) && file.exists(mort)) {
-    return(list(smok = smok, mort = mort))
-  }
-
-  stop(
-    "No parameter bundles configured for demo.\n",
-    "Set SHG_SMOK_PARAMS_ZIP and SHG_MORT_PARAMS_ZIP, or run from a git checkout ",
-    "with tests/testdata/usa-national@smok-NHIS-2018.zip and usa-national@mort-v1.0.0.zip.",
-    call. = FALSE
-  )
+ext2018 <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
+smok_zip <- file.path(ext2018, "bundled-smok.zip")
+mort_zip <- file.path(ext2018, "bundled-mort.zip")
+if (!nzchar(ext2018) || !file.exists(smok_zip) || !file.exists(mort_zip)) {
+  stop("Bundled parameter zips not found under extdata/2018.", call. = FALSE)
 }
-
-zips <- resolve_demo_param_zips()
+zips <- list(smok = smok_zip, mort = mort_zip)
 config_path <- tempfile("shg-portable-config-", fileext = ".yml")
 
 cat("Smoking bundle:", zips$smok, "\n")

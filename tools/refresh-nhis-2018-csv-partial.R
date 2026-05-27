@@ -77,3 +77,11 @@ cpd$.yord <- NULL
 write_wide(cpd, basename(file.path(complete, "cpd.csv")))
 
 message("Wrote 1940/1950/2010 partials to:\n  ", paste(targets, collapse = "\n  "))
+
+zip_script <- file.path(repo_root, "tools", "make-bundled-extdata-zips.R")
+if (file.exists(zip_script)) {
+  status <- system2("Rscript", c(zip_script, repo_root), stdout = TRUE, stderr = TRUE)
+  if (!is.null(attr(status, "status")) && attr(status, "status") != 0) {
+    stop("make-bundled-extdata-zips.R failed")
+  }
+}

@@ -22,4 +22,6 @@ The **trimmed csv-partial** tables that mirror the installed package layout live
 Rscript tools/refresh-nhis-2018-csv-partial.R
 ```
 
+That also rebuilds `inst/extdata/2018/bundled-smok.zip` and `bundled-mort.zip` (shg-params layout for `load_params()` and package demos).
+
 To trim **wide legacy `.txt`** files you placed under `legacy-complete/`, use `Rscript tools/trim-default-inputs.R <that-directory>` (see that script’s header).

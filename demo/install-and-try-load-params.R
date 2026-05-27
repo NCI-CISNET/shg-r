@@ -1,32 +1,35 @@
-# Install SmokingHistoryGenerator from source, apply split parameter bundles,
-# and run a quick 1M-individual benchmark (wall-clock).
+# Apply bundled parameter zips and run a quick benchmark (wall-clock).
 #
-# Usage (from the shg-r repo root):
-#   Rscript demo/install-and-try-load-params.R
-
-pkg_root <- normalizePath(".", winslash = "/", mustWork = TRUE)
-if (!file.exists(file.path(pkg_root, "DESCRIPTION")))
-  stop("Run this from the shg-r package root (where DESCRIPTION lives).")
-
-message("Package root: ", pkg_root)
+# Usage after install:
+#   demo(install-and-try-load-params, package = "SmokingHistoryGenerator")
+#
+# Optional: SHG_DEMO_INDIVIDUALS (default 1e6).
 
 library(SmokingHistoryGenerator)
 
-td <- file.path(pkg_root, "tests", "testdata")
-smok_zip <- normalizePath(file.path(td, "usa-national@smok-NHIS-2018.zip"), mustWork = TRUE)
-mort_zip <- normalizePath(file.path(td, "usa-national@mort-v1.0.0.zip"), mustWork = TRUE)
+ext2018 <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
+smok_zip <- file.path(ext2018, "bundled-smok.zip")
+mort_zip <- file.path(ext2018, "bundled-mort.zip")
+if (!nzchar(ext2018) || !file.exists(smok_zip) || !file.exists(mort_zip)) {
+  stop("Bundled parameter zips not found under extdata/2018.", call. = FALSE)
+}
 message("Smoking zip: ", smok_zip)
 message("Mortality zip: ", mort_zip)
+
+n <- as.numeric(Sys.getenv("SHG_DEMO_INDIVIDUALS", "1000000"))
+if (!is.finite(n) || n < 1) {
+  stop("SHG_DEMO_INDIVIDUALS must be a positive number.", call. = FALSE)
+}
 
 shg <- new(SHGInterface)
 run_cfg <- list(
   smok_params_source = smok_zip,
   mort_params_source = mort_zip,
   mort_params_type = "ocm",
-  individuals = 1e6,
+  individuals = n,
   race = 0,
   sex = 0,
-  cohort_year = 1980
+  cohort_year = 2010
 )
 
 shg_apply_config(shg, run_cfg)
@@ -36,7 +39,7 @@ message("initiation (relative): ", shg$initiation_filename)
 message("initiation (resolved): ",
         file.path(shg$input_data_folder, shg$initiation_filename))
 
-message("Running 1M individuals...")
+message("Running ", format(n, scientific = FALSE), " individuals...")
 t0 <- Sys.time()
 bundle <- shg$runSim(run_cfg, attach_run_info = TRUE)
 elapsed <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
