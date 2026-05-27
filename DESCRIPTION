@@ -11,7 +11,13 @@ Authors@R: c(
     person("Martin", "Krapcho", role = "aut",
            comment = "Co-author of the original SHG"),
     person("Alexander", "Gaenko", role = "aut",
-           comment = "Co-author of the original SHG")
+           comment = "Co-author of the original SHG"),
+    person("Makoto", "Matsumoto", role = "ctb",
+           comment = "Mersenne Twister PRNG (mt19937) in the simulation engine"),
+    person("Takuji", "Nishimura", role = "ctb",
+           comment = "Mersenne Twister PRNG (mt19937) in the simulation engine"),
+    person("Pierre", "L'Ecuyer", role = "ctb",
+           comment = "RngStream MRG32k3a RNG in the simulation engine")
   )
 Maintainer: John Clarke <john.clarke@cornerstonenw.com>
 Description: An efficient R wrapper for the Smoking History Generator from the
