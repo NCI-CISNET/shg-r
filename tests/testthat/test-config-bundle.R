@@ -3,8 +3,9 @@ library(testthat)
 
 test_that(".shg_params_paths_exist is false when any core table file is missing", {
   skip_on_cran()
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
-  skip_if_not(file.exists(zip_path))
+  z <- shg_test_split_param_zips()
+  smok_zip <- z$smok
+  mort_zip <- z$mort
 
   tmp_cache <- tempfile("shg_cfg_paths_exist_")
   dir.create(tmp_cache)
@@ -17,17 +18,18 @@ test_that(".shg_params_paths_exist is false when any core table file is missing"
   }, add = TRUE)
 
   shg <- new(SHGInterface)
-  shg$load_params(url = zip_path)
+  shg$load_params(smoking_url = smok_zip, mortality_url = mort_zip)
   expect_true(SmokingHistoryGenerator:::.shg_params_paths_exist(shg))
 
   unlink(file.path(shg$input_data_folder, shg$cessation_filename))
   expect_false(SmokingHistoryGenerator:::.shg_params_paths_exist(shg))
 })
 
-test_that("shg_apply_config loads bundle via params_bundle_source", {
+test_that("shg_apply_config loads bundle via smok_params_source and mort_params_source", {
   skip_on_cran()
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
-  skip_if_not(file.exists(zip_path))
+  z <- shg_test_split_param_zips()
+  smok_zip <- z$smok
+  mort_zip <- z$mort
 
   tmp_cache <- tempfile("shg_apply_cfg_bundle_")
   dir.create(tmp_cache)
@@ -41,18 +43,20 @@ test_that("shg_apply_config loads bundle via params_bundle_source", {
 
   shg <- new(SHGInterface)
   shg_apply_config(shg, list(
-    params_bundle_source = zip_path,
-    params_mortality = "ocm",
+    smok_params_source = smok_zip,
+    mort_params_source = mort_zip,
+    mort_params_type = "ocm",
     cohort_year = 1950L
   ))
   expect_true(SmokingHistoryGenerator:::.shg_params_paths_exist(shg))
   expect_equal(shg$mortality_filename, "mortality/ocm-excl-lung-cancer.csv")
 })
 
-test_that("shg_apply_config maps mortality alias to params_mortality", {
+test_that("shg_apply_config maps mortality alias to mort_params_type", {
   skip_on_cran()
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
-  skip_if_not(file.exists(zip_path))
+  z <- shg_test_split_param_zips()
+  smok_zip <- z$smok
+  mort_zip <- z$mort
 
   tmp_cache <- tempfile("shg_apply_cfg_mort_alias_")
   dir.create(tmp_cache)
@@ -66,14 +70,15 @@ test_that("shg_apply_config maps mortality alias to params_mortality", {
 
   shg <- new(SHGInterface)
   shg_apply_config(shg, list(
-    params_bundle_source = zip_path,
+    smok_params_source = smok_zip,
+    mort_params_source = mort_zip,
     mortality = "ocm",
     cohort_year = 1950L
   ))
   expect_equal(shg$mortality_filename, "mortality/ocm-excl-lung-cancer.csv")
 })
 
-test_that("shg_apply_config preserves explicit paths when no params_bundle_source", {
+test_that("shg_apply_config preserves explicit paths when no param sources", {
   shg <- new(SHGInterface)
   ext <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
   shg_apply_config(shg, list(
@@ -94,14 +99,15 @@ test_that("shg_config_bundle adds NA provenance without load_params", {
   b <- shg_config_bundle(shg)
   expect_type(b, "list")
   expect_false(inherits(b, "shg_config"))
-  expect_true(is.na(b$params_bundle_source))
-  expect_true(is.na(b$params_mortality))
+  expect_true(is.na(b$smok_params_source))
+  expect_true(is.na(b$mort_params_type))
 })
 
 test_that("shg_config_bundle records source after load_params (local zip)", {
   skip_on_cran()
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
-  skip_if_not(file.exists(zip_path))
+  z <- shg_test_split_param_zips()
+  smok_zip <- z$smok
+  mort_zip <- z$mort
 
   tmp_cache <- tempfile("shg_cfg_bundle_")
   dir.create(tmp_cache)
@@ -114,17 +120,19 @@ test_that("shg_config_bundle records source after load_params (local zip)", {
   }, add = TRUE)
 
   shg <- new(SHGInterface)
-  shg$load_params(url = zip_path, mortality = "ocm")
+  shg$load_params(smoking_url = smok_zip, mortality_url = mort_zip, mort_params_type = "ocm")
   b <- shg_config_bundle(shg)
-  expect_equal(b$params_bundle_source, zip_path)
-  expect_equal(b$params_mortality, "ocm")
+  expect_equal(b$smok_params_source, smok_zip)
+  expect_equal(b$mort_params_source, mort_zip)
+  expect_equal(b$mort_params_type, "ocm")
   expect_true(nzchar(b$input_data_folder))
 })
 
 test_that("shg_use_config_bundle re-extracts when cache folder exists but files gone", {
   skip_on_cran()
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
-  skip_if_not(file.exists(zip_path))
+  z <- shg_test_split_param_zips()
+  smok_zip <- z$smok
+  mort_zip <- z$mort
 
   tmp_cache <- tempfile("shg_cfg_rehydr_")
   dir.create(tmp_cache)
@@ -140,7 +148,7 @@ test_that("shg_use_config_bundle re-extracts when cache folder exists but files 
   on.exit(unlink(yml), add = TRUE)
 
   shg1 <- new(SHGInterface)
-  shg1$load_params(url = zip_path)
+  shg1$load_params(smoking_url = smok_zip, mortality_url = mort_zip)
   shg1$runSimFromFixedValues(50, 0, 0, 1950)
   shg_save_config(shg1, yml, quiet = TRUE)
 
@@ -149,7 +157,7 @@ test_that("shg_use_config_bundle re-extracts when cache folder exists but files 
   shg2 <- new(SHGInterface)
   expect_message(
     shg_use_config_bundle(shg2, yml),
-    "re-loading bundle"
+    "re-loading bundles"
   )
   expect_true(file.exists(file.path(shg2$input_data_folder, shg2$initiation_filename)))
   expect_equal(shg2$mortality_filename, shg1$mortality_filename)
@@ -157,8 +165,9 @@ test_that("shg_use_config_bundle re-extracts when cache folder exists but files 
 
 test_that("YAML config: cache reuse, clear cache, load_config re-fetches", {
   skip_on_cran()
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
-  skip_if_not(file.exists(zip_path))
+  z <- shg_test_split_param_zips()
+  smok_zip <- z$smok
+  mort_zip <- z$mort
 
   tmp_cache <- tempfile("shg_cfg_e2e_")
   dir.create(tmp_cache)
@@ -174,7 +183,7 @@ test_that("YAML config: cache reuse, clear cache, load_config re-fetches", {
   on.exit(unlink(yml), add = TRUE)
 
   shg1 <- new(SHGInterface)
-  shg1$load_params(url = zip_path, mortality = "acm")
+  shg1$load_params(smoking_url = smok_zip, mortality_url = mort_zip, mort_params_type = "acm")
   shg1$runSimFromFixedValues(100, 0, 0, 1950)
   shg_save_config(shg1, yml, quiet = TRUE)
 
@@ -183,13 +192,10 @@ test_that("YAML config: cache reuse, clear cache, load_config re-fetches", {
   expect_type(cfg2, "list")
   expect_true(file.exists(file.path(shg2$input_data_folder, shg2$initiation_filename)))
   expect_equal(shg2$mortality_filename, shg1$mortality_filename)
-  expect_equal(shg2$params_bundle_source, zip_path)
+  expect_equal(shg2$smok_params_source, smok_zip)
 
   shg3 <- new(SHGInterface)
-  expect_message(
-    shg_load_params(shg3, url = zip_path),
-    "Using cached"
-  )
+  shg_load_params(shg3, smoking_url = smok_zip, mortality_url = mort_zip)
   expect_true(file.exists(file.path(shg3$input_data_folder, shg3$initiation_filename)))
 
   shg_clear_params_cache()
@@ -197,7 +203,7 @@ test_that("YAML config: cache reuse, clear cache, load_config re-fetches", {
   shg4 <- new(SHGInterface)
   expect_message(
     shg_load_config(shg4, yml),
-    "re-loading bundle"
+    "re-loading bundles"
   )
   expect_true(file.exists(file.path(shg4$input_data_folder, shg4$initiation_filename)))
   expect_equal(shg4$mortality_filename, shg1$mortality_filename)
@@ -205,8 +211,9 @@ test_that("YAML config: cache reuse, clear cache, load_config re-fetches", {
 
 test_that("shg_load_config restores config and can re-fetch after cache clear", {
   skip_on_cran()
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
-  skip_if_not(file.exists(zip_path))
+  z <- shg_test_split_param_zips()
+  smok_zip <- z$smok
+  mort_zip <- z$mort
 
   tmp_cache <- tempfile("shg_cfg_load_params_config_")
   dir.create(tmp_cache)
@@ -222,7 +229,7 @@ test_that("shg_load_config restores config and can re-fetch after cache clear", 
   on.exit(unlink(yml), add = TRUE)
 
   shg1 <- new(SHGInterface)
-  shg1$load_params(url = zip_path, mortality = "ocm")
+  shg1$load_params(smoking_url = smok_zip, mortality_url = mort_zip, mort_params_type = "ocm")
   shg1$runSimFromFixedValues(80, 0, 0, 1950)
   shg_save_config(shg1, yml, quiet = TRUE)
 
@@ -231,7 +238,7 @@ test_that("shg_load_config restores config and can re-fetch after cache clear", 
   shg2 <- new(SHGInterface)
   expect_message(
     shg_load_config(shg2, yml),
-    "re-loading bundle"
+    "re-loading bundles"
   )
   expect_true(file.exists(file.path(shg2$input_data_folder, shg2$initiation_filename)))
   expect_equal(shg2$mortality_filename, "mortality/ocm-excl-lung-cancer.csv")
@@ -239,8 +246,9 @@ test_that("shg_load_config restores config and can re-fetch after cache clear", 
 
 test_that("SHGInterface$load_config and runSim delegate correctly", {
   skip_on_cran()
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
-  skip_if_not(file.exists(zip_path))
+  z <- shg_test_split_param_zips()
+  smok_zip <- z$smok
+  mort_zip <- z$mort
 
   tmp_cache <- tempfile("shg_cfg_load_config_method_")
   dir.create(tmp_cache)
@@ -256,7 +264,7 @@ test_that("SHGInterface$load_config and runSim delegate correctly", {
   on.exit(unlink(yml), add = TRUE)
 
   shg1 <- new(SHGInterface)
-  shg1$load_params(url = zip_path)
+  shg1$load_params(smoking_url = smok_zip, mortality_url = mort_zip)
   shg1$runSimFromFixedValues(40, 0, 0, 1950)
   shg_save_config(shg1, yml, quiet = TRUE)
 
@@ -264,7 +272,7 @@ test_that("SHGInterface$load_config and runSim delegate correctly", {
 
   shg2 <- new(SHGInterface)
   cfg <- NULL
-  expect_message({ cfg <- shg2$load_config(yml) }, "re-loading bundle")
+  expect_message({ cfg <- shg2$load_config(yml) }, "re-loading bundles")
   expect_true(is.list(cfg))
   expect_true(file.exists(file.path(shg2$input_data_folder, shg2$initiation_filename)))
 
@@ -278,8 +286,9 @@ test_that("SHGInterface$load_config and runSim delegate correctly", {
 
 test_that("SHGInterface$save_config matches shg_save_config output", {
   skip_on_cran()
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
-  skip_if_not(file.exists(zip_path))
+  z <- shg_test_split_param_zips()
+  smok_zip <- z$smok
+  mort_zip <- z$mort
 
   tmp_cache <- tempfile("shg_cfg_save_method_")
   dir.create(tmp_cache)
@@ -296,7 +305,7 @@ test_that("SHGInterface$save_config matches shg_save_config output", {
   on.exit(unlink(c(yml1, yml2)), add = TRUE)
 
   shg <- new(SHGInterface)
-  shg$load_params(url = zip_path)
+  shg$load_params(smoking_url = smok_zip, mortality_url = mort_zip)
   shg$runSimFromFixedValues(10, 0, 0, 1950)
   shg$save_config(yml1, quiet = TRUE)
   shg_save_config(shg, yml2, quiet = TRUE)
@@ -306,8 +315,9 @@ test_that("SHGInterface$save_config matches shg_save_config output", {
 
 test_that("shg_save_config writes repro-effective engine settings", {
   skip_on_cran()
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
-  skip_if_not(file.exists(zip_path))
+  z <- shg_test_split_param_zips()
+  smok_zip <- z$smok
+  mort_zip <- z$mort
 
   tmp_cache <- tempfile("shg_cfg_repro_effective_")
   dir.create(tmp_cache)
@@ -325,7 +335,7 @@ test_that("shg_save_config writes repro-effective engine settings", {
   shg <- new(SHGInterface)
   shg$number_of_segments <- -1
   shg$num_threads <- -1
-  shg$load_params(url = zip_path)
+  shg$load_params(smoking_url = smok_zip, mortality_url = mort_zip)
   shg$runSimFromFixedValues(5000, 0, 0, 1950)
 
   cfg_intent <- shg$getConfig()
@@ -341,8 +351,9 @@ test_that("shg_save_config writes repro-effective engine settings", {
 
 test_that("shg_save_config errors after population run following fixed cohort run", {
   skip_on_cran()
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
-  skip_if_not(file.exists(zip_path))
+  z <- shg_test_split_param_zips()
+  smok_zip <- z$smok
+  mort_zip <- z$mort
 
   tmp_cache <- tempfile("shg_cfg_save_pop_invalidate_")
   dir.create(tmp_cache)
@@ -360,7 +371,7 @@ test_that("shg_save_config errors after population run following fixed cohort ru
   shg <- new(SHGInterface)
   shg$num_threads <- 1
   shg$number_of_segments <- 1
-  shg$load_params(url = zip_path)
+  shg$load_params(smoking_url = smok_zip, mortality_url = mort_zip)
   shg$runSimFromFixedValues(5, 0, 0, 1950)
   pop <- data.frame(
     race = rep(0, 3),
@@ -373,8 +384,9 @@ test_that("shg_save_config errors after population run following fixed cohort ru
 
 test_that("shg_save_config errors when run metadata not recorded", {
   skip_on_cran()
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
-  skip_if_not(file.exists(zip_path))
+  z <- shg_test_split_param_zips()
+  smok_zip <- z$smok
+  mort_zip <- z$mort
 
   tmp_cache <- tempfile("shg_cfg_save_fail_")
   dir.create(tmp_cache)
@@ -387,7 +399,7 @@ test_that("shg_save_config errors when run metadata not recorded", {
   }, add = TRUE)
 
   shg <- new(SHGInterface)
-  shg$load_params(url = zip_path)
+  shg$load_params(smoking_url = smok_zip, mortality_url = mort_zip)
   yml <- tempfile(fileext = ".yml")
   on.exit(unlink(yml), add = TRUE)
   expect_error(shg_save_config(shg, yml, quiet = TRUE), "runSimFromFixedValues")
@@ -396,16 +408,18 @@ test_that("shg_save_config errors when run metadata not recorded", {
 
 test_that("shg_write_config_yaml nests bundle keys under params and normalize flattens", {
   skip_on_cran()
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
-  skip_if_not(file.exists(zip_path))
+  z <- shg_test_split_param_zips()
+  smok_zip <- z$smok
+  mort_zip <- z$mort
 
   tf <- tempfile(fileext = ".yml")
   on.exit(unlink(tf), add = TRUE)
   cfg <- list(
     config_version = "1.0",
     rng_strategy = "RngStream",
-    params_bundle_source = zip_path,
-    params_mortality = "acm",
+    smok_params_source = smok_zip,
+    mort_params_source = mort_zip,
+    mort_params_type = "acm",
     cohort_year = 1950,
     individuals = 5,
     race = 0,
@@ -415,9 +429,18 @@ test_that("shg_write_config_yaml nests bundle keys under params and normalize fl
   rd <- yaml::read_yaml(tf)
   expect_true(is.list(rd$params))
   n <- SmokingHistoryGenerator:::.shg_normalize_config_list(rd)
-  expect_equal(n$params_bundle_source, zip_path)
-  expect_equal(n$params_mortality, "acm")
+  expect_equal(n$smok_params_source, smok_zip)
+  expect_equal(n$mort_params_type, "acm")
   expect_null(n$params)
+})
+
+test_that("normalize rejects removed params_bundle_source", {
+  expect_error(
+    SmokingHistoryGenerator:::.shg_normalize_config_list(
+      list(params_bundle_source = "/old/combined.zip")
+    ),
+    "params_bundle_source was removed"
+  )
 })
 
 test_that("normalize migrates legacy results_* and strips legacy repro md5 keys", {

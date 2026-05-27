@@ -113,21 +113,23 @@ test_that(".shg_results_summary_for_repro excludes NA initiation from never and 
 
 test_that("shg_run bundle original_config preserves params bundle intent", {
   skip_on_cran()
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
-  skip_if_not(file.exists(zip_path))
+  z <- shg_test_split_param_zips()
+  smok_zip <- z$smok
+  mort_zip <- z$mort
   shg <- new(SHGInterface)
   shg$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
   cfg <- list(
-    params_bundle_source = zip_path,
-    params_mortality = "ocm",
+    smok_params_source = smok_zip,
+    mort_params_source = mort_zip,
+    mort_params_type = "ocm",
     individuals = 8L,
     race = 0L,
     sex = 0L,
     cohort_year = 1950L
   )
   out <- shg_run(shg, cfg, attach_run_info = TRUE)
-  expect_equal(out$original_config$params_bundle_source, cfg$params_bundle_source)
-  expect_equal(out$original_config$params_mortality, "ocm")
+  expect_equal(out$original_config$smok_params_source, cfg$smok_params_source)
+  expect_equal(out$original_config$mort_params_type, "ocm")
   expect_equal(out$original_config$individuals, 8L)
 })
 
@@ -152,10 +154,11 @@ test_that("shg_run with output_file returns bundle and captures output path", {
   expect_true(grepl("file", out$results$info[1], ignore.case = TRUE))
 })
 
-test_that("shg_run auto-applies params when params_bundle_source is in config", {
+test_that("shg_run auto-applies params when param sources are in config", {
   skip_on_cran()
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
-  skip_if_not(file.exists(zip_path))
+  z <- shg_test_split_param_zips()
+  smok_zip <- z$smok
+  mort_zip <- z$mort
 
   tmp_cache <- tempfile("shg_run_auto_apply_")
   dir.create(tmp_cache)
@@ -169,8 +172,9 @@ test_that("shg_run auto-applies params when params_bundle_source is in config", 
 
   shg <- new(SHGInterface)
   cfg <- list(
-    params_bundle_source = zip_path,
-    params_mortality = "ocm",
+    smok_params_source = smok_zip,
+    mort_params_source = mort_zip,
+    mort_params_type = "ocm",
     individuals = 25,
     cohort_year = 1950
   )

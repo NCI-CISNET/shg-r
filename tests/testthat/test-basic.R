@@ -297,8 +297,9 @@ test_that("getConfig() returns correct structure with config_version", {
   expect_true("seeds" %in% names(config))
   expect_true("input_data_folder" %in% names(config))
   expect_true("mortality_filename" %in% names(config))
-  expect_true("params_bundle_source" %in% names(config))
-  expect_true("params_mortality" %in% names(config))
+  expect_true("smok_params_source" %in% names(config))
+  expect_true("mort_params_source" %in% names(config))
+  expect_true("mort_params_type" %in% names(config))
   expect_true("cohort_year" %in% names(config))
   expect_true("repeat" %in% names(config))
   expect_true("race" %in% names(config))
@@ -499,16 +500,18 @@ test_that("useConfig() warns on unknown fields", {
 
 test_that("useConfig() clears stale params provenance when input paths change without bundle keys", {
   shg <- new(SHGInterface)
-  shg$params_bundle_source <- "https://example.invalid/bundle.zip"
-  shg$params_mortality <- "ocm"
+  shg$smok_params_source <- "https://example.invalid/smok.zip"
+  shg$mort_params_source <- "https://example.invalid/mort.zip"
+  shg$mort_params_type <- "ocm"
   shg$useConfig(list(
     config_version = "1.0",
     rng_strategy = "RngStream",
     input_data_folder = data_folder
   ))
   cfg <- shg$getConfig()
-  expect_true(is.na(cfg$params_bundle_source))
-  expect_true(is.na(cfg$params_mortality))
+  expect_true(is.na(cfg$smok_params_source))
+  expect_true(is.na(cfg$mort_params_source))
+  expect_true(is.na(cfg$mort_params_type))
 })
 
 test_that("Round-trip: getConfig() -> useConfig() -> verify", {
