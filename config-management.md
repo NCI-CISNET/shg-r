@@ -18,9 +18,9 @@ the same portable YAML inputs, results are expected to match exactly.
 
 ### Defaults-first apply and YAML snippets
 
-- **`shg_apply_config(shg, config)`** resets the instance to **factory defaults**, then applies the named fields in `config`. If `params_bundle_source` is set (URL or path to a zip/folder bundle), derived table paths are omitted from `config` and tables are restored via **`shg_load_params()`**, matching **`shg_load_config()`**. Without a bundle, explicit `input_data_folder` / per-table filenames in `config` are kept. Use sparse lists (e.g. only `cohort_year`) so earlier mutations on the instance do not leak through.
-- **Factory defaults** use **ACM** mortality (`acm.csv`), consistent with **`shg_load_params(..., mortality = "acm")`**.
-- **`shg_write_config_yaml(config, path)`** writes any list (sparse intent or full `repro_config`): it strips audit keys and omits redundant input paths when `params_bundle_source` is set.
+- **`shg_apply_config(shg, config)`** resets the instance to **factory defaults**, then applies the named fields in `config`. When **`smok_params_source`** and **`mort_params_source`** are set, derived table paths are omitted and tables are restored via **`shg_load_params()`**, matching **`shg_load_config()`**. Without bundles, explicit `input_data_folder` / per-table filenames in `config` are kept.
+- **Factory defaults** use **ACM** mortality (`acm.csv`), consistent with **`mort_params_type = "acm"`**.
+- **`shg_write_config_yaml(config, path)`** strips audit keys and omits redundant input paths when both parameter sources are set.
 - **`shg$runSimFromFixedValues(..., attach_run_info = TRUE, original_config = NULL)`** (6-argument form) returns a **bundle**: `results`, `original_config`, `repro_config`, `run_info`. The 4-argument form still returns only the `data.frame`.
 
 ## Common workflows
@@ -78,7 +78,11 @@ rerun elsewhere, and verify equivalent outputs under the same versioned setup.
 library(SmokingHistoryGenerator)
 
 shg <- new(SHGInterface)
-shg$load_params(url = "https://example.org/snapshot.zip", mortality = "acm")
+shg$load_params(
+  smoking_url = "https://example.org/usa-national@smok-NHIS-2022.zip",
+  mortality_url = "https://example.org/usa-national@mort-v1.0.0.zip",
+  mort_params_type = "acm"
+)
 shg$rng_strategy <- "RngStream"
 
 shg$runSimFromFixedValues(1e5, 0, 0, 2010)
@@ -103,11 +107,11 @@ Private GitHub-hosted zips: set the `GITHUB_PAT` environment variable before `lo
 Portable saves include:
 
 - `config_version`
-- `params_bundle_source`, `params_mortality`
+- `smok_params_source`, `mort_params_source`, `mort_params_type`
 - Engine fields: `rng_strategy`, `number_of_segments`, `num_threads`, `seeds`, `immediate_cessation_year`
 - Fixed-run fields: `individuals` (or aliases `N` / legacy `repeat`), `race`, `sex`, `cohort_year`
 
-They **omit** derived filesystem paths (`input_data_folder`, table filenames). Those are rebuilt when `shg_load_params()` unpacks the zip referenced by `params_bundle_source`.
+They **omit** derived filesystem paths (`input_data_folder`, table filenames). Those are rebuilt when `shg_load_params()` unpacks the smoking and mortality zips referenced by the provenance fields.
 
 ## Low-level API: intent config vs repro config
 

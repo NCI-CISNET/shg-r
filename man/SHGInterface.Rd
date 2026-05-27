@@ -26,9 +26,11 @@ SHGInterface Class
 
 \item{\code{mortality_filename}}{Set or get the mortality probabilities filename (e.g. acm.csv or ocm-excl-lung-cancer.csv)}
 
-\item{\code{params_bundle_source}}{URL or local path of the last load_params() zip (empty if unset)}
+\item{\code{smok_params_source}}{URL or local path of the last load_params() smoking zip (empty if unset)}
 
-\item{\code{params_mortality}}{Mortality choice from last load_params(): acm or ocm (empty if unset)}
+\item{\code{mort_params_source}}{URL or local path of the last load_params() mortality zip (empty if unset)}
+
+\item{\code{mort_params_type}}{Mortality table from last load_params(): acm or ocm (empty if unset)}
 
 \item{\code{params_cache_dir}}{Read-only. Directory where load_params() stores extracted bundles (same as shg_params_cache_dir()). Delete this folder to clear the cache manually.}
 

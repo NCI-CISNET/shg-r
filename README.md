@@ -77,20 +77,16 @@ sim <- bundle$results
 
 ### Recommended workflow: config list + bundle zip path
 
-Use a single config list that includes both bundle provenance and run fields.
-For now this example uses a local zip path; later this can point to a Zenodo URL.
+Use a single config list that includes both smoking and mortality bundle sources and run fields.
 
 ```r
 library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
 
-# Local zip path for now (replace with Zenodo URL when published).
-# Git checkout: tests/testdata/usa-national@smok-2018-mort-2016.zip
-zip_path <- "/path/to/usa-national@smok-2018-mort-2016.zip"
-
 run_cfg <- list(
-  params_bundle_source = zip_path,
-  params_mortality = "acm",   # or "ocm"; alias `mortality = "ocm"` also works
+  smok_params_source = "/path/to/usa-national@smok-NHIS-2022.zip",
+  mort_params_source = "/path/to/usa-national@mort-v1.0.0.zip",
+  mort_params_type = "acm",   # or "ocm"; alias `mortality = "ocm"` also works
   individuals = 1e5,
   race = 0,
   sex = 0,
@@ -109,8 +105,9 @@ Future Zenodo variant (same pattern; replace `xxxx` with the published record id
 
 ```r
 run_cfg <- list(
-  params_bundle_source = "https://zenodo.org/records/xxxx/files/usa-national@smok-2018-mort-2016.zip",
-  params_mortality = "acm",
+  smok_params_source = "https://zenodo.org/records/xxxx/files/usa-national@smok-NHIS-2022.zip",
+  mort_params_source = "https://zenodo.org/records/xxxx/files/usa-national@mort-v1.0.0.zip",
+  mort_params_type = "acm",
   individuals = 1e5,
   race = 0,
   sex = 0,
@@ -130,16 +127,14 @@ Using a config list that includes a parameter bundle source (recommended), you c
 library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
 
-# Local zip path for now (replace with Zenodo URL when published)
-zip_path <- "/path/to/usa-national@smok-2018-mort-2016.zip"
-
-N <- 10^5 # Individuals to simulate (REPEAT)
-race = 0 # All races combined
-sex = 0 # male
-cohort_year = 1940
+N <- 10^5
+race <- 0
+sex <- 0
+cohort_year <- 1940
 run_cfg <- list(
-  params_bundle_source = zip_path,
-  params_mortality = "acm",
+  smok_params_source = "/path/to/usa-national@smok-NHIS-2022.zip",
+  mort_params_source = "/path/to/usa-national@mort-v1.0.0.zip",
+  mort_params_type = "acm",
   individuals = N,
   race = race,
   sex = sex,
@@ -270,8 +265,9 @@ library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
 
 run_cfg <- list(
-  params_bundle_source = "/path/to/usa-national@smok-2018-mort-2016.zip",
-  params_mortality = "acm",
+  smok_params_source = "/path/to/usa-national@smok-NHIS-2022.zip",
+  mort_params_source = "/path/to/usa-national@mort-v1.0.0.zip",
+  mort_params_type = "acm",
   cohort_year = 1950,
   output_file = "/path/to/output-fixed.csv"
 )

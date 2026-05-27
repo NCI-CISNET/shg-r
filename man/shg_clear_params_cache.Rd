@@ -9,17 +9,6 @@ shg_clear_params_cache()
 
 clear_params_cache()
 }
-\value{
-Invisibly returns the top-level cache directory path that was removed
-(character scalar), or an empty character vector if the cache did not exist.
-}
 \description{
-Deletes the entire directory returned by \code{\link{shg_params_cache_dir}}
-(all extracted parameter bundles). The next \code{load_params()} will
-download or extract again as needed.
-}
-\details{
-To clear the cache without this function, delete that directory yourself;
-\code{shg$params_cache_dir} is a read-only property with the same path as
-\code{shg_params_cache_dir()}.
+Clear the SHG parameter cache
 }

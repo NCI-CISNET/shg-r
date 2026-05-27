@@ -1,5 +1,14 @@
 # SmokingHistoryGenerator
 
+## 6.5.3-1.0.1 (unreleased)
+
+### Breaking: split parameter bundles (shg-params)
+
+- **Removed** `params_bundle_source` and single-zip `shg_load_params(url = ...)`.
+- **Required** separate smoking and mortality releases: `smok_params_source`, `mort_params_source`, and `mort_params_type` (`"acm"` or `"ocm"`; was `params_mortality`).
+- `shg_load_params()` downloads/caches each zip, merges `params/` tables into engine layout `smoking/` + `mortality/`.
+- Portable YAML and `getConfig()` / `getReproConfig()` use the new provenance field names.
+
 ## 6.5.3-1.0.0 (2026-05-18)
 
 - Synced core engine from shg-cli v6.5.3.

@@ -83,7 +83,7 @@ If you already have the bundle on disk, pass the absolute path directly
 (no download step; the zip is extracted to the cache on first use):
 
 ```r
-shg$load_params(url = "/path/to/usa-national@smok-2018-mort-2016.zip")
+shg$load_params(smoking_url = "/path/to/smok.zip", mortality_url = "/path/to/mort.zip")
 ```
 
 In a **git checkout** of this repo, the same bundle used by tests and demos is at
@@ -99,7 +99,7 @@ re-points `mortality_filename` to the already-cached file.
 
 ```r
 # All-cause mortality (default)
-shg$load_params(base_url = "...", snapshot = "usa-national@smok-2018-mort-2016")
+shg$load_params(smoking_url = "...", mortality_url = "...")
 
 # Other-cause mortality
 shg$load_params(base_url = "...", snapshot = "usa-national@smok-2018-mort-2016",
@@ -113,7 +113,7 @@ For assets behind a GitHub login, set a Personal Access Token in the environment
 ```r
 # e.g. in ~/.Renviron: GITHUB_PAT=ghp_...
 Sys.setenv(GITHUB_PAT = "...")  # or rely on ~/.Renviron
-shg$load_params(url = "https://github.com/.../snapshot-id.zip")
+shg$load_params(smoking_url = "https://.../smok.zip", mortality_url = "https://.../mort.zip")
 ```
 
 The package uses `httr2` when installed (better error messages and streaming); otherwise it falls back to base-R `download.file()`.
@@ -144,7 +144,7 @@ Use `shg_params_summary()` to inspect the configured parameter-table shape
 
 ```r
 shg <- new(SHGInterface)
-shg$load_params(url = "/path/to/usa-national@smok-2018-mort-2016.zip")
+shg$load_params(smoking_url = "/path/to/smok.zip", mortality_url = "/path/to/mort.zip")
 shg_params_summary(shg)
 ```
 
@@ -153,7 +153,7 @@ It also works if you manually set `input_data_folder` and the four filenames
 
 ### Saving config and restoring if the cache was cleared
 
-After `load_params()` and at least one `runSimFromFixedValues()` call (so repeat/race/sex/cohort year are recorded), save a **portable YAML** file with `shg$save_config()` (or `shg_save_config(shg, ...)`). The file is only valid if the **most recent** completed simulation was `runSimFromFixedValues` (a later `runSimFromDataFrame()` / population run means you must run the fixed cohort again before saving). Restore with `shg_load_config()` (alias `shg_use_config_bundle()`). If extracted files are gone but `params_bundle_source` is in the file, that zip URL or path is used to run `load_params()` again automatically.
+After `load_params()` and at least one `runSimFromFixedValues()` call (so repeat/race/sex/cohort year are recorded), save a **portable YAML** file with `shg$save_config()` (or `shg_save_config(shg, ...)`). The file is only valid if the **most recent** completed simulation was `runSimFromFixedValues` (a later `runSimFromDataFrame()` / population run means you must run the fixed cohort again before saving). Restore with `shg_load_config()` (alias `shg_use_config_bundle()`). If extracted files are gone but `smok_params_source` and `mort_params_source` are in the file, those zip URLs or paths are used to run `load_params()` again automatically.
 
 ```r
 shg$save_config("my-run.yml")
@@ -166,7 +166,7 @@ out_df <- out$results
 
 See [config-management.md](config-management.md) for the full workflow.
 
-Configs saved **only** from `getConfig()` without loading parameters first do not record `params_bundle_source`; if the cache is cleared you must call `load_params()` yourself with the original URL or path.
+Configs saved **only** from `getConfig()` without loading parameters first do not record bundle provenance; if the cache is cleared you must call `load_params()` yourself with the original smoking and mortality URLs or paths.
 
 ## LegacyRunWebVersion() config keys
 

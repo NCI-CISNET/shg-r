@@ -6,12 +6,6 @@
 \usage{
 shg_params_cache_dir()
 }
-\value{
-Character scalar: path to the cache directory (may not yet exist).
-}
 \description{
-Same path as the read-only \code{SHGInterface} field \code{params_cache_dir}.
-}
-\seealso{
-\code{\link{shg_clear_params_cache}} to remove the entire cache from R.
+Return the directory where downloaded parameter sets are cached
 }
