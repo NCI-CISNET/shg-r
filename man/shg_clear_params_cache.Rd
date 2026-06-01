@@ -9,6 +9,12 @@ shg_clear_params_cache()
 
 clear_params_cache()
 }
+\value{
+Invisibly, the cache path that was removed (\code{character}, length one),
+or \code{character()} if the directory did not exist (a message is printed in
+that case). Called for side effects when clearing disk cache; return value is
+mainly for scripting.
+}
 \description{
 Clear the SHG parameter cache
 }

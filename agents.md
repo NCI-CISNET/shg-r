@@ -16,6 +16,11 @@
 - Fix any linter errors before proceeding with commits
 - Do not commit code that fails linting checks
 
+### Documentation (CRAN / roxygen)
+- **Every exported function and exported S3/Rcpp method needs a `\value` section** in its `.Rd` file (use roxygen `@return`, which becomes `\value`). State the class/structure of the result and what it means. If there is no useful return value, document side effects explicitly (e.g. “No return value, called for side effects” or what is returned invisibly and why).
+- **Rcpp-exported methods:** keep durable `@return` / `@examples` in **`R/shg-rcpp-docs.R`** (not only in `src/wrapper.cpp`), because `devtools::document()` / `compileAttributes()` can regenerate `R/RcppExports.R` from C++ and drop roxygen there.
+- After adding or changing exports, run **`roxygen2::roxygenise()`** and confirm **`R CMD check`** does not report “Missing Rd-tags: … \\value”.
+
 ### R style (integer literals)
 - **Prefer plain numeric literals** in R examples, demos, and tests (e.g. `500`, `0`, `1950`) instead of the `L` integer suffix unless an API strictly requires `integer()` and coercion would be ambiguous.
 

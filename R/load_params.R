@@ -54,6 +54,11 @@ shg_load_params <- function(shg,
 
 
 #' Return the directory where downloaded parameter sets are cached
+#'
+#' @return A length-one \code{character} path (visible). Same location as the
+#'   read-only \code{params_cache_dir} field on \code{SHGInterface}. Extracted
+#'   smoking and mortality bundles from \code{\link{shg_load_params}} are stored
+#'   under this directory (via \code{tools::R_user_dir(..., "cache")}).
 #' @export
 shg_params_cache_dir <- function() {
   tools::R_user_dir("SmokingHistoryGenerator", "cache")
@@ -61,6 +66,11 @@ shg_params_cache_dir <- function() {
 
 
 #' Clear the SHG parameter cache
+#'
+#' @return Invisibly, the cache path that was removed (\code{character}, length one),
+#'   or \code{character()} if the directory did not exist (a message is printed in
+#'   that case). Called for side effects when clearing disk cache; return value is
+#'   mainly for scripting.
 #' @export
 shg_clear_params_cache <- function() {
   cache_dir <- shg_params_cache_dir()
