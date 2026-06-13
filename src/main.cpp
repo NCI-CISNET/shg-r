@@ -1562,13 +1562,11 @@ int RunWebVersion(const char * sInputFileName)
       }
 
       // Check parameters
+      if (sPARAM_Race == NULL) {
+         sPARAM_Race = DupCStr("0");
+      }
       if (sPARAM_Sex == NULL) {
          WriteToFile(pErrorStream,"\n<ERROR>\nSex value(s) was not found in input file: '%s'\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
-                 sInputFileName);
-         bRunApp = false;
-      }
-      if (sPARAM_Race == NULL) {
-         WriteToFile(pErrorStream,"\n<ERROR>\nRace value(s) was not found in input file: '%s'\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
                  sInputFileName);
          bRunApp = false;
       }

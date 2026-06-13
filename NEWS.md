@@ -1,6 +1,14 @@
 # SmokingHistoryGenerator
 
-## 7.1.0 (unreleased)
+## 7.2.0 (unreleased)
+
+### Race defaults
+
+- Legacy config files may omit `RACE=` (defaults to 0).
+- CSV parameter tables may omit a `RACE` column (header starts with `SEX`; all rows treated as race 0).
+- `shg_run()` already defaulted omitted `race` and `sex` to 0 in config lists.
+
+## 7.1.0
 
 ### Path layout (shorter defaults)
 

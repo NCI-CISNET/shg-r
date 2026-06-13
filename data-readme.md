@@ -13,6 +13,8 @@ The CRAN package ships a **default** NHIS-1965–2018 csv-partial under `inst/ex
 | `mortality_filename` | `mort/acm.csv` |
 | `cpd_filename` | `smok/cpd.csv` |
 
+CSV tables may omit a **`RACE`** column (header starts with `SEX`; all rows are treated as race 0). Legacy config files may omit `RACE=` (defaults to 0).
+
 You may still point at **flat** filenames (e.g. `initiation.csv` next to `input_data_folder`) for custom layouts. Use `mortality_filename` to select `mort/acm.csv` or `mort/ocm-excl-lung-cancer.csv` as needed. Wide `.txt` tables (CLI / legacy web layout) remain supported when you set filenames and paths accordingly.
 
 After installation, locate the folder with:
