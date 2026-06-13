@@ -25,7 +25,7 @@ export R_MAKEVARS_USER="$ROOT/tools/Makevars.CRAN-safe"
 # Ephemeral dev dirs (gitignored or empty). Removing them avoids R CMD build
 # "Removed empty directory …" chatter; demo/docs/tmp stay in the tree but are
 # excluded via .Rbuildignore (R may still report empty shells for those).
-for d in .Rd2pdf* tests/testthat/_snaps tests/testdata/NHIS-1965-2016; do
+for d in build SmokingHistoryGenerator .Rd2pdf* tests/testthat/_snaps tests/testdata/NHIS-1965-2016; do
   if [ -d "$ROOT/$d" ]; then
     rm -rf "$ROOT/$d"
   fi

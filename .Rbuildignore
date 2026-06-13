@@ -18,7 +18,7 @@
 ^\.\.Rcheck$
 ^\.git$
 ^tools/
-^build/
+^SmokingHistoryGenerator/
 ^\.lintr$
 ^CITATION\.cff$
 ^\.venv$
