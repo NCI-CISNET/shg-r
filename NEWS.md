@@ -1,6 +1,22 @@
 # SmokingHistoryGenerator
 
-## 6.5.3-1.0.1 (unreleased)
+## 7.0.0 (unreleased)
+
+### Version numbering
+
+- Package releases now use standard R semver (starting at `7.0.0`). The former `{CLI engine}-{R wrapper}` form (e.g. `6.5.3-1.0.1` on CRAN) is retired.
+
+### Memory safety (CRAN gcc-ASAN / valgrind)
+
+- Fix seed string alloc/dealloc mismatch in `RunWebVersion` (`new[]` / `delete[]` consistently).
+- Fix uninitialized error message when the legacy error file cannot be opened.
+- Resolve `fast_itoa` ODR conflict between R wrapper and simulation engine.
+
+### Tooling
+
+- Add `./tools/check-docker-asan.sh` for local CRAN-faithful gcc-ASAN checks (Docker).
+
+## 6.5.3-1.0.1
 
 ### Breaking: split parameter bundles (shg-params)
 
@@ -39,7 +55,7 @@
 - `shg_apply_config(shg, config)` resets defaults, then applies a sparse or full named list via `useConfig()`, so partial YAML/intent configs do not inherit stale instance state.
 - `shg_apply_config()` with `params_bundle_source` now calls `shg_load_params()` the same way as `shg_load_config()` (clears derived paths, restores the bundle). Without a bundle, explicit `input_data_folder` / table filenames in the list are still applied.
 - `shg_load_config()` now starts from factory defaults before applying the YAML bundle (via `reset_to_factory_defaults()` in the bundle applier).
-- `shg_write_config_yaml(config, path)` serializes any config list: drops audit keys, and strips redundant table paths when `params_bundle_source` is present (shape-driven “portable” output).
+- `shg_write_config_yaml(config, path)` serializes any config list: drops audit keys, and strips redundant table paths when `params_bundle_source` is present (shape-driven "portable" output).
 - Config lists and YAML may use `mortality` as an alias for `params_mortality`. Normalization uses `[[` only so it does not partially match `mortality_filename`.
 - **Factory defaults:** mortality file is `mortality/acm.csv`, matching `shg_load_params(..., mortality = "acm")` bundle layout.
 

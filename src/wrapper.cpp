@@ -67,9 +67,11 @@ inline unsigned long mt_seed_to_engine_arg(double stored_user_seed) {
 
 using namespace std;
 
+namespace {
+
 // Fast integer to string conversion (10-20x faster than std::to_string)
 // Writes digits forward to avoid reverse, returns pointer past end
-inline char* fast_itoa(int val, char* buf) {
+inline char* wrapper_fast_itoa(int val, char* buf) {
    if (val < 0) {
       *buf++ = '-';
       if (val == INT_MIN) {
@@ -99,10 +101,12 @@ inline char* fast_itoa(int val, char* buf) {
    return buf;
 }
 
+}  // namespace
+
 // Append integer to string using fast conversion
 inline void append_int(std::string& s, int val) {
    char buf[16];
-   char* end = fast_itoa(val, buf);
+   char* end = wrapper_fast_itoa(val, buf);
    s.append(buf, end - buf);
 }
 
@@ -1164,13 +1168,13 @@ void SHGInterface::runSimSegment(int repeat,
                   *ptr++ = ' ';
                }
                if (useSparse) {
-                  ptr = fast_itoa(cpdVal, ptr);
+                  ptr = wrapper_fast_itoa(cpdVal, ptr);
                } else {
                   // Full format: "age (cpd)"
-                  ptr = fast_itoa(age, ptr);
+                  ptr = wrapper_fast_itoa(age, ptr);
                   *ptr++ = ' ';
                   *ptr++ = '(';
-                  ptr = fast_itoa(cpdVal, ptr);
+                  ptr = wrapper_fast_itoa(cpdVal, ptr);
                   *ptr++ = ')';
                }
             }

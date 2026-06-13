@@ -86,7 +86,25 @@
 			}
 		},
 		{
-			"label": "Clean",
+			"label": "R: Check (Docker gcc-ASAN)",
+			"type": "shell",
+			"command": "sh",
+			"args": [
+				"-c",
+				"./tools/check-docker-asan.sh"
+			],
+			"group": "build",
+			"problemMatcher": [],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "make clean",
 			"type": "shell",
 			"command": "sh",
 			"args": [

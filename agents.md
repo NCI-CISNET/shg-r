@@ -95,9 +95,10 @@ Run `python tools/shg-sync.py update-description` to refresh `src/shg-cli-info.t
 3. Update `DESCRIPTION` and shg-cli sync files:
    - Bump `Version` field in `DESCRIPTION` when the wrapper segment changes
    - Run `python tools/shg-sync.py update-description`
-4. Run `R CMD check` (or `rcmdcheck::rcmdcheck(error_on = "warning")` to match **GitHub Actions**, which fails on any WARNING, not only errors)
-5. Confirm **windows-2022 (R-devel)** passes in **R CMD check (all OS)** (approximates CRAN `r-devel-windows-x86_64`); see `dev-readme.md` § CRAN Windows preflight
-6. Create PR, wait for CI
-7. Merge to master
-8. Create git tag
-9. Create GitHub release noting CLI version compatibility
+4. Run **`./tools/check-docker-asan.sh`** after C++ engine changes (CRAN-faithful gcc-ASAN; requires Docker, ~20 min)
+5. Run `R CMD check` (or `rcmdcheck::rcmdcheck(error_on = "warning")` to match **GitHub Actions**, which fails on any WARNING, not only errors)
+6. Confirm **windows-2022 (R-devel)** passes in **R CMD check (all OS)** (approximates CRAN `r-devel-windows-x86_64`); see `dev-readme.md` § CRAN Windows preflight
+7. Create PR, wait for CI
+8. Merge to master
+9. Create git tag
+10. Create GitHub release noting CLI version compatibility
