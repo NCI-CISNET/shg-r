@@ -13,13 +13,6 @@
 install.packages("SmokingHistoryGenerator")
 ```
 
-Development version from GitHub (requires compilers for the C++ core):
-
-```r
-install.packages("pak")
-pak::pak("NCI-CISNET/shg-r")
-```
-
 ## Quick start
 
 The package ships a small default parameter set (`inst/extdata/2018/`) with cohort columns **1940, 1950, and 2010**. No extra configuration is required for a basic run:
@@ -30,28 +23,6 @@ library(SmokingHistoryGenerator)
 # Defaults: bundled inputs, 1000 individuals, race=0, sex=0
 shg_run(new(SHGInterface), list(cohort_year = 1950))
 ```
-
-## Getting started (detailed)
-
-### Precompiled binary from GitHub Releases (optional)
-
-Releases ship per-OS binaries from `R CMD INSTALL --build`. **Download the asset in your browser** from [Releases](https://github.com/NCI-CISNET/shg-r/releases) (no GitHub token), then install from the saved file.
-
-**macOS (Apple Silicon)** — use the exact downloaded filename (including ` (1)` if the browser added it). **R 4.6+** no longer accepts `type = "binary"` for macOS CRAN builds; pass this session’s native binary type (or use `R CMD INSTALL` below):
-
-```r
-pkg_tgz <- path.expand("~/Downloads/SmokingHistoryGenerator_6.5.2-1.0.0_macos-arm64.tgz")
-stopifnot(file.exists(pkg_tgz))
-install.packages(pkg_tgz, repos = NULL, type = .Platform$pkgType)
-```
-
-On older R, `.Platform$pkgType` is still the right choice when it is not `"source"`. Shell install avoids the `type` argument entirely:
-
-```bash
-R CMD INSTALL /path/to/SmokingHistoryGenerator_6.5.2-1.0.0_macos-arm64.tgz
-```
-
-Intel Macs use `_macos-x64.tgz`. Windows and Linux assets use `.zip` / `*_linux-*_R_*.tar.gz` with the same `install.packages(..., repos = NULL, type = .Platform$pkgType)` idea when your R build reports a non-`source` pkg type.
 
 ## Loading parameter sets
 
