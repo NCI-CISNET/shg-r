@@ -1,7 +1,7 @@
 Package: SmokingHistoryGenerator
 Type: Package
 Title: R Package for the Smoking History Generator
-Version: 7.2.0
+Version: 7.0.0
 Date: 2026-06-13
 Authors@R: c(
     person("John", "Clarke", email = "john.clarke@cornerstonenw.com", role = c("aut", "cre"),

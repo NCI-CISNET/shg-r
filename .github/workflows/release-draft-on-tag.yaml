@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version (prefix "v", e.g. v7.1.0). A tag with that name must already exist.'
+        description: 'Version (prefix "v", e.g. v7.0.0). A tag with that name must already exist.'
         required: true
         type: string
 

@@ -1,27 +1,6 @@
 # SmokingHistoryGenerator
 
-## 7.2.0 (unreleased)
-
-### Race defaults
-
-- Legacy config files may omit `RACE=` (defaults to 0).
-- CSV parameter tables may omit a `RACE` column (header starts with `SEX`; all rows treated as race 0).
-- `shg_run()` already defaulted omitted `race` and `sex` to 0 in config lists.
-
-## 7.1.0
-
-### Path layout (shorter defaults)
-
-- Default table subfolders renamed from `smoking/` and `mortality/` to **`smok/`** and **`mort/`** under `inst/extdata/2018/` and in factory defaults.
-- Test fixtures moved from `tests/testdata/NHIS-1965-2018/` to **`tests/testdata/2018/`**.
-- `shg_load_params()` still accepts legacy `smoking/` / `mortality/` layouts in downloaded zips and normalizes them to `smok/` / `mort/` in the cache.
-
-### Documentation
-
-- README: CRAN-first install and minimal `shg_run()` quick start with bundled extdata.
-- Maintainer docs no longer reference shg-cli sync as source of truth.
-
-## 7.0.0
+## 7.0.0 (unreleased)
 
 ### Version numbering
 
@@ -33,9 +12,23 @@
 - Fix uninitialized error message when the legacy error file cannot be opened.
 - Resolve `fast_itoa` ODR conflict between R wrapper and simulation engine.
 
-### Tooling
+### Path layout (shorter defaults)
+
+- Default table subfolders renamed from `smoking/` and `mortality/` to **`smok/`** and **`mort/`** under `inst/extdata/2018/` and in factory defaults.
+- Test fixtures moved from `tests/testdata/NHIS-1965-2018/` to **`tests/testdata/2018/`**.
+- `shg_load_params()` still accepts legacy `smoking/` / `mortality/` layouts in downloaded zips and normalizes them to `smok/` / `mort/` in the cache.
+
+### Race defaults
+
+- Legacy config files may omit `RACE=` (defaults to 0).
+- CSV parameter tables may omit a `RACE` column (header starts with `SEX`; all rows treated as race 0).
+- `shg_run()` already defaulted omitted `race` and `sex` to 0 in config lists.
+
+### Tooling and docs
 
 - Add `./tools/check-docker-asan.sh` for local CRAN-faithful gcc-ASAN checks (Docker).
+- README: CRAN-first install and minimal `shg_run()` quick start with bundled extdata.
+- Maintainer docs no longer reference shg-cli sync as source of truth.
 
 ## 6.5.3-1.0.1
 

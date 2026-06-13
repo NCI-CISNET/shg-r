@@ -49,7 +49,7 @@ Core simulation code lives under **`src/`** (`main.cpp`, `smoking_sim.cpp`, RNG 
 
 ## Version Management
 
-- **Package version:** `DESCRIPTION` → `Version` (semver, e.g. `7.1.0`). This is the only user-facing release number and CRAN version.
+- **Package version:** `DESCRIPTION` → `Version` (semver, e.g. `7.0.0`). This is the only user-facing release number and CRAN version.
 - **Engine build id:** `src/version.h` → `SHG_CORE_VERSION` (legacy XML `<VERSION>` tag and `get_shg_core_version()`). Bump when simulation behavior changes; not tied to shg-cli.
 
 Earlier releases used `{CLI engine}-{R wrapper}` (e.g. `6.5.3-1.0.1`); that prefix is retired.
