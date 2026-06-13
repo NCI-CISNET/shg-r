@@ -8,7 +8,7 @@
 <INPUT_FILE>tests/inputs/test_input_RngStream_2010_2050.txt</INPUT_FILE>
 <INITIATION>/Users/jclarke/dev/shg/shg-r/../shg-cli/tmp/2018/lbc_shg_initiation.txt</INITIATION>
 <CESSATION>/Users/jclarke/dev/shg/shg-r/../shg-cli/tmp/2018/lbc_shg_cessation.txt</CESSATION>
-<OCD>/Users/jclarke/dev/shg/shg-r/../shg-cli/tmp/2018/lbc_smokehist_ac_mortality.txt<OCD>
+<OCD>/Users/jclarke/dev/shg/shg-r/../shg-cli/tmp/2018/lbc_smokehist_ac_mortality.txt</OCD>
 <CIG_PER_DAY>/Users/jclarke/dev/shg/shg-r/../shg-cli/tmp/2018/lbc_shg_cpd.txt</CIG_PER_DAY>
 </DATAFILES>
 <OUTFILES>
