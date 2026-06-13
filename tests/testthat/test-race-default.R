@@ -5,7 +5,7 @@ library(testthat)
   if ("RACE" %in% names(d)) {
     d$RACE <- NULL
   }
-  names(d)[1] <- names(d)[1] # keep SEX first
+  stopifnot(identical(names(d)[1L], "SEX")) # header starts with SEX when RACE is omitted
   write.table(d, dest, sep = ",", row.names = FALSE, col.names = TRUE, quote = FALSE)
 }
 
