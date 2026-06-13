@@ -19,7 +19,7 @@
 #' `SHGInterface` instance.
 #'
 #' Each zip uses the **shg-params** release layout (`params/` CSVs plus
-#' `metadata.yml`). The simulator expects `smoking/*.csv` and `mortality/*.csv`
+#' `metadata.yml`). The simulator expects `smok/*.csv` and `mort/*.csv`
 #' under one folder; this function materializes that tree from the two zips.
 #'
 #' @param shg An `SHGInterface` instance.
@@ -98,12 +98,38 @@ clear_params_cache <- shg_clear_params_cache
   trimws(as.character(x))
 }
 
+.shg_table_subdir <- function(root, kind = c("smok", "mort")) {
+  kind <- match.arg(kind)
+  legacy <- if (kind == "smok") "smoking" else "mortality"
+  if (dir.exists(file.path(root, kind)))
+    return(kind)
+  if (dir.exists(file.path(root, legacy)))
+    return(legacy)
+  kind
+}
+
+.shg_normalize_table_dirs <- function(root) {
+  snap <- tryCatch(.shg_snapshot_root(root), error = function(e) root)
+  for (pair in list(c("smok", "smoking"), c("mort", "mortality"))) {
+    canon <- pair[[1L]]
+    leg <- pair[[2L]]
+    leg_path <- file.path(snap, leg)
+    canon_path <- file.path(snap, canon)
+    if (dir.exists(leg_path) && !dir.exists(canon_path))
+      file.rename(leg_path, canon_path)
+  }
+  invisible(snap)
+}
+
 .shg_reject_legacy_combined_zip <- function(cache_path) {
   snap <- tryCatch(.shg_snapshot_root(cache_path), error = function(e) cache_path)
-  if (dir.exists(file.path(snap, "smoking")) && dir.exists(file.path(snap, "mortality")) &&
-      file.exists(file.path(snap, "smoking", "initiation.csv"))) {
+  has_smok <- dir.exists(file.path(snap, "smok")) || dir.exists(file.path(snap, "smoking"))
+  has_mort <- dir.exists(file.path(snap, "mort")) || dir.exists(file.path(snap, "mortality"))
+  if (has_smok && has_mort &&
+      (file.exists(file.path(snap, "smok", "initiation.csv")) ||
+         file.exists(file.path(snap, "smoking", "initiation.csv")))) {
     stop(
-      "This looks like a legacy combined parameter zip (smoking/ + mortality/ at root). ",
+      "This looks like a legacy combined parameter zip (smok/ + mort/ at root). ",
       "Use separate shg-params smoking and mortality release zips with ",
       "smok_params_source and mort_params_source instead.",
       call. = FALSE
@@ -313,7 +339,9 @@ clear_params_cache <- shg_clear_params_cache
   if (length(dirs) == 1) {
     cand <- dirs[[1]]
     if (dir.exists(file.path(cand, "params")) ||
+        dir.exists(file.path(cand, "smok")) ||
         dir.exists(file.path(cand, "smoking")) ||
+        dir.exists(file.path(cand, "mort")) ||
         dir.exists(file.path(cand, "mortality")))
       return(cand)
   }
@@ -366,8 +394,8 @@ clear_params_cache <- shg_clear_params_cache
 
   if (dir.exists(combined_path))
     unlink(combined_path, recursive = TRUE)
-  smk_out <- file.path(combined_path, "smoking")
-  mrt_out <- file.path(combined_path, "mortality")
+  smk_out <- file.path(combined_path, "smok")
+  mrt_out <- file.path(combined_path, "mort")
   dir.create(smk_out, recursive = TRUE)
   dir.create(mrt_out, recursive = TRUE)
 
@@ -391,6 +419,8 @@ clear_params_cache <- shg_clear_params_cache
   mort_cache <- .shg_params_cache_path(mort_src)
   .shg_ensure_zip_extracted(smok_src, smok_cache)
   .shg_ensure_zip_extracted(mort_src, mort_cache)
+  .shg_normalize_table_dirs(smok_cache)
+  .shg_normalize_table_dirs(mort_cache)
   .shg_materialize_engine_tree(smok_cache, mort_cache, combined)
   combined
 }
@@ -399,8 +429,10 @@ clear_params_cache <- shg_clear_params_cache
   if (!dir.exists(combined_path))
     return(FALSE)
   mort_file <- if (mort_params_type == "acm") "acm.csv" else "ocm-excl-lung-cancer.csv"
-  file.exists(file.path(combined_path, "smoking", "initiation.csv")) &&
-    file.exists(file.path(combined_path, "mortality", mort_file))
+  smk_sub <- .shg_table_subdir(combined_path, "smok")
+  mort_sub <- .shg_table_subdir(combined_path, "mort")
+  file.exists(file.path(combined_path, smk_sub, "initiation.csv")) &&
+    file.exists(file.path(combined_path, mort_sub, mort_file))
 }
 
 .shg_apply_params <- function(shg, cache_path, mort_params_type) {
@@ -413,8 +445,13 @@ clear_params_cache <- shg_clear_params_cache
       stop("Merged parameter tree is incomplete under: ", cache_path, call. = FALSE)
   }
 
-  smk_dir <- file.path(root, "smoking")
-  mort_dir <- file.path(root, "mortality")
+  .shg_normalize_table_dirs(root)
+  root <- if (.shg_merged_cache_intact(root, mort_params_type)) root else .shg_snapshot_root(root)
+
+  smk_sub <- .shg_table_subdir(root, "smok")
+  mort_sub <- .shg_table_subdir(root, "mort")
+  smk_dir <- file.path(root, smk_sub)
+  mort_dir <- file.path(root, mort_sub)
   required <- c(
     file.path(smk_dir, "initiation.csv"),
     file.path(smk_dir, "cessation.csv"),
@@ -437,20 +474,20 @@ clear_params_cache <- shg_clear_params_cache
   if (!file.exists(mort_file)) {
     stop(
       "Mortality file not found: ", mort_file,
-      "\nAvailable in mortality/: ",
+      "\nAvailable in mort/: ",
       paste(list.files(mort_dir), collapse = ", "),
       call. = FALSE
     )
   }
 
   shg$input_data_folder <- root
-  shg$initiation_filename <- "smoking/initiation.csv"
-  shg$cessation_filename <- "smoking/cessation.csv"
-  shg$cpd_filename <- "smoking/cpd.csv"
+  shg$initiation_filename <- paste0(smk_sub, "/initiation.csv")
+  shg$cessation_filename <- paste0(smk_sub, "/cessation.csv")
+  shg$cpd_filename <- paste0(smk_sub, "/cpd.csv")
   shg$mortality_filename <- if (mort_params_type == "acm") {
-    "mortality/acm.csv"
+    paste0(mort_sub, "/acm.csv")
   } else {
-    "mortality/ocm-excl-lung-cancer.csv"
+    paste0(mort_sub, "/ocm-excl-lung-cancer.csv")
   }
 
   message(

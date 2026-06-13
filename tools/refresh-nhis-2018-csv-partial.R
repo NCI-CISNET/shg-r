@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
-# Rebuild NHIS-1965-2018 csv-partial (1940, 1950, 2010) from tests/testdata/NHIS-1965-2018/csv-complete/
-# and sync into inst/extdata/2018/ and tests/testdata/NHIS-1965-2018/csv-partial/.
+# Rebuild NHIS-1965-2018 csv-partial (1940, 1950, 2010) from tests/testdata/2018/csv-complete/
+# and sync into inst/extdata/2018/ and tests/testdata/2018/csv-partial/.
 # Run from package root: Rscript tools/refresh-nhis-2018-csv-partial.R
 
 argv <- commandArgs(trailingOnly = FALSE)
@@ -10,10 +10,10 @@ repo_root <- if (nzchar(file_arg)) {
 } else {
   normalizePath(getwd(), winslash = "/", mustWork = TRUE)
 }
-complete <- file.path(repo_root, "tests", "testdata", "NHIS-1965-2018", "csv-complete")
+complete <- file.path(repo_root, "tests", "testdata", "2018", "csv-complete")
 targets <- c(
   file.path(repo_root, "inst", "extdata", "2018"),
-  file.path(repo_root, "tests", "testdata", "NHIS-1965-2018", "csv-partial")
+  file.path(repo_root, "tests", "testdata", "2018", "csv-partial")
 )
 cohorts_chr <- c("1940", "1950", "2010")
 yobs_int <- as.integer(cohorts_chr)
@@ -37,7 +37,7 @@ read_wide <- function(name) {
 
 write_wide <- function(df, rel_smoking) {
   for (t in targets) {
-    out <- file.path(t, "smoking", basename(rel_smoking))
+    out <- file.path(t, "smok", basename(rel_smoking))
     dir.create(dirname(out), recursive = TRUE, showWarnings = FALSE)
     utils::write.csv(df, out, row.names = FALSE, quote = FALSE)
   }
@@ -45,7 +45,7 @@ write_wide <- function(df, rel_smoking) {
 
 write_mort <- function(df, fname) {
   for (t in targets) {
-    out <- file.path(t, "mortality", fname)
+    out <- file.path(t, "mort", fname)
     dir.create(dirname(out), recursive = TRUE, showWarnings = FALSE)
     utils::write.csv(df, out, row.names = FALSE, quote = FALSE)
   }

@@ -1,6 +1,19 @@
 # SmokingHistoryGenerator
 
-## 7.0.0 (unreleased)
+## 7.1.0 (unreleased)
+
+### Path layout (shorter defaults)
+
+- Default table subfolders renamed from `smoking/` and `mortality/` to **`smok/`** and **`mort/`** under `inst/extdata/2018/` and in factory defaults.
+- Test fixtures moved from `tests/testdata/NHIS-1965-2018/` to **`tests/testdata/2018/`**.
+- `shg_load_params()` still accepts legacy `smoking/` / `mortality/` layouts in downloaded zips and normalizes them to `smok/` / `mort/` in the cache.
+
+### Documentation
+
+- README: CRAN-first install and minimal `shg_run()` quick start with bundled extdata.
+- Maintainer docs no longer reference shg-cli sync as source of truth.
+
+## 7.0.0
 
 ### Version numbering
 
@@ -34,7 +47,7 @@
 
 ### Bundled inputs and YAML
 
-- **Bundled inputs:** Default factory `input_data_folder` is `system.file("extdata", "2018", package = "SmokingHistoryGenerator")` (NHIS-1965–2018 csv-partial with cohort columns **1940, 1950, 2010**). Removed transitional `inst/extdata/2016/`, NHIS-1965–2016 test fixtures, and `tests/fixtures/2016/` XML goldens; tests and docs use the 2018 tree only. Regenerate the 2018 partial from `tests/testdata/NHIS-1965-2018/csv-complete/` using **`Rscript tools/refresh-nhis-2018-csv-partial.R`**.
+- **Bundled inputs:** Default factory `input_data_folder` is `system.file("extdata", "2018", package = "SmokingHistoryGenerator")` (NHIS-1965–2018 csv-partial with cohort columns **1940, 1950, 2010**). Removed transitional `inst/extdata/2016/`, NHIS-1965–2016 test fixtures, and `tests/fixtures/2016/` XML goldens; tests and docs use the 2018 tree only. Regenerate the 2018 partial from `tests/testdata/2018/csv-complete/` using **`Rscript tools/refresh-nhis-2018-csv-partial.R`**.
 - **Layout:** Under each year folder, smoking tables live in `smoking/`, mortality in `mortality/`; factory defaults use relative paths (`smoking/initiation.csv`, …).
 - Portable / written YAML groups `params_bundle_source`, `params_mortality`, and optional folder paths under a `params:` map; `shg_load_config` / `shg_apply_config` accept nested or flat keys.
 

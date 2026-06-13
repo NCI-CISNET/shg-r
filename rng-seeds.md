@@ -12,7 +12,7 @@ shg <- new(SHGInterface)
 # This example uses many birth cohorts (1930–1949). You must point input_data_folder
 # at full NHIS-style tables with all cohort columns—not the small inst/extdata bundle.
 # Full public bundle: coming soon on Zenodo (see README “Input data: CRAN bundle vs full NHIS set”).
-shg$input_data_folder <- "/path/to/NHIS-1965-2018/csv-complete"
+shg$input_data_folder <- "/path/to/2018/csv-complete"
 
 # Set a custom seed for RngStream (6-element vector)
 # This is a single seed; SHG initiates 4 IID substreams for each segment based on this starting seed

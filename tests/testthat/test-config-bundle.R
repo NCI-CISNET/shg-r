@@ -49,7 +49,7 @@ test_that("shg_apply_config loads bundle via smok_params_source and mort_params_
     cohort_year = 1950L
   ))
   expect_true(SmokingHistoryGenerator:::.shg_params_paths_exist(shg))
-  expect_equal(shg$mortality_filename, "mortality/ocm-excl-lung-cancer.csv")
+  expect_equal(shg$mortality_filename, "mort/ocm-excl-lung-cancer.csv")
 })
 
 test_that("shg_apply_config maps mortality alias to mort_params_type", {
@@ -75,7 +75,7 @@ test_that("shg_apply_config maps mortality alias to mort_params_type", {
     mortality = "ocm",
     cohort_year = 1950L
   ))
-  expect_equal(shg$mortality_filename, "mortality/ocm-excl-lung-cancer.csv")
+  expect_equal(shg$mortality_filename, "mort/ocm-excl-lung-cancer.csv")
 })
 
 test_that("shg_apply_config preserves explicit paths when no param sources", {
@@ -83,10 +83,10 @@ test_that("shg_apply_config preserves explicit paths when no param sources", {
   ext <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
   shg_apply_config(shg, list(
     input_data_folder = ext,
-    initiation_filename = "smoking/initiation.csv",
-    cessation_filename = "smoking/cessation.csv",
-    mortality_filename = "mortality/acm.csv",
-    cpd_filename = "smoking/cpd.csv",
+    initiation_filename = "smok/initiation.csv",
+    cessation_filename = "smok/cessation.csv",
+    mortality_filename = "mort/acm.csv",
+    cpd_filename = "smok/cpd.csv",
     cohort_year = 1950L
   ))
   expect_equal(normalizePath(shg$input_data_folder, winslash = "/"),
@@ -241,7 +241,7 @@ test_that("shg_load_config restores config and can re-fetch after cache clear", 
     "re-loading bundles"
   )
   expect_true(file.exists(file.path(shg2$input_data_folder, shg2$initiation_filename)))
-  expect_equal(shg2$mortality_filename, "mortality/ocm-excl-lung-cancer.csv")
+  expect_equal(shg2$mortality_filename, "mort/ocm-excl-lung-cancer.csv")
 })
 
 test_that("SHGInterface$load_config and runSim delegate correctly", {

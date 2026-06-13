@@ -32,7 +32,7 @@ and sets \code{input_data_folder} plus relative input filenames on the
 \code{SHGInterface} instance.
 
 Each zip uses the \strong{shg-params} release layout (\verb{params/} CSVs plus
-\code{metadata.yml}). The simulator expects \verb{smoking/*.csv} and \verb{mortality/*.csv}
+\code{metadata.yml}). The simulator expects \verb{smok/*.csv} and \verb{mort/*.csv}
 under one folder; this function materializes that tree from the two zips.
 }
 \section{Download timeouts}{

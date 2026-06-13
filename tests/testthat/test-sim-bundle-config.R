@@ -181,7 +181,7 @@ test_that("shg_run auto-applies params when param sources are in config", {
   out <- shg_run(shg, cfg, attach_run_info = TRUE)
   expect_s3_class(out$results, "data.frame")
   expect_equal(nrow(out$results), 25L)
-  expect_equal(shg$mortality_filename, "mortality/ocm-excl-lung-cancer.csv")
+  expect_equal(shg$mortality_filename, "mort/ocm-excl-lung-cancer.csv")
   expect_true(SmokingHistoryGenerator:::.shg_params_paths_exist(shg))
 })
 

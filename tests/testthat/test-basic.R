@@ -121,7 +121,7 @@ test_pop_df <- function(n, race = 0, sex = 0, birth_cohort = 1940) {
 # Tests
 shg <- new(SHGInterface)
 # Legacy XML fixtures were generated with ACM (all-cause) mortality tables
-shg$mortality_filename <- "mortality/acm.csv"
+shg$mortality_filename <- "mort/acm.csv"
 shg$num_threads <- 1
 shg$number_of_segments <- 1
 shg$rng_strategy <- "MersenneTwister"
@@ -134,7 +134,7 @@ N <- 10^4 # Individuals to simulate (REPEAT)
 data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
 test_that("SHG extdata folder exists and contains bundled CSV inputs", {
   expect_true(nzchar(data_folder) && dir.exists(data_folder))
-  expect_true(file.exists(file.path(data_folder, "smoking", "initiation.csv")))
+  expect_true(file.exists(file.path(data_folder, "smok", "initiation.csv")))
 })
 
 shg$input_data_folder <- data_folder
@@ -279,10 +279,10 @@ test_that("getConfig() with no arguments works (R does not apply C++ default arg
 
 test_that("factory default mortality_filename is mortality/acm.csv", {
   shg <- new(SHGInterface)
-  expect_equal(shg$mortality_filename, "mortality/acm.csv")
-  shg$mortality_filename <- "mortality/ocm-excl-lung-cancer.csv"
+  expect_equal(shg$mortality_filename, "mort/acm.csv")
+  shg$mortality_filename <- "mort/ocm-excl-lung-cancer.csv"
   shg$reset_to_factory_defaults()
-  expect_equal(shg$mortality_filename, "mortality/acm.csv")
+  expect_equal(shg$mortality_filename, "mort/acm.csv")
 })
 
 test_that("getConfig() returns correct structure with config_version", {
@@ -1140,14 +1140,14 @@ test_that("output_file produces same init/cess/ocd as memory mode", {
 })
 
 test_that("NHIS csv-partial bundle lists expected filenames (checked in test-nhis-partial-inputs.R)", {
-  nh <- test_path("../testdata/NHIS-1965-2018/csv-partial")
+  nh <- test_path("../testdata/2018/csv-partial")
   skip_if_not(dir.exists(nh), "NHIS csv-partial fixtures missing (not in CRAN tarball; use full git checkout)")
   req <- c(
-    file.path("smoking", "initiation.csv"),
-    file.path("smoking", "cessation.csv"),
-    file.path("smoking", "cpd.csv"),
-    file.path("mortality", "acm.csv"),
-    file.path("mortality", "ocm-excl-lung-cancer.csv")
+    file.path("smok", "initiation.csv"),
+    file.path("smok", "cessation.csv"),
+    file.path("smok", "cpd.csv"),
+    file.path("mort", "acm.csv"),
+    file.path("mort", "ocm-excl-lung-cancer.csv")
   )
   for (f in req) {
     expect_true(file.exists(file.path(nh, f)), info = f)

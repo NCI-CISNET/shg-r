@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# Build shg-params-style smoking/mortality zips from inst/extdata/2018/{smoking,mortality}.
+# Build shg-params-style smoking/mortality zips from inst/extdata/2018/{smok,mort}.
 # Installed path: system.file("extdata", "2018", "bundled-smok.zip", package = "SmokingHistoryGenerator")
 
 args <- commandArgs(trailingOnly = TRUE)
@@ -12,8 +12,8 @@ pkg_root <- if (length(args) >= 1 && nzchar(args[[1]])) {
 }
 
 base <- file.path(pkg_root, "inst", "extdata", "2018")
-smok_csv <- file.path(base, "smoking")
-mort_csv <- file.path(base, "mortality")
+smok_csv <- file.path(base, "smok")
+mort_csv <- file.path(base, "mort")
 for (label in c(smok_csv, mort_csv)) {
   if (!dir.exists(label)) {
     stop("Missing directory: ", label)
@@ -55,7 +55,7 @@ zip_one(
   c(
     "domain: smoking",
     "release_key: bundled@smok-NHIS-2018-partial",
-    "note: CRAN-sized NHIS 2018 csv-partial cohorts (see inst/extdata/2018/smoking/)"
+    "note: CRAN-sized NHIS 2018 csv-partial cohorts (see inst/extdata/2018/smok/)"
   )
 )
 
@@ -73,7 +73,7 @@ zip_one(
     "domain: mortality",
     "release_key: bundled@mort-v1.0.0-partial",
     "version: 1.0.0",
-    "note: CRAN-sized mortality tables (see inst/extdata/2018/mortality/)"
+    "note: CRAN-sized mortality tables (see inst/extdata/2018/mort/)"
   )
 )
 

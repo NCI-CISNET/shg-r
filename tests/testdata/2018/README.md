@@ -13,7 +13,7 @@ Point the interface at this folder (only on your machine, after you populate it)
 
 ```r
 shg <- new(SHGInterface)
-shg$input_data_folder <- "/path/to/shg-r/tests/testdata/NHIS-1965-2018/csv-complete"
+shg$input_data_folder <- "/path/to/shg-r/tests/testdata/2018/csv-complete"
 ```
 
 The **trimmed csv-partial** tables that mirror the installed package layout live under `inst/extdata/2018/`. Regenerate them from this tree’s `csv-complete/` with:

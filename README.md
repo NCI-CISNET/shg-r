@@ -5,24 +5,33 @@
 
 ## About
 
-This R package provides a convenient interface to the [CISNET](https://cisnet.cancer.gov/) Smoking History Generator. It can produce the identical outputs as the command-line version (CLI) of the Smoking History Generator in R and offers an easy way for modelers to access the Smoking History Generator directly in R.
+[SmokingHistoryGenerator](https://CRAN.R-project.org/package=SmokingHistoryGenerator) is the CISNET Smoking History Generator for R: a microsimulation engine that produces individual smoking histories (initiation, cessation, cigarettes per day, mortality) from calibrated NHIS-style input tables.
 
-## Getting Started
-
-### Installation from CRAN
+## Installation
 
 ```r
 install.packages("SmokingHistoryGenerator")
 ```
 
-### Installation from GitHub
+Development version from GitHub (requires compilers for the C++ core):
 
 ```r
 install.packages("pak")
 pak::pak("NCI-CISNET/shg-r")
-# OR
-pak::pak("NCI-CISNET/shg-r@[optional-branch-of-your-choice]")
 ```
+
+## Quick start
+
+The package ships a small default parameter set (`inst/extdata/2018/`) with cohort columns **1940, 1950, and 2010**. No extra configuration is required for a basic run:
+
+```r
+library(SmokingHistoryGenerator)
+
+# Defaults: bundled inputs, 1000 individuals, race=0, sex=0
+shg_run(new(SHGInterface), list(cohort_year = 1950))
+```
+
+## Getting started (detailed)
 
 ### Precompiled binary from GitHub Releases (optional)
 
@@ -47,12 +56,12 @@ Intel Macs use `_macos-x64.tgz`. Windows and Linux assets use `.zip` / `*_linux-
 ## Loading parameter sets
 
 The SHG needs calibrated input files (initiation, cessation, CPD, and mortality tables).
-The package ships a **default** CRAN-sized NHIS-1965–2018 csv-partial under `inst/extdata/2018/` (`smoking/`, `mortality/`). Full NHIS-style tables
+The package ships a **default** CRAN-sized NHIS-1965–2018 csv-partial under `inst/extdata/2018/` (`smok/`, `mort/`). Full NHIS-style tables
 are distributed as **parameter bundles** via Zenodo (and GitHub Releases). See `?shg_load_params` for bundle URLs, ACM vs OCM mortality, authentication, and cache behavior.
 
 ### Traditional workflow: local folder with already-uncompressed files
 
-Use this when you already have a local directory containing `smoking/` and `mortality/`
+Use this when you already have a local directory containing `smok/` and `mort/`
 files and want to point SHG directly at those inputs.
 
 ```r
@@ -60,10 +69,10 @@ library(SmokingHistoryGenerator)
 shg <- new(SHGInterface)
 
 shg$input_data_folder   <- "/path/to/usa-national@smok-2018-mort-2016"
-shg$initiation_filename <- "smoking/initiation.csv"
-shg$cessation_filename  <- "smoking/cessation.csv"
-shg$cpd_filename        <- "smoking/cpd.csv"
-shg$mortality_filename  <- "mortality/acm.csv"  # or mortality/ocm-excl-lung-cancer.csv
+shg$initiation_filename <- "smok/initiation.csv"
+shg$cessation_filename  <- "smok/cessation.csv"
+shg$cpd_filename        <- "smok/cpd.csv"
+shg$mortality_filename  <- "mort/acm.csv"  # or mort/ocm-excl-lung-cancer.csv
 
 run_cfg <- list(
   individuals = 1e5,
@@ -211,7 +220,7 @@ If `birth_cohort` spans many distinct years (as in this illustration), you need 
 ```r
 shg <- new(SHGInterface)
 # Full tables required for multi-year cohorts—not system.file("extdata", "2018", ...):
-shg$input_data_folder <- "/path/to/NHIS-1965-2018/csv-complete"
+shg$input_data_folder <- "/path/to/2018/csv-complete"
 N <- 10^5 # Individuals to simulate (REPEAT)
 pop <- list(
     race = rep(0, N),

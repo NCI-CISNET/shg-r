@@ -2,7 +2,7 @@
 # Regenerate tests/fixtures/2018/{MT,RS}/*.txt using the standalone CLI (same inputs as test-basic.R).
 # Default binary: macOS SHG 6.4.0 CLI under tmp/ (not tracked; add locally or override).
 # SHG 6.4.x legacy configs use OCD_PROB= / SEED_OCD= (not MORTALITY_PROB). Inputs are wide
-# legacy .txt tables (see shg-cli/tmp/NHIS-1965-2018/); override SHG_FIXTURE_DATA if needed.
+# legacy .txt tables (see shg-cli/tmp/2018/); override SHG_FIXTURE_DATA if needed.
 
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

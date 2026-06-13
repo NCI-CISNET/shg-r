@@ -27,7 +27,7 @@
 #   SHG_LEGACY_TXT_INITIATION, SHG_LEGACY_TXT_CESSATION, SHG_LEGACY_TXT_CPD,
 #   SHG_LEGACY_TXT_ACM, SHG_LEGACY_TXT_OCM
 # Defaults: initiation.txt, cessation.txt, cpd.txt, acm.txt, ocm-excl-lung-cancer.txt
-# (see tests/testdata/NHIS-1965-2018/legacy-complete/). Absolute `SHG_LEGACY_TXT_ROOT` is kept
+# (see tests/testdata/2018/legacy-complete/). Absolute `SHG_LEGACY_TXT_ROOT` is kept
 # as given (not `normalizePath`'d first) so a symlink with a space-free path can target a
 # folder whose name contains spaces. Table lines in `input.txt` avoid expanding that symlink
 # when `file.path(root, name)` already exists; paths with spaces or quotes are double-quoted.
@@ -357,7 +357,7 @@ snapshot_root_for_bundle <- function(exdir_parent) {
 }
 
 #' Unzip parameter bundle once under out_dir/_bundle_extract; return snapshot root
-#' (directory that contains smoking/ and mortality/).
+#' (directory that contains smok/ and mort/).
 parity_bundle_cli_root <- function(zip_abs, out_dir) {
   ex <- file.path(normalizePath(out_dir, winslash = "/", mustWork = FALSE), "_bundle_extract")
   dir.create(ex, recursive = TRUE, showWarnings = FALSE)
@@ -455,7 +455,7 @@ legacy_txt_read_specs <- function(root) {
   out
 }
 
-#' Copy smoking/mortality tables to flat names under \code{cli_root} for older CLIs
+#' Copy smok/mortality tables to flat names under \code{cli_root} for older CLIs
 #' that only accept INIT_PROB=.../initiation.csv style paths.
 #' Point the interface at flat legacy `.txt` tables under \code{root} (NHIS wide format).
 legacy_apply_txt_table_paths <- function(shg, root, mortality, specs) {
@@ -478,11 +478,11 @@ legacy_txt_specs <- if (isTRUE(legacy_txt_mode)) {
 legacy_flatten_bundle_tables <- function(cli_root) {
   root <- normalizePath(cli_root, winslash = "/", mustWork = TRUE)
   pairs <- list(
-    c("smoking/initiation.csv", "initiation.csv"),
-    c("smoking/cessation.csv", "cessation.csv"),
-    c("smoking/cpd.csv", "cpd.csv"),
-    c("mortality/acm.csv", "acm.csv"),
-    c("mortality/ocm-excl-lung-cancer.csv", "ocm-excl-lung-cancer.csv")
+    c("smok/initiation.csv", "initiation.csv"),
+    c("smok/cessation.csv", "cessation.csv"),
+    c("smok/cpd.csv", "cpd.csv"),
+    c("mort/acm.csv", "acm.csv"),
+    c("mort/ocm-excl-lung-cancer.csv", "ocm-excl-lung-cancer.csv")
   )
   for (pr in pairs) {
     src <- file.path(root, pr[1L])

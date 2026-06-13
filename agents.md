@@ -41,64 +41,24 @@ CI usually does a clean compile; this issue is mainly **local development**.
 
 5. **`devtools::test()` always loads the package with `load_package = "source"`** (pkgload from the source tree), so a prior **`devtools::install()`** into `.R-lib` does **not** affect which `.so` runs during tests. To test the **installed** build, use **`testthat::test_local(getwd(), load_package = "installed")`** (as in the **R: Test** VS Code task) or run **`R CMD check`**.
 
-## Shared Files with shg-cli
+## Engine source layout
 
-The following `src/` files **MUST match shg-cli exactly**:
-- `main.cpp`
-- `mersenne_class.cpp`, `mersenne_class.h`
-- `rng_strategy.h`
-- `RngStream.cpp`, `RngStream.h`
-- `sim_exception.cpp`, `sim_exception.h`
-- `smoking_sim.cpp`, `smoking_sim.h`
-- `version.h`
+Core simulation code lives under **`src/`** (`main.cpp`, `smoking_sim.cpp`, RNG modules, etc.). R-specific glue is **`wrapper.cpp`**, **`wrapper.h`**, and **`RcppExports.cpp`**.
 
-**R-only glue (not synced from CLI):** `wrapper.cpp`, `wrapper.h`, `RcppExports.cpp`
-
-**Bundled inputs (not synced; CRAN-sized subsets):** **`inst/extdata/2018/{smoking,mortality}/*.csv`** (NHIS-1965-2018 csv-partial; cohort columns 1940/1950/2010 in the trimmed bundle) is the **default** (`system.file("extdata", "2018", ...)` + relative `smoking/*.csv`, `mortality/*.csv`). Refresh from `tests/testdata/NHIS-1965-2018/csv-complete/` via **`Rscript tools/refresh-nhis-2018-csv-partial.R`**. NHIS test fixtures live under **`tests/testdata/NHIS-1965-2018/`** (`csv-partial/`, `legacy-partial/` in the tarball; `csv-complete/` and `legacy-complete/` git-only). For trimming wide legacy `.txt` in a custom folder, use **`tools/trim-default-inputs.R`** with that directory as the sole argument. After changing bundled inputs or CPD loading, refresh legacy XML fixtures with **`tools/refresh-legacy-fixtures.R`**. Sample Legacy web configs: `tests/testdata/legacy-web-examples/`. Full tables: Zenodo (see `README.md`).
-
-**DO NOT modify shared files in shg-r** without first updating shg-cli. The CLI is the source of truth for shared simulation code.
-
-## Sync Script
-
-Use `tools/shg-sync.py` to manage synchronization:
-
-```bash
-python tools/shg-sync.py check              # Check if files match
-python tools/shg-sync.py sync-from-cli     # Copy CLI → shg-r (standard)
-python tools/shg-sync.py sync-to-cli       # Copy shg-r → CLI (dev only!)
-python tools/shg-sync.py update-description  # Refresh src/shg-cli-info.txt from shg-cli
-python tools/shg-sync.py validate          # Pre-release validation
-```
+**Bundled inputs (CRAN-sized subsets):** **`inst/extdata/2018/{smok,mort}/*.csv`** (NHIS-1965-2018 csv-partial; cohort columns 1940/1950/2010 in the trimmed bundle) is the **default** (`system.file("extdata", "2018", ...)` + relative `smok/*.csv`, `mort/*.csv`). Refresh from `tests/testdata/2018/csv-complete/` via **`Rscript tools/refresh-nhis-2018-csv-partial.R`**. NHIS test fixtures live under **`tests/testdata/2018/`** (`csv-partial/`, `legacy-partial/` in the tarball; `csv-complete/` and `legacy-complete/` git-only). For trimming wide legacy `.txt` in a custom folder, use **`tools/trim-default-inputs.R`** with that directory as the sole argument. After changing bundled inputs or CPD loading, refresh legacy XML fixtures with **`tools/refresh-legacy-fixtures.R`**. Sample Legacy web configs: `tests/testdata/legacy-web-examples/`. Full tables: Zenodo (see `README.md`).
 
 ## Version Management
 
-Two separate version numbers:
-- **R package version:** `DESCRIPTION` → `Version` (e.g., 0.0.3)
-- **Core engine version:** `src/version.h` → `SHG_CORE_VERSION`
+- **Package version:** `DESCRIPTION` → `Version` (semver, e.g. `7.1.0`). This is the only user-facing release number and CRAN version.
+- **Engine build id:** `src/version.h` → `SHG_CORE_VERSION` (legacy XML `<VERSION>` tag and `get_shg_core_version()`). Bump when simulation behavior changes; not tied to shg-cli.
 
-CLI sync state is recorded under a top-level **`shg-cli:`** map in **`src/shg-cli-info.txt`** (YAML). The file is listed in **`.Rbuildignore`** so it is omitted from CRAN source tarballs (and does not trigger the `src/` non-source-file check on submissions built from that tarball). YAML keys are **`MostRecentTag`**, **`CommitHash`**, and **`SrcHash`** (MD5 of shared engine files). R merges these into the object returned by **`packageDescription()`** as **`SHGMostRecentTag`**, **`SHGCommitHash`**, and **`SHGsrcHash`** when the file exists on disk (for example a git checkout with **`devtools::load_all()`**); **`DESCRIPTION`** itself stays CRAN-clean.
-
-Run `python tools/shg-sync.py update-description` to refresh `src/shg-cli-info.txt` from the sibling **shg-cli** checkout.
-
-### When to Bump Versions
-
-| Change Type | DESCRIPTION Version | version.h |
-|-------------|---------------------|-----------|
-| Wrapper-only change | Bump | No change |
-| CLI sync (shared code) | Bump | Update to match CLI |
-| New R features | Bump | Depends |
+Earlier releases used `{CLI engine}-{R wrapper}` (e.g. `6.5.3-1.0.1`); that prefix is retired.
 
 ## Release Checklist
 
-1. Run `python tools/shg-sync.py validate` - ensure all checks pass
-2. Update `src/version.h` to match CLI (if syncing)
-3. Update `DESCRIPTION` and shg-cli sync files:
-   - Bump `Version` field in `DESCRIPTION` when the wrapper segment changes
-   - Run `python tools/shg-sync.py update-description`
-4. Run **`./tools/check-docker-asan.sh`** after C++ engine changes (CRAN-faithful gcc-ASAN; requires Docker, ~20 min)
-5. Run `R CMD check` (or `rcmdcheck::rcmdcheck(error_on = "warning")` to match **GitHub Actions**, which fails on any WARNING, not only errors)
-6. Confirm **windows-2022 (R-devel)** passes in **R CMD check (all OS)** (approximates CRAN `r-devel-windows-x86_64`); see `dev-readme.md` § CRAN Windows preflight
-7. Create PR, wait for CI
-8. Merge to master
-9. Create git tag
-10. Create GitHub release noting CLI version compatibility
+1. Run **`./tools/check-docker-asan.sh`** after C++ engine changes (CRAN-faithful gcc-ASAN; requires Docker, ~20 min)
+2. Run **`./tools/build-cran-submission.sh`** or **`R CMD check`** (`rcmdcheck::rcmdcheck(error_on = "warning")` matches GitHub Actions)
+3. Confirm **windows-2022 (R-devel)** passes in **R CMD check (all OS)**; see `dev-readme.md` § CRAN Windows preflight
+4. Create PR, wait for CI
+5. Merge to main
+6. Create git tag and GitHub release

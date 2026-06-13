@@ -32,7 +32,7 @@
 ^SmokingHistoryGenerator\.Rcheck$
 ^SmokingHistoryGenerator_.*\.tar\.gz$
 ^tmp
-^tests/testdata/NHIS-1965-2018/(csv-complete|legacy-complete)(?:/|$)
+^tests/testdata/2018/(csv-complete|legacy-complete)(?:/|$)
 ^tests/testdata/.*\.zip$
 ^demo
 ^docs

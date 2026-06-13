@@ -7,10 +7,10 @@ YOB=1950
 CESSATION_YR=0
 REPEAT=1000
 
-INIT_PROB=inst/extdata/2018/smoking/initiation.csv
-CESS_PROB=inst/extdata/2018/smoking/cessation.csv
-MORTALITY_PROB=inst/extdata/2018/mortality/ocm-excl-lung-cancer.csv
-CPD_DATA=inst/extdata/2018/smoking/cpd.csv
+INIT_PROB=inst/extdata/2018/smok/initiation.csv
+CESS_PROB=inst/extdata/2018/smok/cessation.csv
+MORTALITY_PROB=inst/extdata/2018/mort/ocm-excl-lung-cancer.csv
+CPD_DATA=inst/extdata/2018/smok/cpd.csv
 
 OUTPUTFILE=RS_test_output.out
 ERRORFILE=RS_test_errors.txt

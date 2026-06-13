@@ -5,11 +5,11 @@ using namespace std;
 
 // Note that the CLI SHG version might specify default paths differently
 #define R_DEFAULT_DATA_DIR "./extdata/"
-#define R_INITIATION_DATA_FILE "smoking/initiation.csv"
-#define R_CESSATION_DATA_FILE "smoking/cessation.csv"
-#define R_ACM_DATA_FILE "mortality/acm.csv"
-#define R_OTHER_COD_DATA_FILE "mortality/ocm-excl-lung-cancer.csv"
-#define R_CPD_DATA_FILE "smoking/cpd.csv"
+#define R_INITIATION_DATA_FILE "smok/initiation.csv"
+#define R_CESSATION_DATA_FILE "smok/cessation.csv"
+#define R_ACM_DATA_FILE "mort/acm.csv"
+#define R_OTHER_COD_DATA_FILE "mort/ocm-excl-lung-cancer.csv"
+#define R_CPD_DATA_FILE "smok/cpd.csv"
 
 std::string find_default_data_path() {
     Rcpp::Environment base("package:base");
@@ -20,7 +20,7 @@ std::string find_default_data_path() {
     // Depending on local testing environment or installed package environment, the path to the default data will vary
     // TODO: review
  
-    // Installed layout: inst/extdata/2018/{smoking,mortality}/ -> .../extdata/2018/ (default bundle)
+    // Installed layout: inst/extdata/2018/{smok,mort}/ -> .../extdata/2018/ (default bundle)
     path = sys_file("extdata", "2018", Rcpp::_["package"] = "SmokingHistoryGenerator");
     default_data_path = Rcpp::as<std::string>(path);
 

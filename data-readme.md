@@ -4,16 +4,16 @@ The Smoking History Generator requires a calibrated parameter set to run: probab
 
 ## Bundled minimal set (CRAN)
 
-The CRAN package ships a **default** NHIS-1965–2018 csv-partial under `inst/extdata/2018/` (`smoking/`, `mortality/`): cohort columns **1940, 1950, 2010** (trimmed to race 0 / sex 0). Regenerate from `tests/testdata/NHIS-1965-2018/csv-complete/` with **`Rscript tools/refresh-nhis-2018-csv-partial.R`**. Defaults use `system.file("extdata", "2018", package = "SmokingHistoryGenerator")`. Default property values point at these **CSV** paths relative to `input_data_folder`:
+The CRAN package ships a **default** NHIS-1965–2018 csv-partial under `inst/extdata/2018/` (`smok/`, `mort/`): cohort columns **1940, 1950, 2010** (trimmed to race 0 / sex 0). Regenerate from `tests/testdata/2018/csv-complete/` with **`Rscript tools/refresh-nhis-2018-csv-partial.R`**. Defaults use `system.file("extdata", "2018", package = "SmokingHistoryGenerator")`. Default property values point at these **CSV** paths relative to `input_data_folder`:
 
 | SHG property | Default filename |
 | ------------- | ------------- |
-| `initiation_filename` | `smoking/initiation.csv` |
-| `cessation_filename` | `smoking/cessation.csv` |
-| `mortality_filename` | `mortality/acm.csv` |
-| `cpd_filename` | `smoking/cpd.csv` |
+| `initiation_filename` | `smok/initiation.csv` |
+| `cessation_filename` | `smok/cessation.csv` |
+| `mortality_filename` | `mort/acm.csv` |
+| `cpd_filename` | `smok/cpd.csv` |
 
-You may still point at **flat** filenames (e.g. `initiation.csv` next to `input_data_folder`) for custom layouts. Use `mortality_filename` to select `mortality/acm.csv` or `mortality/ocm-excl-lung-cancer.csv` as needed. Wide `.txt` tables (CLI / legacy web layout) remain supported when you set filenames and paths accordingly.
+You may still point at **flat** filenames (e.g. `initiation.csv` next to `input_data_folder`) for custom layouts. Use `mortality_filename` to select `mort/acm.csv` or `mort/ocm-excl-lung-cancer.csv` as needed. Wide `.txt` tables (CLI / legacy web layout) remain supported when you set filenames and paths accordingly.
 
 After installation, locate the folder with:
 

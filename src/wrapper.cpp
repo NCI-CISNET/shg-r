@@ -1342,10 +1342,10 @@ bool SHGInterface::fileExists(const char* filename) {
 //'   "RNGSTRATEGY=RngStream",
 //'   "RNGSTREAM_SEED=12345,12345,12345,12345,12345,12345",
 //'   "RACE=0", "SEX=0", "YOB=1950", "CESSATION_YR=0", "REPEAT=100",
-//'   paste0("INIT_PROB=", file.path(d, "smoking", "initiation.csv")),
-//'   paste0("CESS_PROB=", file.path(d, "smoking", "cessation.csv")),
-//'   paste0("MORTALITY_PROB=", file.path(d, "mortality", "acm.csv")),
-//'   paste0("CPD_DATA=", file.path(d, "smoking", "cpd.csv")),
+//'   paste0("INIT_PROB=", file.path(d, "smok", "initiation.csv")),
+//'   paste0("CESS_PROB=", file.path(d, "smok", "cessation.csv")),
+//'   paste0("MORTALITY_PROB=", file.path(d, "mort", "acm.csv")),
+//'   paste0("CPD_DATA=", file.path(d, "smok", "cpd.csv")),
 //'   paste0("OUTPUTFILE=", tempfile("out_", fileext = ".txt")),
 //'   paste0("ERRORFILE=", tempfile("err_", fileext = ".txt"))
 //' ), tf)

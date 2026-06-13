@@ -164,10 +164,10 @@ test_that("shg_load_params configures SHGInterface from local extracted dir", {
   SmokingHistoryGenerator:::.shg_apply_params(shg, tmp_root, "acm")
 
   expect_equal(shg$input_data_folder, tmp_root)
-  expect_equal(shg$initiation_filename, "smoking/initiation.csv")
-  expect_equal(shg$cessation_filename, "smoking/cessation.csv")
-  expect_equal(shg$cpd_filename, "smoking/cpd.csv")
-  expect_equal(shg$mortality_filename, "mortality/acm.csv")
+  expect_equal(shg$initiation_filename, "smok/initiation.csv")
+  expect_equal(shg$cessation_filename, "smok/cessation.csv")
+  expect_equal(shg$cpd_filename, "smok/cpd.csv")
+  expect_equal(shg$mortality_filename, "mort/acm.csv")
   expect_true(file.exists(file.path(shg$input_data_folder, shg$initiation_filename)))
 })
 
@@ -241,7 +241,7 @@ test_that("load_params end-to-end: split zips merged and paths configured", {
   shg_test_with_param_cache({
     shg <- new(SHGInterface)
     shg$load_params(smoking_url = z$smok, mortality_url = z$mort)
-    expect_equal(shg$initiation_filename, "smoking/initiation.csv")
+    expect_equal(shg$initiation_filename, "smok/initiation.csv")
     expect_equal(shg$smok_params_source, z$smok)
     expect_equal(shg$mort_params_source, z$mort)
     expect_true(file.exists(file.path(shg$input_data_folder, shg$initiation_filename)))
@@ -255,7 +255,7 @@ test_that("load_params end-to-end: ocm mortality from split zips", {
   shg_test_with_param_cache({
     shg <- new(SHGInterface)
     shg$load_params(smoking_url = z$smok, mortality_url = z$mort, mort_params_type = "ocm")
-    expect_equal(shg$mortality_filename, "mortality/ocm-excl-lung-cancer.csv")
+    expect_equal(shg$mortality_filename, "mort/ocm-excl-lung-cancer.csv")
   })
 })
 
