@@ -69,5 +69,8 @@
         "**/*.o": true,
         "**/*.html": true,
         "**/*.so": true
-    }
+    },
+    "python.testing.pytestEnabled": true,
+    "python.testing.cwd": "${workspaceFolder}/tests/pytests",
+    "python.testing.pytestArgs": []
 }

@@ -1,0 +1,27 @@
+RNGSTRATEGY={rng_strategy}
+NUM_THREADS=1
+NUM_SEGMENTS=1
+
+SEED_INIT={MT_seed_init}
+SEED_CESS={MT_seed_cess}
+SEED_MORTALITY={MT_seed_mortality}
+SEED_MISC={MT_seed_misc}
+
+RNGSTREAM_SEED={rngstream_seed}
+
+RACE={race}
+SEX={sex}
+YOB={yob}
+CESSATION_YR={cessation}
+# adding the following for earlier versions of SHG that used a different keyword for immediate cessation
+IMMEDIATECESS={cessation}
+REPEAT={repeat}
+
+INIT_PROB={init_prob}
+CESS_PROB={cess_prob}
+# NOTE: intentionally using all-cause mortality (acm) so RUN goldens under tests/fixtures/2018/ remain valid.
+MORTALITY_PROB={mortality_prob}
+CPD_DATA={cpd_data}
+
+OUTPUTFILE={output_filepath}
+ERRORFILE={error_filepath}

@@ -1,0 +1,5 @@
+* SHG parameters for all races by gender 03MAY17
+* Cigarette level parameters for SHG                                                                
+* 1=1-5(3), 2=6-15(10), 3=16-25,(20), 4=26-35(30), 5=36-45(40), 6=41+(60)                           
+* Estimates for all race by gender [M(0) F(1)]                                                      
+* Race,Sex,StartYOB,EndYOB,Age,Cat1,Cat2,Cat3,Cat4,Cat5,Cat6                                        

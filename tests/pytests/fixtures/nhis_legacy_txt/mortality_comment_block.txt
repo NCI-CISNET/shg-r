@@ -1,0 +1,10 @@
+* Mortality parameters for SHG
+* 
+* 
+* Legacy text fixture comment block for mortality probability tables
+"* Probabilities of dying by race, sex, year of birth, age and smoking status/intensity"
+* 
+* The first line following these comments contains the following values:
+"* Number of Race Values,Number of Sex Values,Min Year of Birth,Max Year of Birth,Min Age,Max Age"
+* The subsequent statistics in this file are comma-delimited as follows:
+"* Race,Sex,Year of Birth,Age,Never Smokers Prob of Dying,Current Smokers in Group 1 Prob of Dying,Current Smokers in Group 2 Prob of Dying,Current Smokers in Group 3 Prob of Dying,Current Smokers in Group 4 Prob of Dying,Current Smokers in Group 5 Prob of Dying,Current Smokers in Group 6 Prob of Dying"
