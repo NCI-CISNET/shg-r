@@ -455,7 +455,7 @@ legacy_txt_read_specs <- function(root) {
   out
 }
 
-#' Copy smok/mortality tables to flat names under \code{cli_root} for older CLIs
+#' Copy smok/mort tables to flat names under \code{cli_root} for older CLIs
 #' that only accept INIT_PROB=.../initiation.csv style paths.
 #' Point the interface at flat legacy `.txt` tables under \code{root} (NHIS wide format).
 legacy_apply_txt_table_paths <- function(shg, root, mortality, specs) {
