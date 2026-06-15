@@ -54,7 +54,7 @@ jobs:
             exit 1
           fi
           echo "release_tag=$REF" >> "$GITHUB_OUTPUT"
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           ref: ${{ steps.resolve.outputs.release_tag }}
           fetch-depth: 1
@@ -69,24 +69,24 @@ jobs:
       R_KEEP_PKG_SOURCE: yes
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           ref: ${{ needs.release-ref.outputs.release_tag }}
           fetch-depth: 1
 
-      - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-pandoc@a51a8012b0aab7c32ef9d19bf54da93f3254335e # v2.12.0
 
-      - uses: r-lib/actions/setup-r@v2
+      - uses: r-lib/actions/setup-r@a51a8012b0aab7c32ef9d19bf54da93f3254335e # v2.12.0
         with:
           r-version: release
           use-public-rspm: true
 
-      - uses: r-lib/actions/setup-r-dependencies@v2
+      - uses: r-lib/actions/setup-r-dependencies@a51a8012b0aab7c32ef9d19bf54da93f3254335e # v2.12.0
         with:
           extra-packages: any::rcmdcheck
           needs: check
 
-      - uses: r-lib/actions/check-r-package@v2
+      - uses: r-lib/actions/check-r-package@a51a8012b0aab7c32ef9d19bf54da93f3254335e # v2.12.0
         with:
           args: 'c("--no-manual", "--as-cran")'
           upload-snapshots: true
@@ -121,7 +121,7 @@ jobs:
           stopifnot(file.copy(hit[[1]], dest, overwrite = TRUE))
           message("Staged for release: ", dest)
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: success()
         with:
           name: cran-source-tarball
@@ -152,7 +152,7 @@ jobs:
           done
           ls -la release-binaries/
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: success()
         with:
           name: r-pkg-binary-windows
@@ -160,7 +160,7 @@ jobs:
 
       - name: Upload Rcheck tests (full testthat output) on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: rcheck-tests-windows
           if-no-files-found: ignore
@@ -184,24 +184,24 @@ jobs:
       R_KEEP_PKG_SOURCE: yes
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           ref: ${{ needs.release-ref.outputs.release_tag }}
           fetch-depth: 1
 
-      - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-pandoc@a51a8012b0aab7c32ef9d19bf54da93f3254335e # v2.12.0
 
-      - uses: r-lib/actions/setup-r@v2
+      - uses: r-lib/actions/setup-r@a51a8012b0aab7c32ef9d19bf54da93f3254335e # v2.12.0
         with:
           r-version: ${{ matrix.config.r }}
           use-public-rspm: true
 
-      - uses: r-lib/actions/setup-r-dependencies@v2
+      - uses: r-lib/actions/setup-r-dependencies@a51a8012b0aab7c32ef9d19bf54da93f3254335e # v2.12.0
         with:
           extra-packages: any::rcmdcheck
           needs: check
 
-      - uses: r-lib/actions/check-r-package@v2
+      - uses: r-lib/actions/check-r-package@a51a8012b0aab7c32ef9d19bf54da93f3254335e # v2.12.0
         with:
           args: 'c("--no-manual", "--as-cran")'
           upload-snapshots: true
@@ -246,7 +246,7 @@ jobs:
           [[ -n "$(ls -A release-binaries)" ]] || { echo "No binary bundle found"; ls -la; exit 1; }
           ls -la release-binaries/
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: success()
         with:
           name: r-pkg-binary-${{ matrix.config.os == 'macos-latest' && 'macos' || 'ubuntu' }}
@@ -254,7 +254,7 @@ jobs:
 
       - name: Upload Rcheck tests (full testthat output) on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: rcheck-tests-${{ matrix.config.os }}
           if-no-files-found: ignore
@@ -265,22 +265,22 @@ jobs:
     needs: [release-ref, rcmd-check-windows, rcmd-check-unix]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: cran-source-tarball
           path: release-assets
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: r-pkg-binary-windows
           path: release-assets
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: r-pkg-binary-macos
           path: release-assets
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: r-pkg-binary-ubuntu
           path: release-assets
@@ -289,7 +289,7 @@ jobs:
         run: ls -la release-assets
 
       - name: Create draft release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           tag_name: ${{ needs.release-ref.outputs.release_tag }}
           name: ${{ needs.release-ref.outputs.release_tag }}
