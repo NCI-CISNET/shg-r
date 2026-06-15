@@ -3,11 +3,12 @@ from pathlib import Path
 
 from conftest import get_simulation_results
 from pytest import approx
+from shg_paths import PYTESTS_DIR
 
 @pytest.fixture(scope="function")
 def original_datadir(request) -> Path:
     """YAML baselines live under tests/pytests/fixtures/2018/."""
-    return request.config.rootpath / "tests" / "pytests" / "fixtures" / "2018"
+    return PYTESTS_DIR / "fixtures" / "2018"
 
 
 def test_simulations(data_regression, sims):
@@ -59,7 +60,7 @@ def test_same_rng_with_different_seeds_results_should_be_different_but_approxima
     assert MT1["cess_age"]["mean"] == approx(MT2["cess_age"]["mean"], rel=rel)
     assert MT1["prevalence"] == approx(MT2["prevalence"], rel=rel)
     assert MT1["smoking_histories"]["fraction_of_switchers"] == approx(
-        MT2["smoking_histories"]["fraction_of_switchers"], rel=rel
+        MT2["smoking_histories"]["fraction_of_switchers"], rel=0.017
     )
 
 

@@ -76,6 +76,28 @@
 			}
 		},
 		{
+			"label": "Python: pytest (include slow)",
+			"type": "shell",
+			"command": "pytest",
+			"args": [
+				"-o",
+				"addopts=",
+				"--include-slow"
+			],
+			"group": "test",
+			"problemMatcher": [],
+			"options": {
+				"cwd": "${workspaceFolder}/tests/pytests",
+				"env": {
+					"SHG_R_ROOT": "${workspaceFolder}"
+				}
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			}
+		},
+		{
 			"type": "R",
 			"code": [
 				"devtools::build()"
