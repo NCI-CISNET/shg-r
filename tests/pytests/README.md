@@ -44,7 +44,13 @@ pytest
 # Dev iteration without reinstall (requires pkgload)
 export SHG_R_DEV=1
 pytest
+
+# Include @pytest.mark.slow tests (3 extra in test_script.py)
+pytest --include-slow
 ```
+
+CPD all-dot-intensity parity tests append duplicate all-dot placeholder rows at
+existing CPD ages (NHIS-2018 has none in the raw tables).
 
 ## Regenerating RUN goldens
 

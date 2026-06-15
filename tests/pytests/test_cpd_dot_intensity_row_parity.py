@@ -5,6 +5,7 @@ RUN golden tests live in ``test_engine_regression.py``.
 """
 
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -38,8 +39,67 @@ def _mk_test_tempdir(prefix: str) -> str:
     return tempfile.mkdtemp(prefix=prefix, dir=str(_REPO_TMP))
 
 NHIS_CPD_EXPECTED_LINE_COUNT = 43615
-NHIS_CPD_EXPECTED_LINE_COUNT_AFTER_DOT_INTENSITY_DROP = 43615
 NHIS_CPD_EXPECTED_ALL_DOT_INTENSITY_ROWS_DROPPED = 0
+# Duplicate all-dot rows at existing ages (do not add ages below gwCpdMinAge).
+_SYNTHETIC_DOT_DUPLICATES_PER_YOB = 8
+
+
+def _make_synthetic_all_dot_cpd_row(yob: int, age: int) -> str:
+    cats = ",".join(["."] * 6)
+    return f"0,0,{yob},{yob},{age},{cats}"
+
+
+def _synthetic_all_dot_duplicate_rows_from_cpd_body(
+    body: List[str],
+    *,
+    yobs: Tuple[int, ...],
+    per_yob: int = _SYNTHETIC_DOT_DUPLICATES_PER_YOB,
+) -> List[str]:
+    injected: List[str] = []
+    for yob in yobs:
+        found = 0
+        yob_s = str(yob)
+        for row in body:
+            parts = row.split(",")
+            if len(parts) < 11:
+                continue
+            if parts[0] == "0" and parts[1] == "0" and parts[2] == yob_s and parts[3] == yob_s:
+                injected.append(_make_synthetic_all_dot_cpd_row(yob, int(parts[4])))
+                found += 1
+                if found >= per_yob:
+                    break
+        if found < per_yob:
+            raise ValueError(f"CPD csv missing {per_yob} rows for yob {yob} (found {found})")
+    return injected
+
+
+def _inject_synthetic_all_dot_rows_into_cpd_csv(
+    src: os.PathLike[str],
+    dest: str,
+    *,
+    yobs: Tuple[int, ...] = (1950, 2010),
+) -> int:
+    with open(src, encoding="utf-8") as f:
+        lines = f.read().splitlines()
+    if not lines:
+        raise ValueError("empty CPD csv")
+    injected = _synthetic_all_dot_duplicate_rows_from_cpd_body(lines[1:], yobs=yobs)
+    with open(dest, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines + injected) + "\n")
+    return len(injected)
+
+
+def _legacy_cpd_lines_with_synthetic_all_dot_rows(
+    lines: Optional[List[str]] = None,
+    *,
+    yobs: Tuple[int, ...] = (1950, 2010),
+) -> Tuple[List[str], int]:
+    if lines is None:
+        lines = _legacy_cpd_lines_from_canonical_csv()
+    w_first = int(lines[0].strip())
+    body = lines[w_first:]
+    injected = _synthetic_all_dot_duplicate_rows_from_cpd_body(body, yobs=yobs)
+    return lines[:w_first] + list(body) + injected, len(injected)
 
 
 def _filter_cpd_drop_all_dot_intensity_rows(lines: List[str]) -> Tuple[List[str], int]:
@@ -120,18 +180,23 @@ def test_cpd_all_dot_intensity_row_filter_line_counts():
 
     filtered, dropped = _filter_cpd_drop_all_dot_intensity_rows(lines)
     assert dropped == NHIS_CPD_EXPECTED_ALL_DOT_INTENSITY_ROWS_DROPPED
-    assert len(filtered) == NHIS_CPD_EXPECTED_LINE_COUNT_AFTER_DOT_INTENSITY_DROP
-    assert len(lines) - dropped == len(filtered)
+    assert len(filtered) == len(lines) - dropped
 
 
 @pytest.mark.RngStream
 def test_cpd_full_vs_synthetic_dot_removed_same_run_output():
-    if NHIS_CPD_EXPECTED_ALL_DOT_INTENSITY_ROWS_DROPPED == 0:
-        pytest.skip("NHIS-2018 CPD has no all-dot intensity rows; see archive/nhis-2016-tests")
     test_dir = _mk_test_tempdir("shg_cohort_")
     try:
-        full_lines = _legacy_cpd_lines_from_canonical_csv()
-        filtered_lines, _ = _filter_cpd_drop_all_dot_intensity_rows(full_lines)
+        yobs = (1950,)
+        full_lines, n_injected = _legacy_cpd_lines_with_synthetic_all_dot_rows(yobs=yobs)
+        filtered_lines, dropped = _filter_cpd_drop_all_dot_intensity_rows(full_lines)
+        assert n_injected > 0
+        assert dropped == n_injected
+
+        cpd_csv_full = os.path.join(test_dir, "cpd_full_with_dots.txt")
+        with open(cpd_csv_full, "w", encoding="utf-8") as f:
+            f.write("\n".join(full_lines) + "\n")
+
         cpd_synth = os.path.join(test_dir, "lbc_shg_cpd_synth_dot_removed.txt")
         with open(cpd_synth, "w") as f:
             f.write("\n".join(filtered_lines))
@@ -147,7 +212,7 @@ def test_cpd_full_vs_synthetic_dot_removed_same_run_output():
 
         _write_input_file(
             inp_full,
-            cpd_path=str(NHIS_CSV_COMPLETE / CPD_FULL_NAME),
+            cpd_path=cpd_csv_full,
             output_path=out_full,
             error_path=err_full,
         )
@@ -175,12 +240,20 @@ def test_cpd_full_vs_synthetic_dot_removed_same_run_output():
         assert run_full == run_synth
 
         comb_full = (r_full.stdout or "") + (r_full.stderr or "")
-        assert "[INFO] The CPD file has fewer data rows" not in comb_full
-
         comb_synth = (r_synth.stdout or "") + (r_synth.stderr or "")
         assert "[INFO] The CPD file has fewer data rows" in comb_synth
         assert "initiation and cessation cohort definitions" in comb_synth
         assert "no positive initiation risk" in comb_synth
+
+        def _cpd_row_info_count(combined: str):
+            m = re.search(r"fewer data rows \((\d+)\)", combined)
+            return int(m.group(1)) if m else None
+
+        full_rows = _cpd_row_info_count(comb_full)
+        synth_rows = _cpd_row_info_count(comb_synth)
+        assert full_rows is not None and synth_rows is not None
+        assert full_rows > synth_rows
+        assert full_rows - synth_rows == dropped
 
     finally:
         shutil.rmtree(test_dir)
@@ -189,14 +262,14 @@ def test_cpd_full_vs_synthetic_dot_removed_same_run_output():
 @pytest.mark.RngStream
 @pytest.mark.parametrize("yob", [1950, 2010])
 def test_rngstream_acm_cpd_csv_matches_dot_removed_run_yob(yob):
-    if NHIS_CPD_EXPECTED_ALL_DOT_INTENSITY_ROWS_DROPPED == 0:
-        pytest.skip("NHIS-2018 CPD has no all-dot intensity rows; see archive/nhis-2016-tests")
     run_csv = _run_template_rngstream_acm_extract_run(yob)
     test_dir = _mk_test_tempdir(f"shg_cpd_csv_dot_{yob}_")
     try:
-        filtered_lines, _ = _filter_cpd_drop_all_dot_intensity_rows(
-            _legacy_cpd_lines_from_canonical_csv()
-        )
+        full_lines, n_injected = _legacy_cpd_lines_with_synthetic_all_dot_rows(yobs=(yob,))
+        assert n_injected == _SYNTHETIC_DOT_DUPLICATES_PER_YOB
+        filtered_lines, dropped = _filter_cpd_drop_all_dot_intensity_rows(full_lines)
+        assert dropped == n_injected
+
         cpd_synth = os.path.join(test_dir, "cpd_dot_removed.txt")
         with open(cpd_synth, "w", encoding="utf-8") as f:
             f.write("\n".join(filtered_lines) + "\n")
@@ -213,9 +286,9 @@ def test_rngstream_acm_cpd_csv_matches_dot_removed_run_yob(yob):
 def test_reproducibility_cpd_synthetic_dot_removed():
     test_dir = _mk_test_tempdir("shg_cohort_rep_")
     try:
-        filtered_lines, _ = _filter_cpd_drop_all_dot_intensity_rows(
-            _legacy_cpd_lines_from_canonical_csv()
-        )
+        full_lines, n_injected = _legacy_cpd_lines_with_synthetic_all_dot_rows(yobs=(1950,))
+        filtered_lines, dropped = _filter_cpd_drop_all_dot_intensity_rows(full_lines)
+        assert dropped == n_injected
         cpd_synth = os.path.join(test_dir, "lbc_shg_cpd_synth.txt")
         with open(cpd_synth, "w") as f:
             f.write("\n".join(filtered_lines))
