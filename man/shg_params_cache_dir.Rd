@@ -7,11 +7,11 @@
 shg_params_cache_dir()
 }
 \value{
-Character scalar: path to the cache directory (may not yet exist).
+A length-one \code{character} path (visible). Same location as the
+read-only \code{params_cache_dir} field on \code{SHGInterface}. Extracted
+smoking and mortality bundles from \code{\link{shg_load_params}} are stored
+under this directory (via \code{tools::R_user_dir(..., "cache")}).
 }
 \description{
-Same path as the read-only \code{SHGInterface} field \code{params_cache_dir}.
-}
-\seealso{
-\code{\link{shg_clear_params_cache}} to remove the entire cache from R.
+Return the directory where downloaded parameter sets are cached
 }

@@ -16,9 +16,10 @@ shg_apply_config(shg, config = list())
 }
 \description{
 Resets the instance with \code{\link{shg_reset_defaults}}, then applies
-\code{config}. When \code{params_bundle_source} is set, derived table paths are
-stripped and parameters are restored via \code{\link{shg_load_params}} (same
-idea as \code{\link{shg_load_config}}). Otherwise settings are applied with
+\code{config}. When \code{smok_params_source} and \code{mort_params_source} are
+set, derived table paths are stripped and parameters are restored via
+\code{\link{shg_load_params}} (same idea as \code{\link{shg_load_config}}).
+Otherwise settings are applied with
 \code{shg$useConfig()} only; explicit \code{input_data_folder} / per-table
 filenames in \code{config} are preserved.
 }

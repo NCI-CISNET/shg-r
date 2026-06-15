@@ -1,5 +1,44 @@
 # SmokingHistoryGenerator
 
+## 7.0.0 (unreleased)
+
+### Version numbering
+
+- Package releases now use standard R semver (starting at `7.0.0`). The former `{CLI engine}-{R wrapper}` form (e.g. `6.5.3-1.0.1` on CRAN) is retired.
+
+### Memory safety (CRAN gcc-ASAN / valgrind)
+
+- Fix seed string alloc/dealloc mismatch in `RunWebVersion` (`new[]` / `delete[]` consistently).
+- Fix uninitialized error message when the legacy error file cannot be opened.
+- Resolve `fast_itoa` ODR conflict between R wrapper and simulation engine.
+
+### Path layout (shorter defaults)
+
+- Default table subfolders renamed from `smoking/` and `mortality/` to **`smok/`** and **`mort/`** under `inst/extdata/2018/` and in factory defaults.
+- Test fixtures moved from `tests/testdata/NHIS-1965-2018/` to **`tests/testdata/2018/`**.
+- `shg_load_params()` still accepts legacy `smoking/` / `mortality/` layouts in downloaded zips and normalizes them to `smok/` / `mort/` in the cache.
+
+### Race defaults
+
+- Legacy config files may omit `RACE=` (defaults to 0).
+- CSV parameter tables may omit a `RACE` column (header starts with `SEX`; all rows treated as race 0).
+- `shg_run()` already defaulted omitted `race` and `sex` to 0 in config lists.
+
+### Tooling and docs
+
+- Add `./tools/check-docker-asan.sh` for local CRAN-faithful gcc-ASAN checks (Docker).
+- README: CRAN-first install and minimal `shg_run()` quick start with bundled extdata.
+- Maintainer docs no longer reference shg-cli sync as source of truth.
+
+## 6.5.3-1.0.1
+
+### Breaking: split parameter bundles (shg-params)
+
+- **Removed** `params_bundle_source` and single-zip `shg_load_params(url = ...)`.
+- **Required** separate smoking and mortality releases: `smok_params_source`, `mort_params_source`, and `mort_params_type` (`"acm"` or `"ocm"`; was `params_mortality`).
+- `shg_load_params()` downloads/caches each zip, merges `params/` tables into engine layout `smoking/` + `mortality/`.
+- Portable YAML and `getConfig()` / `getReproConfig()` use the new provenance field names.
+
 ## 6.5.3-1.0.0 (2026-05-18)
 
 - Synced core engine from shg-cli v6.5.3.
@@ -9,7 +48,7 @@
 
 ### Bundled inputs and YAML
 
-- **Bundled inputs:** Default factory `input_data_folder` is `system.file("extdata", "2018", package = "SmokingHistoryGenerator")` (NHIS-1965–2018 csv-partial with cohort columns **1940, 1950, 2010**). Removed transitional `inst/extdata/2016/`, NHIS-1965–2016 test fixtures, and `tests/fixtures/2016/` XML goldens; tests and docs use the 2018 tree only. Regenerate the 2018 partial from `tests/testdata/NHIS-1965-2018/csv-complete/` using **`Rscript tools/refresh-nhis-2018-csv-partial.R`**.
+- **Bundled inputs:** Default factory `input_data_folder` is `system.file("extdata", "2018", package = "SmokingHistoryGenerator")` (NHIS-1965–2018 csv-partial with cohort columns **1940, 1950, 2010**). Removed transitional `inst/extdata/2016/`, NHIS-1965–2016 test fixtures, and `tests/fixtures/2016/` XML goldens; tests and docs use the 2018 tree only. Regenerate the 2018 partial from `tests/testdata/2018/csv-complete/` using **`Rscript tools/refresh-nhis-2018-csv-partial.R`**.
 - **Layout:** Under each year folder, smoking tables live in `smoking/`, mortality in `mortality/`; factory defaults use relative paths (`smoking/initiation.csv`, …).
 - Portable / written YAML groups `params_bundle_source`, `params_mortality`, and optional folder paths under a `params:` map; `shg_load_config` / `shg_apply_config` accept nested or flat keys.
 
@@ -30,7 +69,7 @@
 - `shg_apply_config(shg, config)` resets defaults, then applies a sparse or full named list via `useConfig()`, so partial YAML/intent configs do not inherit stale instance state.
 - `shg_apply_config()` with `params_bundle_source` now calls `shg_load_params()` the same way as `shg_load_config()` (clears derived paths, restores the bundle). Without a bundle, explicit `input_data_folder` / table filenames in the list are still applied.
 - `shg_load_config()` now starts from factory defaults before applying the YAML bundle (via `reset_to_factory_defaults()` in the bundle applier).
-- `shg_write_config_yaml(config, path)` serializes any config list: drops audit keys, and strips redundant table paths when `params_bundle_source` is present (shape-driven “portable” output).
+- `shg_write_config_yaml(config, path)` serializes any config list: drops audit keys, and strips redundant table paths when `params_bundle_source` is present (shape-driven "portable" output).
 - Config lists and YAML may use `mortality` as an alias for `params_mortality`. Normalization uses `[[` only so it does not partially match `mortality_filename`.
 - **Factory defaults:** mortality file is `mortality/acm.csv`, matching `shg_load_params(..., mortality = "acm")` bundle layout.
 

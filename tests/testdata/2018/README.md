@@ -13,7 +13,7 @@ Point the interface at this folder (only on your machine, after you populate it)
 
 ```r
 shg <- new(SHGInterface)
-shg$input_data_folder <- "/path/to/shg-r/tests/testdata/NHIS-1965-2018/csv-complete"
+shg$input_data_folder <- "/path/to/shg-r/tests/testdata/2018/csv-complete"
 ```
 
 The **trimmed csv-partial** tables that mirror the installed package layout live under `inst/extdata/2018/`. Regenerate them from this tree’s `csv-complete/` with:
@@ -21,5 +21,7 @@ The **trimmed csv-partial** tables that mirror the installed package layout live
 ```bash
 Rscript tools/refresh-nhis-2018-csv-partial.R
 ```
+
+That also rebuilds `inst/extdata/2018/bundled-smok.zip` and `bundled-mort.zip` (shg-params layout for `load_params()` and package demos).
 
 To trim **wide legacy `.txt`** files you placed under `legacy-complete/`, use `Rscript tools/trim-default-inputs.R <that-directory>` (see that script’s header).

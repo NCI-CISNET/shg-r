@@ -81,40 +81,6 @@ test_that(".shg_cpd_initiation_note flags non-zero initiation below cpd min age"
   expect_match(out$note, "non-zero initiation")
 })
 
-test_that(".shg_resolve_params_url: full url passes through", {
-  f <- SmokingHistoryGenerator:::.shg_resolve_params_url
-  expect_equal(f("https://example.com/snap.zip", NULL, NULL, NULL),
-               "https://example.com/snap.zip")
-})
-
-test_that(".shg_resolve_params_url: base_url + snapshot appends .zip", {
-  f <- SmokingHistoryGenerator:::.shg_resolve_params_url
-  expect_equal(f(NULL, "https://example.com/files", "my-snap", NULL),
-               "https://example.com/files/my-snap.zip")
-})
-
-test_that(".shg_resolve_params_url: base_url + path appends path directly", {
-  f <- SmokingHistoryGenerator:::.shg_resolve_params_url
-  expect_equal(f(NULL, "https://example.com/download", NULL, "v1/snap.zip"),
-               "https://example.com/download/v1/snap.zip")
-})
-
-test_that(".shg_resolve_params_url: trailing slash on base_url is stripped", {
-  f <- SmokingHistoryGenerator:::.shg_resolve_params_url
-  expect_equal(f(NULL, "https://example.com/files/", "snap", NULL),
-               "https://example.com/files/snap.zip")
-})
-
-test_that(".shg_resolve_params_url: errors when no url or base_url", {
-  f <- SmokingHistoryGenerator:::.shg_resolve_params_url
-  expect_error(f(NULL, NULL, NULL, NULL), "base_url")
-})
-
-test_that(".shg_resolve_params_url: errors when base_url but no snapshot or path", {
-  f <- SmokingHistoryGenerator:::.shg_resolve_params_url
-  expect_error(f(NULL, "https://example.com", NULL, NULL), "snapshot")
-})
-
 test_that(".shg_assert_downloaded_zip rejects HTML-like content", {
   tmp <- tempfile(fileext = ".zip")
   on.exit(unlink(tmp), add = TRUE)
@@ -136,12 +102,10 @@ test_that(".shg_assert_downloaded_zip rejects empty file", {
 })
 
 test_that(".shg_assert_downloaded_zip accepts a real parameter zip", {
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
-  skip_if_not(file.exists(zip_path))
-
+  z <- shg_test_split_param_zips()
   expect_identical(
-    SmokingHistoryGenerator:::.shg_assert_downloaded_zip(zip_path, zip_path),
-    zip_path
+    SmokingHistoryGenerator:::.shg_assert_downloaded_zip(z$smok, z$smok),
+    z$smok
   )
 })
 
@@ -151,15 +115,6 @@ test_that(".shg_download_options reads package options", {
   o <- SmokingHistoryGenerator:::.shg_download_options()
   expect_equal(o$timeout_sec, 123)
   expect_equal(o$connect_sec, 45)
-})
-
-test_that(".shg_resolve_params_url: warns if url + base_url both given", {
-  f <- SmokingHistoryGenerator:::.shg_resolve_params_url
-  expect_warning(
-    res <- f("https://example.com/x.zip", "https://other.com", "snap", NULL),
-    "ignored"
-  )
-  expect_equal(res, "https://example.com/x.zip")
 })
 
 test_that(".shg_url_cache_key produces stable key", {
@@ -194,14 +149,14 @@ test_that("shg_load_params configures SHGInterface from local extracted dir", {
   # Build a minimal fake param bundle directory
   tmp_root <- tempfile("shg_params_test_")
   smk_dir  <- file.path(tmp_root, "smoking")
-  mrt_dir  <- file.path(tmp_root, "mortality")
+  mort_dir  <- file.path(tmp_root, "mortality")
   dir.create(smk_dir, recursive = TRUE)
-  dir.create(mrt_dir, recursive = TRUE)
+  dir.create(mort_dir, recursive = TRUE)
   file.create(file.path(smk_dir, "initiation.csv"))
   file.create(file.path(smk_dir, "cessation.csv"))
   file.create(file.path(smk_dir, "cpd.csv"))
-  file.create(file.path(mrt_dir, "acm.csv"))
-  file.create(file.path(mrt_dir, "ocm-excl-lung-cancer.csv"))
+  file.create(file.path(mort_dir, "acm.csv"))
+  file.create(file.path(mort_dir, "ocm-excl-lung-cancer.csv"))
   on.exit(unlink(tmp_root, recursive = TRUE), add = TRUE)
 
   shg <- new(SHGInterface)
@@ -209,24 +164,24 @@ test_that("shg_load_params configures SHGInterface from local extracted dir", {
   SmokingHistoryGenerator:::.shg_apply_params(shg, tmp_root, "acm")
 
   expect_equal(shg$input_data_folder, tmp_root)
-  expect_equal(shg$initiation_filename, "smoking/initiation.csv")
-  expect_equal(shg$cessation_filename, "smoking/cessation.csv")
-  expect_equal(shg$cpd_filename, "smoking/cpd.csv")
-  expect_equal(shg$mortality_filename, "mortality/acm.csv")
+  expect_equal(shg$initiation_filename, "smok/initiation.csv")
+  expect_equal(shg$cessation_filename, "smok/cessation.csv")
+  expect_equal(shg$cpd_filename, "smok/cpd.csv")
+  expect_equal(shg$mortality_filename, "mort/acm.csv")
   expect_true(file.exists(file.path(shg$input_data_folder, shg$initiation_filename)))
 })
 
 test_that("shg_load_params ocm mortality sets ocm filename", {
   tmp_root <- tempfile("shg_params_ocm_")
   smk_dir  <- file.path(tmp_root, "smoking")
-  mrt_dir  <- file.path(tmp_root, "mortality")
+  mort_dir  <- file.path(tmp_root, "mortality")
   dir.create(smk_dir, recursive = TRUE)
-  dir.create(mrt_dir, recursive = TRUE)
+  dir.create(mort_dir, recursive = TRUE)
   file.create(file.path(smk_dir, "initiation.csv"))
   file.create(file.path(smk_dir, "cessation.csv"))
   file.create(file.path(smk_dir, "cpd.csv"))
-  file.create(file.path(mrt_dir, "acm.csv"))
-  file.create(file.path(mrt_dir, "ocm-excl-lung-cancer.csv"))
+  file.create(file.path(mort_dir, "acm.csv"))
+  file.create(file.path(mort_dir, "ocm-excl-lung-cancer.csv"))
   on.exit(unlink(tmp_root, recursive = TRUE), add = TRUE)
 
   shg <- new(SHGInterface)
@@ -246,7 +201,7 @@ test_that("shg_load_params errors on missing smoking files", {
   shg <- new(SHGInterface)
   expect_error(
     SmokingHistoryGenerator:::.shg_apply_params(shg, tmp_root, "acm"),
-    "missing expected files"
+    "missing expected files|incomplete"
   )
 })
 
@@ -259,7 +214,7 @@ test_that(".shg_snapshot_root detects nested layout", {
   f    <- SmokingHistoryGenerator:::.shg_snapshot_root
   base <- tempfile("shg_snap_root_")
   sub  <- file.path(base, "snap-id")
-  dir.create(file.path(sub, "smoking"), recursive = TRUE)
+  dir.create(file.path(sub, "params"), recursive = TRUE)
   on.exit(unlink(base, recursive = TRUE), add = TRUE)
 
   expect_equal(f(base), sub)
@@ -268,7 +223,7 @@ test_that(".shg_snapshot_root detects nested layout", {
 test_that(".shg_snapshot_root falls back to cache_path when no subdir", {
   f    <- SmokingHistoryGenerator:::.shg_snapshot_root
   base <- tempfile("shg_snap_flat_")
-  dir.create(file.path(base, "smoking"), recursive = TRUE)
+  dir.create(file.path(base, "params"), recursive = TRUE)
   on.exit(unlink(base, recursive = TRUE), add = TRUE)
 
   expect_equal(f(base), base)
@@ -280,85 +235,53 @@ test_that(".shg_snapshot_root falls back to cache_path when no subdir", {
 # and in any environment where the zip is absent.
 # ---------------------------------------------------------------------------
 
-test_that("load_params end-to-end: local zip extracted and paths configured", {
+test_that("load_params end-to-end: split zips merged and paths configured", {
   skip_on_cran()
-
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
-  skip_if_not(file.exists(zip_path),
-              "Local parameter zip not present (tests/testdata/usa-national@smok-2018-mort-2016.zip)")
-
-  # Use a dedicated temp cache so this test does not pollute the real cache
-  # and cleans up after itself regardless of pass/fail.
-  tmp_cache <- tempfile("shg_test_cache_")
-  dir.create(tmp_cache)
-  on.exit(unlink(tmp_cache, recursive = TRUE), add = TRUE)
-
-  old_cache_dir <- Sys.getenv("R_USER_CACHE_DIR", "")
-  Sys.setenv(R_USER_CACHE_DIR = tmp_cache)
-  on.exit({
-    if (nzchar(old_cache_dir)) Sys.setenv(R_USER_CACHE_DIR = old_cache_dir)
-    else Sys.unsetenv("R_USER_CACHE_DIR")
-  }, add = TRUE)
-
-  shg <- new(SHGInterface)
-  shg$load_params(url = zip_path)
-
-  expect_equal(shg$initiation_filename, "smoking/initiation.csv")
-  expect_true(file.exists(file.path(shg$input_data_folder, shg$initiation_filename)))
-  expect_true(file.exists(file.path(shg$input_data_folder, shg$cessation_filename)))
-  expect_true(file.exists(file.path(shg$input_data_folder, shg$cpd_filename)))
-  expect_true(file.exists(file.path(shg$input_data_folder, shg$mortality_filename)))
-  expect_true(grepl("acm\\.csv$", shg$mortality_filename))
+  z <- shg_test_split_param_zips()
+  shg_test_with_param_cache({
+    shg <- new(SHGInterface)
+    shg$load_params(smoking_url = z$smok, mortality_url = z$mort)
+    expect_equal(shg$initiation_filename, "smok/initiation.csv")
+    expect_equal(shg$smok_params_source, z$smok)
+    expect_equal(shg$mort_params_source, z$mort)
+    expect_true(file.exists(file.path(shg$input_data_folder, shg$initiation_filename)))
+    expect_true(grepl("acm\\.csv$", shg$mortality_filename))
+  })
 })
 
-test_that("load_params end-to-end: ocm mortality from local zip", {
+test_that("load_params end-to-end: ocm mortality from split zips", {
   skip_on_cran()
-
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
-  skip_if_not(file.exists(zip_path),
-              "Local parameter zip not present (tests/testdata/usa-national@smok-2018-mort-2016.zip)")
-
-  tmp_cache <- tempfile("shg_test_cache_ocm_")
-  dir.create(tmp_cache)
-  on.exit(unlink(tmp_cache, recursive = TRUE), add = TRUE)
-
-  old_cache_dir <- Sys.getenv("R_USER_CACHE_DIR", "")
-  Sys.setenv(R_USER_CACHE_DIR = tmp_cache)
-  on.exit({
-    if (nzchar(old_cache_dir)) Sys.setenv(R_USER_CACHE_DIR = old_cache_dir)
-    else Sys.unsetenv("R_USER_CACHE_DIR")
-  }, add = TRUE)
-
-  shg <- new(SHGInterface)
-  shg$load_params(url = zip_path, mortality = "ocm")
-
-  expect_equal(shg$mortality_filename, "mortality/ocm-excl-lung-cancer.csv")
-  expect_true(file.exists(file.path(shg$input_data_folder, shg$mortality_filename)))
+  z <- shg_test_split_param_zips()
+  shg_test_with_param_cache({
+    shg <- new(SHGInterface)
+    shg$load_params(smoking_url = z$smok, mortality_url = z$mort, mort_params_type = "ocm")
+    expect_equal(shg$mortality_filename, "mort/ocm-excl-lung-cancer.csv")
+  })
 })
 
-test_that("load_params: second call reuses cache (no re-extraction)", {
+test_that("load_params: second call reuses cache", {
   skip_on_cran()
+  z <- shg_test_split_param_zips()
+  shg_test_with_param_cache({
+    shg <- new(SHGInterface)
+    shg$load_params(smoking_url = z$smok, mortality_url = z$mort)
+    combined <- SmokingHistoryGenerator:::.shg_params_combined_cache_path(z$smok, z$mort)
+    expect_true(SmokingHistoryGenerator:::.shg_merged_cache_intact(combined, "acm"))
+    shg$load_params(smoking_url = z$smok, mortality_url = z$mort)
+    expect_true(SmokingHistoryGenerator:::.shg_merged_cache_intact(combined, "acm"))
+  })
+})
 
-  zip_path <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
-  skip_if_not(file.exists(zip_path),
-              "Local parameter zip not present (tests/testdata/usa-national@smok-2018-mort-2016.zip)")
-
-  tmp_cache <- tempfile("shg_test_cache_reuse_")
-  dir.create(tmp_cache)
-  on.exit(unlink(tmp_cache, recursive = TRUE), add = TRUE)
-
-  old_cache_dir <- Sys.getenv("R_USER_CACHE_DIR", "")
-  Sys.setenv(R_USER_CACHE_DIR = tmp_cache)
-  on.exit({
-    if (nzchar(old_cache_dir)) Sys.setenv(R_USER_CACHE_DIR = old_cache_dir)
-    else Sys.unsetenv("R_USER_CACHE_DIR")
-  }, add = TRUE)
-
-  url <- zip_path
-  shg <- new(SHGInterface)
-
-  expect_message(shg$load_params(url = url), regexp = NULL)
-
-  # Second call should say "Using cached" and not re-extract
-  expect_message(shg$load_params(url = url), "Using cached")
+test_that("load_params rejects legacy combined zip as smoking source", {
+  skip_on_cran()
+  combined <- testthat::test_path("../testdata/usa-national@smok-2018-mort-2016.zip")
+  skip_if_not(file.exists(combined))
+  z <- shg_test_split_param_zips()
+  shg_test_with_param_cache({
+    shg <- new(SHGInterface)
+    expect_error(
+      shg$load_params(smoking_url = combined, mortality_url = z$mort),
+      "legacy combined"
+    )
+  })
 })

@@ -993,6 +993,24 @@ void strip_line_terminator(char* line) {
    if (line) line[strcspn(line, "\r\n")] = '\0';
 }
 
+static bool csv_token_ieq(const char* token, const char* word) {
+   if (!token || !word) return false;
+   while (*token && *word) {
+      if (toupper((unsigned char)*token) != toupper((unsigned char)*word)) return false;
+      ++token;
+      ++word;
+   }
+   return *token == '\0' && *word == '\0';
+}
+
+static void csv_header_expect_race_or_sex(const char* path, const char* firstCol) {
+   if (firstCol && (csv_token_ieq(firstCol, "RACE") || csv_token_ieq(firstCol, "SEX"))) return;
+   char msg[500];
+   snprintf(msg, sizeof(msg),
+      "CSV header in %s must start with RACE or SEX (omit RACE column to assume race=0).", path);
+   throw SimException("Error", msg);
+}
+
 } // namespace
 
 // CSV dispatch note: LoadProbabilityData, LoadCPDFile and LoadMortalityFile below
@@ -1031,6 +1049,7 @@ std::lock_guard<std::mutex> lock(dataMutex);
             wAgeValue,
             i;
    FILE    *pCpdFile     = 0;
+   bool     csvHasRaceCol = true;
 
    try {
 
@@ -1053,23 +1072,33 @@ std::lock_guard<std::mutex> lock(dataMutex);
             throw SimException("Error", sErrorMessage);
          }
          strip_line_terminator(sInputLine);
+         {
+            char hdrProbe[3001];
+            strncpy(hdrProbe, sInputLine, sizeof(hdrProbe) - 1);
+            hdrProbe[sizeof(hdrProbe) - 1] = '\0';
+            char* firstCol = strtok(hdrProbe, ",");
+            csv_header_expect_race_or_sex(sCpdFile, firstCol);
+            csvHasRaceCol = firstCol && csv_token_ieq(firstCol, "RACE");
+         }
          long nCols = 0;
          for (pTokenPtr = strtok(sInputLine, ","); pTokenPtr != NULL; pTokenPtr = strtok(NULL, ","))
             nCols++;
-         if (nCols < 6) {
+         const long minCols = csvHasRaceCol ? 6L : 5L;
+         if (nCols < minCols) {
             snprintf(sErrorMessage, sizeof(sErrorMessage),
-               "CPD CSV %s: header must be RACE,SEX,START_YOB,END_YOB,AGE followed by >=1 CAT* columns.", sCpdFile);
+               "CPD CSV %s: header must be %sSEX,START_YOB,END_YOB,AGE followed by >=1 CAT* columns.",
+               sCpdFile, csvHasRaceCol ? "RACE," : "");
             throw SimException("Error", sErrorMessage);
          }
-         wNumSmokingGrps = nCols - 5;
+         wNumSmokingGrps = nCols - (csvHasRaceCol ? 5L : 4L);
 
          // Pre-scan body for min/max age; dims (race, sex, cohorts) come from previously-loaded initiation.
          const long dataStart = ftell(pCpdFile);
          wMinAgeValue = LONG_MAX; wMaxAgeValue = LONG_MIN;
          while (fgets(sInputLine, 3000, pCpdFile) != NULL) {
             strip_line_terminator(sInputLine);
-            pTokenPtr = strtok(sInputLine, ","); if (!pTokenPtr) continue;  // race
-            pTokenPtr = strtok(NULL, ",");                                  // sex
+            pTokenPtr = strtok(sInputLine, ","); if (!pTokenPtr) continue;
+            if (csvHasRaceCol) pTokenPtr = strtok(NULL, ",");  // sex
             pTokenPtr = strtok(NULL, ",");                                  // start_yob
             pTokenPtr = strtok(NULL, ",");                                  // end_yob
             pTokenPtr = strtok(NULL, ",");                                  // age
@@ -1179,7 +1208,17 @@ std::lock_guard<std::mutex> lock(dataMutex);
          lNumLinesRead++;
 
          pTokenPtr          = strtok(sInputLine, ",");
-         wRaceValue         = atoi(pTokenPtr);     pTokenPtr = strtok(NULL, ",");
+         if (bIsCsv) {
+            if (csvHasRaceCol) {
+               wRaceValue = atoi(pTokenPtr);
+               pTokenPtr = strtok(NULL, ",");
+            } else {
+               wRaceValue = 0;
+            }
+         } else {
+            wRaceValue = atoi(pTokenPtr);
+            pTokenPtr = strtok(NULL, ",");
+         }
          wSexValue          = atoi(pTokenPtr);     pTokenPtr = strtok(NULL, ",");
          wCohortStartValue  = atoi(pTokenPtr);     pTokenPtr = strtok(NULL, ",");
          wCohortEndValue    = atoi(pTokenPtr);     pTokenPtr = strtok(NULL, ",");
@@ -1496,6 +1535,7 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
    // CSV-only: temp cohort labels parsed from the column-header row; copied
    // into / validated against gwYOBCohort{Start,End}Yrs after allocation.
    std::vector<short> cohortStartTmp, cohortEndTmp;
+   bool csvHasRaceCol = true;
 
 
    try {
@@ -1527,8 +1567,18 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
          char* pHdr = sInputLine;
          if ((unsigned char)pHdr[0] == 0xEF && (unsigned char)pHdr[1] == 0xBB && (unsigned char)pHdr[2] == 0xBF) pHdr += 3;
          pHdr[strcspn(pHdr, "\r\n")] = '\0';
-         pTokenPtr = strtok(pHdr, ",");   // RACE
-         pTokenPtr = strtok(NULL, ",");   // SEX
+         {
+            char hdrProbe[3001];
+            strncpy(hdrProbe, pHdr, sizeof(hdrProbe) - 1);
+            hdrProbe[sizeof(hdrProbe) - 1] = '\0';
+            char* firstCol = strtok(hdrProbe, ",");
+            csv_header_expect_race_or_sex(sDataFileName, firstCol);
+            csvHasRaceCol = firstCol && csv_token_ieq(firstCol, "RACE");
+         }
+         pTokenPtr = strtok(pHdr, ",");
+         if (csvHasRaceCol) {
+            pTokenPtr = strtok(NULL, ",");   // SEX
+         }
          pTokenPtr = strtok(NULL, ",");   // AGE
          while ((pTokenPtr = strtok(NULL, ",")) != NULL) {
             const char* pDash = strchr(pTokenPtr, '-');
@@ -1540,7 +1590,8 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
          wCohortValue = (short)cohortStartTmp.size();
          if (wCohortValue <= 0) {
             snprintf(sErrorMessage, sizeof(sErrorMessage),
-               "CSV header in %s must have RACE,SEX,AGE followed by >=1 cohort column.", sDataFileName);
+               "CSV header in %s must have %sSEX,AGE followed by >=1 cohort column.",
+               sDataFileName, csvHasRaceCol ? "RACE," : "");
             throw SimException("Error", sErrorMessage);
          }
          wFirstDataLine = 2;  // legacy field unused for CSV; line ref for error messages only
@@ -1551,11 +1602,20 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
          while (fgets(sInputLine, 3000, pProbabilityFile) != NULL) {
             strip_line_terminator(sInputLine);
             pTokenPtr = strtok(sInputLine, ","); if (!pTokenPtr) continue;
-            const short r = (short)atoi(pTokenPtr);
-            pTokenPtr = strtok(NULL, ",");       if (!pTokenPtr) continue;
-            const short s = (short)atoi(pTokenPtr);
-            pTokenPtr = strtok(NULL, ",");       if (!pTokenPtr) continue;
-            const short a = (short)atoi(pTokenPtr);
+            short r = 0;
+            short s = 0;
+            short a = 0;
+            if (csvHasRaceCol) {
+               r = (short)atoi(pTokenPtr);
+               pTokenPtr = strtok(NULL, ",");       if (!pTokenPtr) continue;
+               s = (short)atoi(pTokenPtr);
+               pTokenPtr = strtok(NULL, ",");       if (!pTokenPtr) continue;
+               a = (short)atoi(pTokenPtr);
+            } else {
+               s = (short)atoi(pTokenPtr);
+               pTokenPtr = strtok(NULL, ",");       if (!pTokenPtr) continue;
+               a = (short)atoi(pTokenPtr);
+            }
             if (r > maxR) maxR = r;
             if (s > maxS) maxS = s;
             if (a < minA) minA = a;
@@ -1565,7 +1625,12 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
             snprintf(sErrorMessage, sizeof(sErrorMessage), "No data rows in CSV file %s", sDataFileName);
             throw SimException("Error", sErrorMessage);
          }
-         wRaceValue   = (short)(maxR + 1);
+         if (!csvHasRaceCol && maxR > 0) {
+            snprintf(sErrorMessage, sizeof(sErrorMessage),
+               "CSV file %s omits RACE column but contains non-zero race values in data rows.", sDataFileName);
+            throw SimException("Error", sErrorMessage);
+         }
+         wRaceValue   = csvHasRaceCol ? (short)(maxR + 1) : 1;
          wSexValue    = (short)(maxS + 1);
          wMinAgeValue = minA;
          wMaxAgeValue = maxA;
@@ -1748,8 +1813,17 @@ void Smoking_Simulator::LoadProbabilityData(const char* sDataFileName, DataType 
          strip_line_terminator(sInputLine);
          lNumLinesRead++;
          pTokenPtr  = strtok(sInputLine, ",");
-         wRaceValue = atoi(pTokenPtr);
-         pTokenPtr = strtok(NULL, ",");
+         if (bIsCsv) {
+            if (csvHasRaceCol) {
+               wRaceValue = atoi(pTokenPtr);
+               pTokenPtr = strtok(NULL, ",");
+            } else {
+               wRaceValue = 0;
+            }
+         } else {
+            wRaceValue = atoi(pTokenPtr);
+            pTokenPtr = strtok(NULL, ",");
+         }
          wSexValue = atoi(pTokenPtr);
          pTokenPtr = strtok(NULL, ",");
          wAgeValue = atoi(pTokenPtr);
@@ -1832,6 +1906,7 @@ std::lock_guard<std::mutex> lock(dataMutex);
             wAgeValue,
             i;
    FILE    *pMortalityFile     = 0;
+   bool     csvHasRaceCol = true;
 
    try {
       if (gdInitiationProbs == NULL)
@@ -1853,12 +1928,27 @@ std::lock_guard<std::mutex> lock(dataMutex);
             throw SimException("Error", sErrorMessage);
          }
          strip_line_terminator(sInputLine);
+         {
+            char hdrProbe[1001];
+            strncpy(hdrProbe, sInputLine, sizeof(hdrProbe) - 1);
+            hdrProbe[sizeof(hdrProbe) - 1] = '\0';
+            char* firstCol = strtok(hdrProbe, ",");
+            csv_header_expect_race_or_sex(sMortalityFileName, firstCol);
+            csvHasRaceCol = firstCol && csv_token_ieq(firstCol, "RACE");
+         }
          const long dataStart = ftell(pMortalityFile);
          short minY = SHRT_MAX, maxY = 0, minA = SHRT_MAX, maxA = 0;
+         short maxR = 0;
          while (fgets(sInputLine, sizeof(sInputLine), pMortalityFile) != NULL) {
             strip_line_terminator(sInputLine);
-            pTokenPtr = strtok(sInputLine, ","); if (!pTokenPtr) continue;  // race
-            pTokenPtr = strtok(NULL, ",");                                  // sex
+            pTokenPtr = strtok(sInputLine, ","); if (!pTokenPtr) continue;
+            short r = 0;
+            if (csvHasRaceCol) {
+               r = (short)atoi(pTokenPtr);
+               pTokenPtr = strtok(NULL, ",");
+            }
+            if (r > maxR) maxR = r;
+            if (!pTokenPtr) continue;                                         // sex
             pTokenPtr = strtok(NULL, ",");       if (!pTokenPtr) continue;  // yob
             const short y = (short)atoi(pTokenPtr);
             pTokenPtr = strtok(NULL, ",");       if (!pTokenPtr) continue;  // age
@@ -1870,6 +1960,11 @@ std::lock_guard<std::mutex> lock(dataMutex);
          }
          if (minY == SHRT_MAX) {
             snprintf(sErrorMessage, sizeof(sErrorMessage), "No data rows in mortality CSV %s", sMortalityFileName);
+            throw SimException("Error", sErrorMessage);
+         }
+         if (!csvHasRaceCol && maxR > 0) {
+            snprintf(sErrorMessage, sizeof(sErrorMessage),
+               "Mortality CSV %s omits RACE column but contains non-zero race values in data rows.", sMortalityFileName);
             throw SimException("Error", sErrorMessage);
          }
          gwMinMortalityYear = minY;
@@ -1960,8 +2055,17 @@ std::lock_guard<std::mutex> lock(dataMutex);
          strip_line_terminator(sInputLine);
          lNumLinesRead++;
          pTokenPtr  = strtok(sInputLine, ",");
-         wRaceValue = atoi(pTokenPtr);
-         pTokenPtr  = strtok(NULL, ",");
+         if (bIsCsv) {
+            if (csvHasRaceCol) {
+               wRaceValue = atoi(pTokenPtr);
+               pTokenPtr = strtok(NULL, ",");
+            } else {
+               wRaceValue = 0;
+            }
+         } else {
+            wRaceValue = atoi(pTokenPtr);
+            pTokenPtr = strtok(NULL, ",");
+         }
          wSexValue  = atoi(pTokenPtr);
          pTokenPtr  = strtok(NULL, ",");
          wYearValue  = atoi(pTokenPtr);

@@ -4,16 +4,18 @@ The Smoking History Generator requires a calibrated parameter set to run: probab
 
 ## Bundled minimal set (CRAN)
 
-The CRAN package ships a **default** NHIS-1965–2018 csv-partial under `inst/extdata/2018/` (`smoking/`, `mortality/`): cohort columns **1940, 1950, 2010** (trimmed to race 0 / sex 0). Regenerate from `tests/testdata/NHIS-1965-2018/csv-complete/` with **`Rscript tools/refresh-nhis-2018-csv-partial.R`**. Defaults use `system.file("extdata", "2018", package = "SmokingHistoryGenerator")`. Default property values point at these **CSV** paths relative to `input_data_folder`:
+The CRAN package ships a **default** NHIS-1965–2018 csv-partial under `inst/extdata/2018/` (`smok/`, `mort/`): cohort columns **1940, 1950, 2010** (trimmed to race 0 / sex 0). Regenerate from `tests/testdata/2018/csv-complete/` with **`Rscript tools/refresh-nhis-2018-csv-partial.R`**. Defaults use `system.file("extdata", "2018", package = "SmokingHistoryGenerator")`. Default property values point at these **CSV** paths relative to `input_data_folder`:
 
 | SHG property | Default filename |
 | ------------- | ------------- |
-| `initiation_filename` | `smoking/initiation.csv` |
-| `cessation_filename` | `smoking/cessation.csv` |
-| `mortality_filename` | `mortality/acm.csv` |
-| `cpd_filename` | `smoking/cpd.csv` |
+| `initiation_filename` | `smok/initiation.csv` |
+| `cessation_filename` | `smok/cessation.csv` |
+| `mortality_filename` | `mort/acm.csv` |
+| `cpd_filename` | `smok/cpd.csv` |
 
-You may still point at **flat** filenames (e.g. `initiation.csv` next to `input_data_folder`) for custom layouts. Use `mortality_filename` to select `mortality/acm.csv` or `mortality/ocm-excl-lung-cancer.csv` as needed. Wide `.txt` tables (CLI / legacy web layout) remain supported when you set filenames and paths accordingly.
+CSV tables may omit a **`RACE`** column (header starts with `SEX`; all rows are treated as race 0). Legacy config files may omit `RACE=` (defaults to 0).
+
+You may still point at **flat** filenames (e.g. `initiation.csv` next to `input_data_folder`) for custom layouts. Use `mortality_filename` to select `mort/acm.csv` or `mort/ocm-excl-lung-cancer.csv` as needed. Wide `.txt` tables (CLI / legacy web layout) remain supported when you set filenames and paths accordingly.
 
 After installation, locate the folder with:
 
@@ -83,7 +85,7 @@ If you already have the bundle on disk, pass the absolute path directly
 (no download step; the zip is extracted to the cache on first use):
 
 ```r
-shg$load_params(url = "/path/to/usa-national@smok-2018-mort-2016.zip")
+shg$load_params(smoking_url = "/path/to/smok.zip", mortality_url = "/path/to/mort.zip")
 ```
 
 In a **git checkout** of this repo, the same bundle used by tests and demos is at
@@ -99,7 +101,7 @@ re-points `mortality_filename` to the already-cached file.
 
 ```r
 # All-cause mortality (default)
-shg$load_params(base_url = "...", snapshot = "usa-national@smok-2018-mort-2016")
+shg$load_params(smoking_url = "...", mortality_url = "...")
 
 # Other-cause mortality
 shg$load_params(base_url = "...", snapshot = "usa-national@smok-2018-mort-2016",
@@ -113,7 +115,7 @@ For assets behind a GitHub login, set a Personal Access Token in the environment
 ```r
 # e.g. in ~/.Renviron: GITHUB_PAT=ghp_...
 Sys.setenv(GITHUB_PAT = "...")  # or rely on ~/.Renviron
-shg$load_params(url = "https://github.com/.../snapshot-id.zip")
+shg$load_params(smoking_url = "https://.../smok.zip", mortality_url = "https://.../mort.zip")
 ```
 
 The package uses `httr2` when installed (better error messages and streaming); otherwise it falls back to base-R `download.file()`.
@@ -144,7 +146,7 @@ Use `shg_params_summary()` to inspect the configured parameter-table shape
 
 ```r
 shg <- new(SHGInterface)
-shg$load_params(url = "/path/to/usa-national@smok-2018-mort-2016.zip")
+shg$load_params(smoking_url = "/path/to/smok.zip", mortality_url = "/path/to/mort.zip")
 shg_params_summary(shg)
 ```
 
@@ -153,7 +155,7 @@ It also works if you manually set `input_data_folder` and the four filenames
 
 ### Saving config and restoring if the cache was cleared
 
-After `load_params()` and at least one `runSimFromFixedValues()` call (so repeat/race/sex/cohort year are recorded), save a **portable YAML** file with `shg$save_config()` (or `shg_save_config(shg, ...)`). The file is only valid if the **most recent** completed simulation was `runSimFromFixedValues` (a later `runSimFromDataFrame()` / population run means you must run the fixed cohort again before saving). Restore with `shg_load_config()` (alias `shg_use_config_bundle()`). If extracted files are gone but `params_bundle_source` is in the file, that zip URL or path is used to run `load_params()` again automatically.
+After `load_params()` and at least one `runSimFromFixedValues()` call (so repeat/race/sex/cohort year are recorded), save a **portable YAML** file with `shg$save_config()` (or `shg_save_config(shg, ...)`). The file is only valid if the **most recent** completed simulation was `runSimFromFixedValues` (a later `runSimFromDataFrame()` / population run means you must run the fixed cohort again before saving). Restore with `shg_load_config()` (alias `shg_use_config_bundle()`). If extracted files are gone but `smok_params_source` and `mort_params_source` are in the file, those zip URLs or paths are used to run `load_params()` again automatically.
 
 ```r
 shg$save_config("my-run.yml")
@@ -166,7 +168,7 @@ out_df <- out$results
 
 See [config-management.md](config-management.md) for the full workflow.
 
-Configs saved **only** from `getConfig()` without loading parameters first do not record `params_bundle_source`; if the cache is cleared you must call `load_params()` yourself with the original URL or path.
+Configs saved **only** from `getConfig()` without loading parameters first do not record bundle provenance; if the cache is cleared you must call `load_params()` yourself with the original smoking and mortality URLs or paths.
 
 ## LegacyRunWebVersion() config keys
 

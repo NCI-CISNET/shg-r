@@ -1,2 +1,2 @@
-install-and-try-load-params   Load params from a local zip and run a quick benchmark.
+install-and-try-load-params   Load bundled extdata parameter zips and run a quick benchmark.
 portable-yaml-workflow        Save/load portable YAML config and verify reproducible reruns.

@@ -824,40 +824,6 @@ void RunInterface() {
    delete [] sInitiationFile; delete [] sCessationFile; delete [] sMortalityFile; delete [] sCPDIntensityFile; delete [] sCPDDataFile;
 }
 
-// Fast integer to string - writes backwards and returns pointer to start
-__attribute__((always_inline))
-inline char* fast_itoa(int val, char* end) {
-   bool neg = val < 0;
-   if (neg) val = -val;
-   *--end = ';';
-   if (__builtin_expect(val == 0, 0)) { *--end = '0'; }
-   else {
-      while (val) { *--end = '0' + (val % 10); val /= 10; }
-   }
-   if (neg) *--end = '-';
-   return end;
-}
-
-// Fast double to string with 2 decimal places
-__attribute__((always_inline))
-inline int fast_dtoa2(double val, char* buf) {
-   int ival = (int)(val * 100.0 + 0.5);
-   int frac = ival % 100;
-   ival /= 100;
-   char* p = buf;
-   if (__builtin_expect(ival == 0, 0)) { *p++ = '0'; }
-   else {
-      char tmp[12]; int i = 0;
-      while (ival) { tmp[i++] = '0' + (ival % 10); ival /= 10; }
-      while (i--) *p++ = tmp[i];
-   }
-   *p++ = '.';
-   *p++ = '0' + (frac / 10);
-   *p++ = '0' + (frac % 10);
-   *p++ = ';';
-   return p - buf;
-}
-
 // Runs a single segment - optimized with larger write buffer
 void RunSegment(SegmentParams& params) {
    FILE* pTempFile = NULL;
@@ -990,6 +956,12 @@ void AssembleSegmentFiles(const std::vector<std::string>& tempFiles, const std::
       }
    }
    fclose(pOutFile);
+}
+
+static char* DupCStr(const char* s) {
+   char* p = new char[std::strlen(s) + 1];
+   std::strcpy(p, s);
+   return p;
 }
 
 // Runs the application using a single data file containing all necessary information.
@@ -1472,8 +1444,8 @@ int RunWebVersion(const char * sInputFileName)
          pErrorStream = fopen(sErrorFile,"w");
       }
 
-      if (sRNGStrategy == NULL) {   
-          sRNGStrategy = strdup("RngStream"); //strdup(DEFAULT_RNG_STRATEGY) not allowed
+      if (sRNGStrategy == NULL) {
+          sRNGStrategy = DupCStr("RngStream");
       }
       
       else if (strcmp(sRNGStrategy, "MersenneTwister") == 0) {
@@ -1483,7 +1455,7 @@ int RunWebVersion(const char * sInputFileName)
          //PrintMessage("Using RngStream random number generator strategy.\n");
       }
       else if (sRNGStrategy == nullptr || strlen(sRNGStrategy) == 0) {
-         sRNGStrategy = strdup("RngStream"); 
+         sRNGStrategy = DupCStr("RngStream"); 
          //PrintMessage("Using default (RngStream) random number generator strategy.\n");
       }
       else {
@@ -1494,9 +1466,8 @@ int RunWebVersion(const char * sInputFileName)
       // Note: Auto-segment calculation moved to after lNumReps is known (see below)
 
       if (bRunApp && pErrorStream == NULL) {
-         // Due to Rcpp not allowing variadic functions, we use snprintf to do substitution ***
-         PrintError(sErrorMessage);
          snprintf(sErrorMessage, 1000, "Specified error file: '%s' could not be opened for writing.\n", sErrorFile);
+         PrintError(sErrorMessage);
          #ifdef IS_R 
            Rcpp::stop(sErrorMessage); // Warning in R?
          #endif
@@ -1526,7 +1497,7 @@ int RunWebVersion(const char * sInputFileName)
         if (strcmp(sRNGStrategy, "MersenneTwister") == 0) {
          // Check MT Seeds
          if (sSEED_Init == NULL) {
-            sSEED_Init = strdup(MT_INIT_SEED_DEFAULT);
+            sSEED_Init = DupCStr(MT_INIT_SEED_DEFAULT);
          } 
          if (!IsValidSeed(sSEED_Init)) {
             WriteToFile(pErrorStream,"\n<ERROR>\nInvalid Initiation Seed: '%s' found in input file: '%s'\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
@@ -1536,7 +1507,7 @@ int RunWebVersion(const char * sInputFileName)
          if (sSEED_Cess == NULL) {
             // TODO: Check this as potential source of error; should consider using string everywhere
             PrintMessage("Using default Cessation Seed\n");
-            sSEED_Cess = strdup(MT_CESS_SEED_DEFAULT);
+            sSEED_Cess = DupCStr(MT_CESS_SEED_DEFAULT);
          }
 
          if (!IsValidSeed(sSEED_Cess)) {
@@ -1545,7 +1516,7 @@ int RunWebVersion(const char * sInputFileName)
             bRunApp = false;
          }
          if (sSEED_Mortality == NULL) {
-            sSEED_Mortality = strdup(MT_MORTALITY_SEED_DEFAULT);
+            sSEED_Mortality = DupCStr(MT_MORTALITY_SEED_DEFAULT);
 
          }
          if (!IsValidSeed(sSEED_Mortality)) {
@@ -1554,7 +1525,7 @@ int RunWebVersion(const char * sInputFileName)
             bRunApp = false;
          }
          if (sSEED_Misc == NULL) {
-            sSEED_Misc = strdup(MT_MISC_SEED_DEFAULT);
+            sSEED_Misc = DupCStr(MT_MISC_SEED_DEFAULT);
          }
          if (!IsValidSeed(sSEED_Misc)) {
             WriteToFile(pErrorStream,"\n<ERROR>\nInvalid Miscellaneous Seed: '%s' found in input file: '%s'\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
@@ -1591,13 +1562,11 @@ int RunWebVersion(const char * sInputFileName)
       }
 
       // Check parameters
+      if (sPARAM_Race == NULL) {
+         sPARAM_Race = DupCStr("0");
+      }
       if (sPARAM_Sex == NULL) {
          WriteToFile(pErrorStream,"\n<ERROR>\nSex value(s) was not found in input file: '%s'\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
-                 sInputFileName);
-         bRunApp = false;
-      }
-      if (sPARAM_Race == NULL) {
-         WriteToFile(pErrorStream,"\n<ERROR>\nRace value(s) was not found in input file: '%s'\n</ERROR>\n<CALLPATH>\nMain:RunWebVersion()\n</CALLPATH>\n",
                  sInputFileName);
          bRunApp = false;
       }
@@ -2175,10 +2144,10 @@ int RunWebVersion(const char * sInputFileName)
    delete [] sFILE_MortalityProb;
    delete [] sFILE_Quintiles;
    delete [] sFILE_CPDData;
-   free(sSEED_Init);
-   free(sSEED_Cess);
-   free(sSEED_Mortality);
-   free(sSEED_Misc);
+   delete [] sSEED_Init;
+   delete [] sSEED_Cess;
+   delete [] sSEED_Mortality;
+   delete [] sSEED_Misc;
    delete [] sOutputFile;
    delete [] sImmediateCess;
    delete [] sPARAM_Sex;

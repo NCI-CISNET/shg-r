@@ -32,12 +32,11 @@ top-level \code{ever_smokers}, and those ever-only means.}
 \code{path}, invisibly.
 }
 \description{
-Writes a YAML file containing \code{params_bundle_source}, mortality choice,
-engine settings (RNG, seeds, effective segment count), fixed-run parameters
-(\code{repeat}, \code{race}, \code{sex}, \code{cohort_year}), and
-\code{immediate_cessation_year}. Omits derived paths (\code{input_data_folder},
-per-table filenames) so the bundle stays portable; those paths are restored by
-\code{\link{shg_load_params}} when loading from \code{params_bundle_source}.
+Writes a YAML file containing \code{smok_params_source}, \code{mort_params_source},
+\code{mort_params_type}, engine settings (RNG, seeds, effective segment count),
+fixed-run parameters (\code{repeat}, \code{race}, \code{sex}, \code{cohort_year}),
+and \code{immediate_cessation_year}. Omits derived paths so the bundle stays
+portable; those paths are restored by \code{\link{shg_load_params}}.
 }
 \details{
 \strong{Prefer the method form} \code{shg$save_config(path)} (same implementation).
@@ -62,14 +61,14 @@ If the last run was not a fixed cohort simulation, or fixed cohort metadata are
 missing, saving fails with an error.
 }
 \examples{
-\dontrun{
 shg <- new(SHGInterface)
-shg$load_params(url = "/path/to/bundle.zip")
-sim <- shg$runSimFromFixedValues(1000, 0, 0, 2010)
-shg$save_config("my-run.yml")
-# With results$content_md5, results$summary, and repro_digest in the YAML:
-# shg_save_config(shg, "my-run-with-stats.yml", results = sim)
-}
+shg$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
+shg$smok_params_source <- "example-smoking"
+shg$mort_params_source <- "example-mortality"
+shg$mort_params_type <- "acm"
+sim <- shg$runSimFromFixedValues(500, 0, 0, 1950)
+tf <- tempfile(fileext = ".yml")
+shg_save_config(shg, tf, results = sim)
 }
 \seealso{
 \code{\link{shg_load_config}}, \code{\link{shg_run}}

@@ -25,17 +25,7 @@ either \code{\link[=shg_load_params]{shg_load_params()}} or manual file-path con
 \code{SHGInterface} instance.
 }
 \examples{
-\dontrun{
 shg <- new(SHGInterface)
-shg$load_params(url = "/path/to/usa-national@smok-2018-mort-2016.zip")
+shg$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
 shg_params_summary(shg)
-
-# manual paths also work
-shg$input_data_folder <- "/path/to/params-root"
-shg$initiation_filename <- "smoking/initiation.csv"
-shg$cessation_filename <- "smoking/cessation.csv"
-shg$mortality_filename <- "mortality/acm.csv"
-shg$cpd_filename <- "smoking/cpd.csv"
-shg_params_summary(shg)
-}
 }

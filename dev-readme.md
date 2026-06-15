@@ -52,7 +52,15 @@ CRAN incoming checks use flavor **`r-devel-windows-x86_64`** (R-devel on 64-bit 
 
 3. **win-builder** (closest manual dry run) — Build the same source tarball, then upload it to [win-builder](https://win-builder.r-project.org/) and review the **R-devel / x86_64** result email. This is optional but recommended before a first submission or after engine changes.
 
-Shared engine changes must stay in sync with **shg-cli** (`python tools/shg-sync.py check`).
+## Memory / sanitizer checks (pre-CRAN)
+
+After changes to **`src/`** C++ code, run the CRAN-faithful gcc-ASAN check locally (requires Docker, ~15–25 min):
+
+```bash
+./tools/check-docker-asan.sh
+```
+
+Use **`./tools/check-docker-asan.sh --no-pull`** to reuse a cached r-hub image. See also **`./tools/build-cran-submission.sh`** for a standard `--as-cran` tarball check.
 
 ## CRAN-style `R CMD check` on your machine
 

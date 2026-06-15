@@ -4,7 +4,7 @@
 #   demo("portable-yaml-workflow", package = "SmokingHistoryGenerator")
 #
 # This demonstrates scientific reproducibility with a portable config:
-# 1) apply config with params_bundle_source (which restores bundle tables)
+# 1) apply config with smok_params_source + mort_params_source
 # 2) run a fixed cohort simulation
 # 3) collect bundled outputs (results + original_config + repro_config + run_info)
 # 4) write sparse + repro YAML with one writer
@@ -12,38 +12,24 @@
 
 library(SmokingHistoryGenerator)
 
-resolve_demo_zip <- function() {
-  # 1) allow explicit override (local path or URL)
-  z <- Sys.getenv("SHG_PARAMS_ZIP", "")
-  if (nzchar(z)) return(z)
-
-  # 2) local repo checkout path (works for developers)
-  candidate <- normalizePath(
-    file.path(getwd(), "tests", "testdata", "usa-national@smok-2018-mort-2016.zip"),
-    winslash = "/",
-    mustWork = FALSE
-  )
-  if (file.exists(candidate)) return(candidate)
-
-  stop(
-    "No parameter bundle configured for demo.\n",
-    "Set SHG_PARAMS_ZIP to a local bundle path or URL, e.g.:\n",
-    "  Sys.setenv(SHG_PARAMS_ZIP = '/path/to/usa-national@smok-2018-mort-2016.zip')\n",
-    "then re-run demo('portable-yaml-workflow', package='SmokingHistoryGenerator').",
-    call. = FALSE
-  )
+ext2018 <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
+smok_zip <- file.path(ext2018, "bundled-smok.zip")
+mort_zip <- file.path(ext2018, "bundled-mort.zip")
+if (!nzchar(ext2018) || !file.exists(smok_zip) || !file.exists(mort_zip)) {
+  stop("Bundled parameter zips not found under extdata/2018.", call. = FALSE)
 }
-
-zip_path <- resolve_demo_zip()
+zips <- list(smok = smok_zip, mort = mort_zip)
 config_path <- tempfile("shg-portable-config-", fileext = ".yml")
 
-cat("Bundle source:", zip_path, "\n")
+cat("Smoking bundle:", zips$smok, "\n")
+cat("Mortality bundle:", zips$mort, "\n")
 cat("Portable YAML:", config_path, "\n")
 
 shg <- new(SHGInterface)
 run_cfg <- list(
-  params_bundle_source = zip_path,
-  params_mortality = "ocm",
+  smok_params_source = zips$smok,
+  mort_params_source = zips$mort,
+  mort_params_type = "ocm",
   individuals = 100000,
   race = 0,
   sex = 0,

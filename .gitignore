@@ -13,6 +13,7 @@ src/wrapper_backup.xcpp
 SHG_multi.out
 /..Rcheck
 /SmokingHistoryGenerator.Rcheck
+/SmokingHistoryGenerator/
 SmokingHistoryGenerator_*.Rcheck
 SmokingHistoryGenerator_0.0.1.tar.gz
 /tests/inputs
@@ -24,5 +25,13 @@ SmokingHistoryGenerator_0.0.1.tar.gz
 .R-lib/
 .Rd2pdf*/
 /tmp
+tests/pytests/results/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+**/__pycache__/
+*.py[cod]
 tests/testthat/_snaps/
 tests/testdata/NHIS-1965-2016/

@@ -23,8 +23,8 @@ The parsed config list (same object to pass to \code{\link{shg_run}} /
 \description{
 Reads the YAML file, applies engine settings with \code{useConfig()}, then
 restores parameter tables via \code{\link{shg_load_params}} when the cache is
-missing or stale (using \code{params_bundle_source} and \code{params_mortality}
-stored in the file).
+missing or stale (using \code{smok_params_source}, \code{mort_params_source}, and
+\code{mort_params_type} stored in the file).
 }
 \details{
 Private GitHub downloads use the \code{GITHUB_PAT} environment variable when

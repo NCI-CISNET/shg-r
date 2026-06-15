@@ -20,7 +20,7 @@ rs_fp <- function(d) {
 test_that("RngStream: non-divisible repeat with 8 segments (206 %% 8 != 0) matches regression fingerprint", {
   shg <- new(SHGInterface)
   shg$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
-  shg$mortality_filename <- "mortality/acm.csv"
+  shg$mortality_filename <- "mort/acm.csv"
   shg$rng_strategy <- "RngStream"
   shg$rngstream_seed <- rep(12345, 6)
   shg$num_threads <- 1L
@@ -37,7 +37,7 @@ test_that("RngStream: non-divisible repeat with 8 segments (206 %% 8 != 0) match
 test_that("RngStream: non-divisible repeat with 7 segments (503 %% 7 != 0) matches regression fingerprint", {
   shg <- new(SHGInterface)
   shg$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
-  shg$mortality_filename <- "mortality/acm.csv"
+  shg$mortality_filename <- "mort/acm.csv"
   shg$rng_strategy <- "RngStream"
   shg$rngstream_seed <- rep(12345, 6)
   shg$num_threads <- 1L
@@ -63,7 +63,7 @@ test_that("RngStream: memory vs file output agree when repeat %% segments != 0",
 
   common <- function(shg) {
     shg$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
-    shg$mortality_filename <- "mortality/acm.csv"
+    shg$mortality_filename <- "mort/acm.csv"
     shg$rng_strategy <- "RngStream"
     shg$rngstream_seed <- rep(12345, 6)
     shg$cpd_format <- "none"

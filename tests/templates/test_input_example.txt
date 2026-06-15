@@ -16,10 +16,10 @@ REPEAT=1000
 NUM_SEGMENTS=1
 NUM_THREADS=1
 
-INIT_PROB={data_folder}/smoking/initiation.csv
-CESS_PROB={data_folder}/smoking/cessation.csv
-MORTALITY_PROB={data_folder}/mortality/acm.csv
-CPD_DATA={data_folder}/smoking/cpd.csv
+INIT_PROB={data_folder}/smok/initiation.csv
+CESS_PROB={data_folder}/smok/cessation.csv
+MORTALITY_PROB={data_folder}/mort/acm.csv
+CPD_DATA={data_folder}/smok/cpd.csv
 
 OUTPUTFILE={outputs_folder}/test_output_{rng_strategy}_{yob}_{cessation_yr}.txt
 ERRORFILE={outputs_folder}/test_errors_{rng_strategy}_{yob}_{cessation_yr}.txt

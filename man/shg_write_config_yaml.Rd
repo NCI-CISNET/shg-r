@@ -16,16 +16,16 @@ shg_write_config_yaml(config, path)
 }
 \description{
 Strips audit-only keys when present, then drops redundant input paths when
-\code{params_bundle_source} is set (same idea as portable save). Sparse lists
-serialize as-is (minimal keys only).
+\code{smok_params_source} and \code{mort_params_source} are set (same idea as
+portable save). Sparse lists serialize as-is (minimal keys only).
 }
 \details{
 Parameter provenance and table paths are grouped under a \code{params} mapping
-when present (\code{params_bundle_source} / \code{params_mortality} and/or
-\code{input_data_folder} with per-table filenames). \code{\link{shg_load_config}}
-and \code{\link{shg_apply_config}} accept both nested and legacy flat keys.
+when present (\code{smok_params_source}, \code{mort_params_source},
+\code{mort_params_type}, and/or \code{input_data_folder} with per-table filenames).
+\code{\link{shg_load_config}} and \code{\link{shg_apply_config}} accept nested or flat keys.
 
-For full portable fixed-cohort bundles, \code{config} should include
-\code{params_bundle_source} and complete \code{repeat}, \code{race},
+For full portable fixed-cohort bundles, \code{config} should include both
+parameter sources and complete \code{repeat}, \code{race},
 \code{sex}, \code{cohort_year} (see \code{\link{shg_save_config}}).
 }

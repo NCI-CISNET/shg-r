@@ -11,16 +11,25 @@ shg_run(shg, config, attach_run_info = TRUE)
 
 \item{config}{Named list from \code{\link{shg_load_config}}, or a YAML path.}
 
-\item{attach_run_info}{If \code{TRUE} (default), returns a list with
-\code{results}, \code{original_config}, \code{repro_config}, and
-\code{run_info}. Set to \code{FALSE} to return only the simulation
-\code{data.frame}.}
+\item{attach_run_info}{If \code{TRUE} (default), returns a run bundle list; set to
+\code{FALSE} to return only the simulation \code{data.frame}.}
 }
 \value{
-A data frame from \code{runSimFromFixedValues}, or a bundle list when
-\code{attach_run_info} is \code{TRUE}.
+If \code{attach_run_info} is \code{FALSE}, the \code{data.frame} from
+\code{\link{runSimFromFixedValues}}. If \code{TRUE}, a list with four components:
+\describe{
+\item{results}{Simulation \code{data.frame} (see \code{\link{runSimFromFixedValues}}).}
+\item{original_config}{Intent list passed into the run (cohort scalars,
+\code{smok_params_source}, \code{mort_params_source}, \code{mort_params_type},
+engine options); for \code{runSim}/\code{shg_run}, the config list or parsed YAML.}
+\item{repro_config}{Effective post-run settings from \code{\link{getReproConfig}}
+(resolved segments/threads, RNG, paths, bundle provenance, cohort metadata).}
+\item{run_info}{Execution metadata (UTC time, host, R and package/engine versions;
+built by internal \code{.shg_build_run_info()}).}
+}
 }
 \description{
+\code{shg_run()} and \code{SHGInterface$runSim()} call the same implementation.
 Validates required keys and calls \code{\link{runSimFromFixedValues}}.
 If \code{repeat}, \code{individuals}, and \code{N} are all omitted,
 \code{repeat} defaults to \code{1000L}.

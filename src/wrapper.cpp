@@ -67,9 +67,11 @@ inline unsigned long mt_seed_to_engine_arg(double stored_user_seed) {
 
 using namespace std;
 
+namespace {
+
 // Fast integer to string conversion (10-20x faster than std::to_string)
 // Writes digits forward to avoid reverse, returns pointer past end
-inline char* fast_itoa(int val, char* buf) {
+inline char* wrapper_fast_itoa(int val, char* buf) {
    if (val < 0) {
       *buf++ = '-';
       if (val == INT_MIN) {
@@ -99,10 +101,12 @@ inline char* fast_itoa(int val, char* buf) {
    return buf;
 }
 
+}  // namespace
+
 // Append integer to string using fast conversion
 inline void append_int(std::string& s, int val) {
    char buf[16];
-   char* end = fast_itoa(val, buf);
+   char* end = wrapper_fast_itoa(val, buf);
    s.append(buf, end - buf);
 }
 
@@ -124,8 +128,9 @@ inline void append_int(std::string& s, int val) {
 //' @field initiation_filename Set or get the initiation filename
 //' @field cessation_filename Set or get the cessation filename
 //' @field mortality_filename Set or get the mortality probabilities filename (e.g. acm.csv or ocm-excl-lung-cancer.csv)
-//' @field params_bundle_source URL or local path of the last load_params() zip (empty if unset)
-//' @field params_mortality Mortality choice from last load_params(): acm or ocm (empty if unset)
+//' @field smok_params_source URL or local path of the last load_params() smoking zip (empty if unset)
+//' @field mort_params_source URL or local path of the last load_params() mortality zip (empty if unset)
+//' @field mort_params_type Mortality table from last load_params(): acm or ocm (empty if unset)
 //' @field params_cache_dir Read-only. Directory where load_params() stores extracted bundles (same as shg_params_cache_dir()). Delete this folder to clear the cache manually.
 //' @field cpd_filename Set or get the cpd filename
 //' @field immediate_cessation_year Set or get Immediate Cessation Year; If 0, no immediate cessation
@@ -152,8 +157,9 @@ void SHGInterface::reset_to_factory_defaults() {
    cessation_filename = R_CESSATION_DATA_FILE;
    mortality_filename_ = R_ACM_DATA_FILE;
    cpd_filename = R_CPD_DATA_FILE;
-   params_bundle_source_.clear();
-   params_mortality_.clear();
+   smok_params_source_.clear();
+   mort_params_source_.clear();
+   mort_params_type_.clear();
    immediate_cessation_year = 0;
    number_of_segments = -1;
    num_threads = -1;
@@ -507,33 +513,6 @@ Rcpp::List SHGInterface::get_data_shape() {
 //'          before loading inputs or writing files. Use the default in-memory DataFrame return value, or set
 //'          \code{num_threads <- 1} to write a file.
 //' @param dfPopulation The input dataframe with named columns for race, sex, and birth_cohort
-//' @examples
-//' \dontrun{
-//' library(SmokingHistoryGenerator)
-//' shg <- new(SHGInterface)
-//' # Multi-cohort populations need full NHIS-style inputs (all cohort columns).
-//' # inst/extdata/2018 is CRAN-sized only; full bundle coming soon on Zenodo — see README.
-//' shg$input_data_folder <- "/path/to/NHIS-1965-2018/csv-complete"
-//' N <- 10^6
-//' pop <- list(
-//'     race = rep(0, N),
-//'     sex = sample(x = c(0, 1), size = N, prob = c(0.5, 0.5), replace = TRUE),
-//'     birth_cohort = rep(1930:1949, N / 20)
-//' )
-//' shg$rng_strategy <- "RngStream"
-//' # Optionally set a custom seed for RngStream (6 values)
-//' shg$rngstream_seed <- c(12345, 12345, 12345, 12345, 12345, 12345)
-//' shg$number_of_segments <- -1 # auto-calculate (default), or set explicit value for reproducibility
-//' shg$num_threads <- -1  # -1 = auto (all cores), 1 = single-threaded
-//' smoking_history <- shg$runSimFromDataFrame(pop)
-//' 
-//' # Example with MersenneTwister and custom seeds (4 values)
-//' shg2 <- new(SHGInterface)
-//' shg2$input_data_folder <- system.file("extdata", "2018", package="SmokingHistoryGenerator")
-//' shg2$rng_strategy <- "MersenneTwister"
-//' shg2$mt_seeds <- c(1898587603, 1468371936, 1551308340, 1590227640)
-//' smoking_history2 <- shg2$runSimFromFixedValues(1000, 0, 0, 1950)
-//' }
 
 Rcpp::RObject SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation) {
    return runSimFromDataFrame(dfPopulation, false, R_NilValue);
@@ -903,14 +882,6 @@ Rcpp::RObject SHGInterface::runSimFromDataFrame(Rcpp::DataFrame dfPopulation,
 //' @param race (default = 0 and refers to all races combined)
 //' @param sex (0 for male, 1, for female)
 //' @param cohort_year (four digit birth cohort year)
-//' @examples
-//' \dontrun{
-//' library(SmokingHistoryGenerator)
-//' shg <- new(SHGInterface)
-//' shg$input_data_folder <- system.file("extdata", "2018", package="SmokingHistoryGenerator")
-//' N <- 10^6
-//' smoking_history <- shg$runSimFromFixedValues(N, 0, 0, 1950)
-//' }
 Rcpp::RObject SHGInterface::runSimFromFixedValues(int repeat, short wRace, short wSex, short wYearBirth) {
    return runSimFromFixedValues(repeat, wRace, wSex, wYearBirth, false, R_NilValue);
 }
@@ -1197,13 +1168,13 @@ void SHGInterface::runSimSegment(int repeat,
                   *ptr++ = ' ';
                }
                if (useSparse) {
-                  ptr = fast_itoa(cpdVal, ptr);
+                  ptr = wrapper_fast_itoa(cpdVal, ptr);
                } else {
                   // Full format: "age (cpd)"
-                  ptr = fast_itoa(age, ptr);
+                  ptr = wrapper_fast_itoa(age, ptr);
                   *ptr++ = ' ';
                   *ptr++ = '(';
-                  ptr = fast_itoa(cpdVal, ptr);
+                  ptr = wrapper_fast_itoa(cpdVal, ptr);
                   *ptr++ = ')';
                }
             }
@@ -1364,9 +1335,6 @@ bool SHGInterface::fileExists(const char* filename) {
 //' @description This method offers a way to configure and run a simulation from an input configuration file. Rather than return a R DataFrame, it produces results in an output file. It works in the same as calling the CLI version of the Smoking History Generator with a single input file parameter.
 //' @param input_file_name Path to a Legacy web-style configuration file. Paths inside the file are resolved relative to the R process working directory (the \code{input_data_folder} property is ignored). Sample text configs live under \code{tests/testdata/legacy-web-examples/} in the package source; for installed use, build a config with absolute paths from \code{system.file("extdata", "2018", package = "SmokingHistoryGenerator")}.
 //' @examples
-//' \dontrun{
-//' # Warning: LegacyRunWebVersion ignores Rcpp properties and uses only the config file.
-//' library(SmokingHistoryGenerator)
 //' shg <- new(SHGInterface)
 //' d <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
 //' tf <- tempfile(fileext = ".txt")
@@ -1374,15 +1342,14 @@ bool SHGInterface::fileExists(const char* filename) {
 //'   "RNGSTRATEGY=RngStream",
 //'   "RNGSTREAM_SEED=12345,12345,12345,12345,12345,12345",
 //'   "RACE=0", "SEX=0", "YOB=1950", "CESSATION_YR=0", "REPEAT=100",
-//'   paste0("INIT_PROB=", file.path(d, "smoking", "initiation.csv")),
-//'   paste0("CESS_PROB=", file.path(d, "smoking", "cessation.csv")),
-//'   paste0("MORTALITY_PROB=", file.path(d, "mortality", "acm.csv")),
-//'   paste0("CPD_DATA=", file.path(d, "smoking", "cpd.csv")),
+//'   paste0("INIT_PROB=", file.path(d, "smok", "initiation.csv")),
+//'   paste0("CESS_PROB=", file.path(d, "smok", "cessation.csv")),
+//'   paste0("MORTALITY_PROB=", file.path(d, "mort", "acm.csv")),
+//'   paste0("CPD_DATA=", file.path(d, "smok", "cpd.csv")),
 //'   paste0("OUTPUTFILE=", tempfile("out_", fileext = ".txt")),
 //'   paste0("ERRORFILE=", tempfile("err_", fileext = ".txt"))
 //' ), tf)
 //' shg$LegacyRunWebVersion(tf)
-//' }
 void SHGInterface::LegacyRunWebVersion(const char *sInputFileName)
 {
    // Paths inside config file are relative to the current working directory
@@ -1398,19 +1365,7 @@ void SHGInterface::LegacyRunWebVersion(const char *sInputFileName)
 //' @title Get SHG Configuration
 //' @description Returns the current configuration of the SHG instance as an R list. Can include debug information when debug=TRUE.
 //' @param debug Logical. If TRUE, includes additional debug information such as RNG state fingerprint, package version, system info, and memory usage. If not provided, defaults to FALSE.
-//' @return A list containing the current intent configuration including: config_version, rng_strategy, number_of_segments, num_threads, seeds, input file paths (including mortality_filename), params_bundle_source and params_mortality (from load_params, else NA), immediate_cessation_year, inferred cohort_year (single-cohort runs; otherwise NA), repeat/race/sex after runSimFromFixedValues (otherwise NA), and timestamp. This method returns currently applied values (including unresolved auto values such as -1 for segments/threads). Use \code{getReproConfig()} to export effective runtime values from the last completed simulation. seeds always returns concrete values (explicit user seeds or defaults). If debug=TRUE, also includes rng_state_fingerprint, package_version, package_source, r_version, platform, and memory_usage.
-//' @examples
-//' \dontrun{
-//' library(SmokingHistoryGenerator)
-//' shg <- new(SHGInterface)
-//' shg$rng_strategy <- "RngStream"
-//' shg$number_of_segments <- 4
-//' config <- shg$getConfig()
-//' # Save config for later use
-//' saveRDS(config, "my_config.rds")
-//' # Get config with debug info
-//' debug_config <- shg$getConfig(debug = TRUE)
-//' }
+//' @return A list containing the current intent configuration including: config_version, rng_strategy, number_of_segments, num_threads, seeds, input file paths (including mortality_filename), smok_params_source, mort_params_source, and mort_params_type (from load_params, else NA), immediate_cessation_year, inferred cohort_year (single-cohort runs; otherwise NA), repeat/race/sex after runSimFromFixedValues (otherwise NA), and timestamp. This method returns currently applied values (including unresolved auto values such as -1 for segments/threads). Use \code{getReproConfig()} to export effective runtime values from the last completed simulation. seeds always returns concrete values (explicit user seeds or defaults). If debug=TRUE, also includes rng_state_fingerprint, package_version, package_source, r_version, platform, and memory_usage.
 Rcpp::List SHGInterface::buildConfig(bool debug, bool use_effective_runtime, bool require_effective_runtime) {
    if (require_effective_runtime && !has_effective_runtime_config_) {
       Rcpp::stop(
@@ -1485,15 +1440,20 @@ Rcpp::List SHGInterface::buildConfig(bool debug, bool use_effective_runtime, boo
      config["sex"] = Rcpp::IntegerVector::create(NA_INTEGER);
   }
 
-   if (params_bundle_source_.empty()) {
-      config["params_bundle_source"] = Rcpp::CharacterVector::create(NA_STRING);
+   if (smok_params_source_.empty()) {
+      config["smok_params_source"] = Rcpp::CharacterVector::create(NA_STRING);
    } else {
-      config["params_bundle_source"] = params_bundle_source_;
+      config["smok_params_source"] = smok_params_source_;
    }
-   if (params_mortality_.empty()) {
-      config["params_mortality"] = Rcpp::CharacterVector::create(NA_STRING);
+   if (mort_params_source_.empty()) {
+      config["mort_params_source"] = Rcpp::CharacterVector::create(NA_STRING);
    } else {
-      config["params_mortality"] = params_mortality_;
+      config["mort_params_source"] = mort_params_source_;
+   }
+   if (mort_params_type_.empty()) {
+      config["mort_params_type"] = Rcpp::CharacterVector::create(NA_STRING);
+   } else {
+      config["mort_params_type"] = mort_params_type_;
    }
    
    // Timestamp
@@ -1600,12 +1560,10 @@ Rcpp::List SHGInterface::getConfig() {
 //' and segment layout; consumers default to auto threads when reloading). Errors if no
 //' simulation has completed on the instance.
 //' @examples
-//' \dontrun{
-//' library(SmokingHistoryGenerator)
 //' shg <- new(SHGInterface)
-//' shg$runSimFromFixedValues(1000, 0, 0, 1950)
+//' shg$input_data_folder <- system.file("extdata", "2018", package = "SmokingHistoryGenerator")
+//' shg$runSimFromFixedValues(500, 0, 0, 1950)
 //' repro <- shg$getReproConfig()
-//' }
 Rcpp::List SHGInterface::getReproConfig(bool debug) {
    return buildConfig(debug, true, true);
 }
@@ -1620,21 +1578,7 @@ Rcpp::List SHGInterface::getReproConfig() {
 //' @title Use SHG Configuration
 //' @description Configures an existing SHG instance from a configuration object (typically obtained from getConfig()).
 //' @param config A list containing configuration parameters. Must include config_version. All parameters are validated.
-//' @details This method validates the config_version and all parameters before setting them. Unknown fields are warned about but allowed for future compatibility. Missing optional fields use defaults. Fields are applied in an order suitable for round-trips from getConfig(): number_of_segments and num_threads are set before rng_strategy (so switching to Mersenne Twister does not message when the saved list already has single-threaded settings), then seeds, then paths and other options. If the list has deprecated \code{run_multi_threaded} but no \code{num_threads}, it is mapped: FALSE -> \code{num_threads = 1}, TRUE -> \code{num_threads = -1}. If both are present, \code{num_threads} wins. If the list updates local input paths (\code{input_data_folder} or any per-table filename) but omits \code{params_bundle_source} / \code{params_mortality}, any previously recorded bundle provenance is cleared for the omitted key(s) so metadata cannot refer to an older zip after retargeting inputs.
-//' @examples
-//' \dontrun{
-//' library(SmokingHistoryGenerator)
-//' # Create and configure first instance
-//' shg1 <- new(SHGInterface)
-//' shg1$rng_strategy <- "RngStream"
-//' shg1$number_of_segments <- 4
-//' config <- shg1$getConfig()
-//' 
-//' # Create new instance and apply config
-//' shg2 <- new(SHGInterface)
-//' shg2$useConfig(config)
-//' # shg2 now has same configuration as shg1
-//' }
+//' @details This method validates the config_version and all parameters before setting them. Unknown fields are warned about but allowed for future compatibility. Missing optional fields use defaults. Fields are applied in an order suitable for round-trips from getConfig(): number_of_segments and num_threads are set before rng_strategy (so switching to Mersenne Twister does not message when the saved list already has single-threaded settings), then seeds, then paths and other options. If the list has deprecated \code{run_multi_threaded} but no \code{num_threads}, it is mapped: FALSE -> \code{num_threads = 1}, TRUE -> \code{num_threads = -1}. If both are present, \code{num_threads} wins. If the list updates local input paths (\code{input_data_folder} or any per-table filename) but omits \code{smok_params_source}, \code{mort_params_source}, and \code{mort_params_type}, any previously recorded bundle provenance is cleared for the omitted key(s) so metadata cannot refer to an older zip after retargeting inputs.
 void SHGInterface::useConfig(Rcpp::List config) {
    last_completed_sim_was_fixed_cohort_ = false;
    has_effective_runtime_config_ = false;
@@ -1759,8 +1703,9 @@ void SHGInterface::useConfig(Rcpp::List config) {
 
    // Provenance is only updated when keys are present; if the caller retargets local
    // input paths without also supplying bundle metadata, drop stale zip/mortality hints.
-   const bool has_params_bundle_source_key = config.containsElementNamed("params_bundle_source");
-   const bool has_params_mortality_key = config.containsElementNamed("params_mortality");
+   const bool has_smok_params_source_key = config.containsElementNamed("smok_params_source");
+   const bool has_mort_params_source_key = config.containsElementNamed("mort_params_source");
+   const bool has_mort_params_type_key = config.containsElementNamed("mort_params_type");
    const bool touched_local_input_paths =
       config.containsElementNamed("input_data_folder") ||
       config.containsElementNamed("initiation_filename") ||
@@ -1769,30 +1714,42 @@ void SHGInterface::useConfig(Rcpp::List config) {
       config.containsElementNamed("cpd_filename");
 
    if (touched_local_input_paths) {
-      if (!has_params_bundle_source_key) {
-         params_bundle_source_.clear();
+      if (!has_smok_params_source_key) {
+         smok_params_source_.clear();
       }
-      if (!has_params_mortality_key) {
-         params_mortality_.clear();
+      if (!has_mort_params_source_key) {
+         mort_params_source_.clear();
+      }
+      if (!has_mort_params_type_key) {
+         mort_params_type_.clear();
       }
    }
 
-   if (has_params_bundle_source_key) {
-      Rcpp::CharacterVector cv = config["params_bundle_source"];
+   if (has_smok_params_source_key) {
+      Rcpp::CharacterVector cv = config["smok_params_source"];
       Rcpp::LogicalVector na = Rcpp::is_na(cv);
       if (cv.size() >= 1 && !na[0]) {
-         params_bundle_source_ = Rcpp::as<std::string>(cv);
+         smok_params_source_ = Rcpp::as<std::string>(cv);
       } else {
-         params_bundle_source_.clear();
+         smok_params_source_.clear();
       }
    }
-   if (has_params_mortality_key) {
-      Rcpp::CharacterVector cv = config["params_mortality"];
+   if (has_mort_params_source_key) {
+      Rcpp::CharacterVector cv = config["mort_params_source"];
       Rcpp::LogicalVector na = Rcpp::is_na(cv);
       if (cv.size() >= 1 && !na[0]) {
-         params_mortality_ = Rcpp::as<std::string>(cv);
+         mort_params_source_ = Rcpp::as<std::string>(cv);
       } else {
-         params_mortality_.clear();
+         mort_params_source_.clear();
+      }
+   }
+   if (has_mort_params_type_key) {
+      Rcpp::CharacterVector cv = config["mort_params_type"];
+      Rcpp::LogicalVector na = Rcpp::is_na(cv);
+      if (cv.size() >= 1 && !na[0]) {
+         mort_params_type_ = Rcpp::as<std::string>(cv);
+      } else {
+         mort_params_type_.clear();
       }
    }
   
@@ -1803,7 +1760,7 @@ void SHGInterface::useConfig(Rcpp::List config) {
     "mortality_filename", "cpd_filename", "immediate_cessation_year",
     "cohort_year", "repeat", "race", "sex", "timestamp",
     "individuals", "mortality",
-    "params_bundle_source", "params_mortality", "package_repro",
+    "smok_params_source", "mort_params_source", "mort_params_type", "package_repro",
     "rng_state_fingerprint", "package_version", "package_source", "r_version",
       "platform", "memory_usage"
    };
@@ -1882,8 +1839,9 @@ RCPP_MODULE(SmokingSimulator) {
        .property("initiation_filename", &SHGInterface::get_initiation_filename, &SHGInterface::set_initiation_filename, "Set or get the initiation filename")
        .property("cessation_filename", &SHGInterface::get_cessation_filename, &SHGInterface::set_cessation_filename, "Set or get the cessation filename")
        .property("mortality_filename", &SHGInterface::get_mortality_filename, &SHGInterface::set_mortality_filename, "Set or get the mortality probabilities filename (e.g. acm.csv or ocm-excl-lung-cancer.csv)")
-       .property("params_bundle_source", &SHGInterface::get_params_bundle_source, &SHGInterface::set_params_bundle_source, "URL or local path of the last load_params() zip (empty if unset)")
-       .property("params_mortality", &SHGInterface::get_params_mortality, &SHGInterface::set_params_mortality, "Mortality choice from last load_params(): acm or ocm (empty if unset)")
+       .property("smok_params_source", &SHGInterface::get_smok_params_source, &SHGInterface::set_smok_params_source, "URL or local path of the last load_params() smoking zip (empty if unset)")
+       .property("mort_params_source", &SHGInterface::get_mort_params_source, &SHGInterface::set_mort_params_source, "URL or local path of the last load_params() mortality zip (empty if unset)")
+       .property("mort_params_type", &SHGInterface::get_mort_params_type, &SHGInterface::set_mort_params_type, "Mortality table from last load_params(): acm or ocm (empty if unset)")
        .property("params_cache_dir", &SHGInterface::get_params_cache_dir, "Read-only. Directory where load_params() stores extracted zip bundles (same as shg_params_cache_dir()). Delete this folder to clear the cache manually.")
        .property("cpd_filename", &SHGInterface::get_cpd_filename, &SHGInterface::set_cpd_filename, "Set or get the cpd filename")
        .property("mt_seeds", &SHGInterface::get_mt_seeds, &SHGInterface::set_mt_seeds, "Set or get MersenneTwister seeds. Must be a numeric vector of exactly 4 values (one for each stream: initiation, cessation, life table, individual). If not set, default seeds are used.")
