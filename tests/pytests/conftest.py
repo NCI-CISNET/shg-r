@@ -41,6 +41,9 @@ def pytest_addoption(parser):
 def pytest_configure(config):
     config.addinivalue_line("markers", "slow: mark test as slow to run")
     config.addinivalue_line("markers", "RngStream: mark test as using RngStream")
+    if config.getoption("--include-slow"):
+        # pytest.ini sets addopts = -m "not slow"; override so slow tests run.
+        config.option.markexpr = ""
 
 
 def pytest_collection_modifyitems(config, items):
@@ -53,13 +56,6 @@ def pytest_collection_modifyitems(config, items):
                 item.add_marker(skip_legacy)
             if any("user_input" in keyword for keyword in item.keywords):
                 item.add_marker(skip_legacy)
-
-    if config.getoption("--include-slow"):
-        return
-    skip_slow = pytest.mark.skip(reason="need --include-slow option to run")
-    for item in items:
-        if any("slow" in keyword for keyword in item.keywords):
-            item.add_marker(skip_slow)
 
 
 @pytest.fixture(scope="session", autouse=True)

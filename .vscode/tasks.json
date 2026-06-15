@@ -80,8 +80,6 @@
 			"type": "shell",
 			"command": "pytest",
 			"args": [
-				"-o",
-				"addopts=",
 				"--include-slow"
 			],
 			"group": "test",
