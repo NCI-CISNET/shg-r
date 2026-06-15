@@ -1,0 +1,42 @@
+name: Pytest fast suite (R-backed)
+description: Install SmokingHistoryGenerator and run tests/pytests (fast suite).
+inputs:
+  run:
+    description: "When false, skip all steps"
+    required: false
+    default: "true"
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      if: inputs.run == 'true'
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+        cache: pip
+        cache-dependency-path: tests/pytests/requirements-test.txt
+
+    - name: Verify NHIS pytest testdata
+      if: inputs.run == 'true'
+      shell: bash
+      run: test -f tests/testdata/2018/csv-complete/initiation.csv
+
+    - name: Install SmokingHistoryGenerator for pytest
+      if: inputs.run == 'true'
+      shell: bash
+      run: R CMD INSTALL --preclean .
+
+    - name: Install R deps for pytest worker
+      if: inputs.run == 'true'
+      shell: bash
+      run: Rscript -e 'install.packages("jsonlite", repos = "https://cloud.r-project.org")'
+
+    - name: Run pytest (fast suite)
+      if: inputs.run == 'true'
+      shell: bash
+      working-directory: tests/pytests
+      env:
+        SHG_R_ROOT: ${{ github.workspace }}
+      run: |
+        pip install -r requirements-test.txt
+        pytest
