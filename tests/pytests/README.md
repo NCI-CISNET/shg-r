@@ -7,8 +7,7 @@ stay aligned with the CLI suite.
 
 ## Overlap with R testthat
 
-[`tests/testthat/test-basic.R`](../../testthat/test-basic.R) already compares the same four
-`<RUN>…</RUN>` goldens under `tests/fixtures/2018/{RS,MT}/`. This Python suite adds YAML summary
+[`tests/testthat/test-basic.R`](../testthat/test-basic.R) already compares the same four
 regressions, CPD parity checks, and parallel smoke tests that testthat does not cover.
 
 ## Skipped CLI tests (not applicable to R)
