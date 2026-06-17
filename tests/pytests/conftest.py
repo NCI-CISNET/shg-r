@@ -160,7 +160,8 @@ def parse_results(output_filepath):
             raise ValueError(f"Output file timeout: {output_filepath}")
         time.sleep(0.5)
 
-    sims_text = open(output_filepath, "r").read()
+    with open(output_filepath, "r", encoding="utf-8") as f:
+        sims_text = f.read()
     if sims_text.find("<RUN>") != -1:
         sims_text = sims_text[
             sims_text.find("<RUN>") + 5 : sims_text.find("</RUN>")
