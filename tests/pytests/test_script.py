@@ -22,12 +22,8 @@ def test_cessation_difference():
 
 
 def test_exceeded_max_repeat():
-    try:
+    with pytest.raises(ValueError, match="Invalid Number of Repetitions"):
         get_simulation_results(repeat=10000001)
-        assert 0
-    except ValueError as e:
-        assert "Invalid Number of Repetitions" in str(e)
-
 
 @pytest.mark.slow
 @pytest.mark.RngStream
