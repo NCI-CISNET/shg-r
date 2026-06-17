@@ -181,7 +181,7 @@ jobs:
             ubuntu=true
             windows_release=true
             macos=true
-            if [[ "$WC" == "true" || "$RP" == "true" ]]; then
+            if [[ "$WC" == "true" ]]; then
               windows_devel=true
             fi
           elif [[ "$EVENT" == "pull_request" && "$has_work" == true ]]; then
