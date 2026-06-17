@@ -141,12 +141,13 @@ def get_package_binary_hash() -> str:
     for pattern in ("*.so", "*.dll"):
         for path in src.glob(pattern):
             return get_file_hash(str(path))[:8]
-    # Installed build: hash wrapper.cpp + version.h as proxy when no local .so
+    # Fallback when no local compiled binary exists (e.g. clean checkout after R CMD INSTALL):
+    # hash all native sources so result caches invalidate on any engine change.
     parts = []
-    for rel in ("src/wrapper.cpp", "src/version.h"):
-        p = REPO_ROOT / rel
-        if p.is_file():
-            parts.append(get_file_hash(str(p)))
+    for pattern in ("*.cpp", "*.h", "Makevars", "Makevars.win"):
+        for p in sorted((src).glob(pattern)):
+            if p.is_file():
+                parts.append(get_file_hash(str(p)))
     if parts:
         return hashlib.sha256("".join(parts).encode()).hexdigest()[:8]
     raise FileNotFoundError(
