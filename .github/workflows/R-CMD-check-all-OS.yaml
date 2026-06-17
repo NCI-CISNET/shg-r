@@ -1,6 +1,13 @@
-# Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
-# Sequential OS checks: ubuntu-latest first, then Windows (release, then CRAN devel), then macOS.
-# pull_request only for feature/RC branches (avoids duplicate push+PR runs); push only on main/master.
+# Tiered R CMD check + pytest (fast) per OS.
+#
+# Pull request (default): ubuntu-latest only (path-filtered).
+# Pull request + label `full-ci`: full sequential matrix (path-filtered).
+# Push to main/master: full sequential matrix (path-filtered).
+# workflow_dispatch: pick one OS or all (ignores path filters).
+#
+# Add label `full-ci` on a PR: GitHub PR page → right sidebar Labels → full-ci
+# (create once under repo Settings → Labels if missing).
+#
 # CRAN-like checks use --as-cran with --no-manual; see release-draft-on-tag.yaml.
 on:
   workflow_dispatch:
@@ -8,10 +15,21 @@ on:
       - '**'
     inputs:
       ref:
-        description: "Git ref to checkout (branch, tag e.g. v1.2.3, or SHA). Leave empty to use the branch you selected in 'Use workflow from'."
+        description: "Git ref to checkout (branch, tag, or SHA). Empty = branch selected in 'Use workflow from'."
         required: false
         type: string
         default: ""
+      os:
+        description: "Which OS job(s) to run (manual re-check after a failure)"
+        required: true
+        type: choice
+        default: all
+        options:
+          - all
+          - ubuntu
+          - windows-release
+          - windows-devel
+          - macos
   pull_request:
     branches:
       - main
@@ -23,7 +41,7 @@ on:
       - master
 
 name: R CMD check (all OS)
-run-name: R CMD check (all OS) — ${{ inputs.ref || github.ref_name }}
+run-name: R CMD check — ${{ inputs.os || 'auto' }} — ${{ inputs.ref || github.ref_name }}
 
 concurrency:
   group: r-cmd-check-all-os-${{ github.event.pull_request.number || github.ref }}
@@ -54,8 +72,140 @@ jobs:
           echo "Resolved checkout ref: ${out}"
           echo "ref=${out}" >> "${GITHUB_OUTPUT}"
 
-  check-ubuntu:
+  ci-plan:
     needs: resolve-ref
+    runs-on: ubuntu-latest
+    outputs:
+      ubuntu: ${{ steps.plan.outputs.ubuntu }}
+      windows_release: ${{ steps.plan.outputs.windows_release }}
+      windows_devel: ${{ steps.plan.outputs.windows_devel }}
+      macos: ${{ steps.plan.outputs.macos }}
+      pytests: ${{ steps.plan.outputs.pytests }}
+      sequential: ${{ steps.plan.outputs.sequential }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: ${{ needs.resolve-ref.outputs.ref }}
+          fetch-depth: 0
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            r_package:
+              - 'src/**'
+              - 'R/**'
+              - 'inst/**'
+              - 'tests/testthat/**'
+              - 'tests/fixtures/**'
+              - 'tests/templates/**'
+              - 'tests/testdata/**'
+              - 'DESCRIPTION'
+              - 'NAMESPACE'
+              - 'man/**'
+              - 'demo/**'
+              - '.Rbuildignore'
+            pytests:
+              - 'tests/pytests/**'
+              - 'src/**'
+              - 'R/**'
+              - 'inst/**'
+              - 'tests/testdata/**'
+            windows_csv:
+              - 'src/**'
+              - 'inst/extdata/**'
+              - 'tests/testdata/**'
+
+      - id: plan
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          OS_INPUT: ${{ inputs.os }}
+          RP: ${{ steps.filter.outputs.r_package }}
+          PY: ${{ steps.filter.outputs.pytests }}
+          WC: ${{ steps.filter.outputs.windows_csv }}
+          LABELS_JSON: ${{ toJson(github.event.pull_request.labels.*.name) }}
+          REF_NAME: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          ubuntu=false
+          windows_release=false
+          windows_devel=false
+          macos=false
+          pytests=false
+          sequential=false
+
+          has_work=false
+          if [[ "$RP" == "true" || "$PY" == "true" ]]; then
+            has_work=true
+          fi
+
+          full_ci=false
+          if [[ "$EVENT" == "pull_request" ]] && echo "$LABELS_JSON" | grep -q 'full-ci'; then
+            full_ci=true
+          fi
+
+          main_push=false
+          if [[ "$EVENT" == "push" && ("$REF_NAME" == 'refs/heads/main' || "$REF_NAME" == 'refs/heads/master') ]]; then
+            main_push=true
+          fi
+
+          if [[ "$EVENT" == "workflow_dispatch" ]]; then
+            os="${OS_INPUT:-all}"
+            case "$os" in
+              all)
+                ubuntu=true
+                windows_release=true
+                windows_devel=true
+                macos=true
+                ;;
+              ubuntu) ubuntu=true ;;
+              windows-release) windows_release=true ;;
+              windows-devel) windows_devel=true ;;
+              macos) macos=true ;;
+              *)
+                echo "Unknown os input: $os" >&2
+                exit 1
+                ;;
+            esac
+          elif [[ "$main_push" == true && "$has_work" == true ]]; then
+            sequential=true
+            ubuntu=true
+            windows_release=true
+            macos=true
+            if [[ "$WC" == "true" || "$RP" == "true" ]]; then
+              windows_devel=true
+            fi
+          elif [[ "$EVENT" == "pull_request" && "$full_ci" == true && "$has_work" == true ]]; then
+            sequential=true
+            ubuntu=true
+            windows_release=true
+            macos=true
+            if [[ "$WC" == "true" ]]; then
+              windows_devel=true
+            fi
+          elif [[ "$EVENT" == "pull_request" && "$has_work" == true ]]; then
+            ubuntu=true
+          fi
+
+          if [[ "$ubuntu" == true || "$windows_release" == true || "$windows_devel" == true || "$macos" == true ]]; then
+            pytests=true
+          fi
+
+          {
+            echo "ubuntu=$ubuntu"
+            echo "windows_release=$windows_release"
+            echo "windows_devel=$windows_devel"
+            echo "macos=$macos"
+            echo "pytests=$pytests"
+            echo "sequential=$sequential"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "CI plan: ubuntu=$ubuntu windows_release=$windows_release windows_devel=$windows_devel macos=$macos pytests=$pytests sequential=$sequential (has_work=$has_work full_ci=$full_ci)"
+
+  check-ubuntu:
+    needs: [resolve-ref, ci-plan]
+    if: needs.ci-plan.outputs.ubuntu == 'true'
     runs-on: ubuntu-latest
     name: ubuntu-latest (release)
 
@@ -87,6 +237,10 @@ jobs:
           build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
           error-on: '"warning"'
 
+      - uses: ./.github/actions/pytest-fast
+        with:
+          run: ${{ needs.ci-plan.outputs.pytests }}
+
       - name: Upload Rcheck tests (full testthat output) on failure
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -97,7 +251,11 @@ jobs:
             **/*.Rcheck/tests/
 
   check-windows-release:
-    needs: check-ubuntu
+    needs: [resolve-ref, ci-plan, check-ubuntu]
+    if: |
+      always() &&
+      needs.ci-plan.outputs.windows_release == 'true' &&
+      (needs.check-ubuntu.result == 'success' || needs.check-ubuntu.result == 'skipped')
     runs-on: windows-latest
     name: windows-latest (R-release)
 
@@ -129,6 +287,10 @@ jobs:
           build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
           error-on: '"warning"'
 
+      - uses: ./.github/actions/pytest-fast
+        with:
+          run: ${{ needs.ci-plan.outputs.pytests }}
+
       - name: Upload Rcheck tests (full testthat output) on failure
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -139,7 +301,11 @@ jobs:
             **/*.Rcheck/tests/
 
   check-windows-cran-devel:
-    needs: check-windows-release
+    needs: [resolve-ref, ci-plan, check-windows-release]
+    if: |
+      always() &&
+      needs.ci-plan.outputs.windows_devel == 'true' &&
+      (needs.check-windows-release.result == 'success' || needs.check-windows-release.result == 'skipped')
     runs-on: windows-2022
     name: windows-2022 (R-devel)
 
@@ -185,6 +351,10 @@ jobs:
           build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
           error-on: '"warning"'
 
+      - uses: ./.github/actions/pytest-fast
+        with:
+          run: ${{ needs.ci-plan.outputs.pytests }}
+
       - name: Upload Rcheck tests (full testthat output) on failure
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -195,7 +365,11 @@ jobs:
             **/*.Rcheck/tests/
 
   check-macos:
-    needs: check-windows-cran-devel
+    needs: [resolve-ref, ci-plan, check-windows-cran-devel]
+    if: |
+      always() &&
+      needs.ci-plan.outputs.macos == 'true' &&
+      (needs.check-windows-cran-devel.result == 'success' || needs.check-windows-cran-devel.result == 'skipped')
     runs-on: macos-latest
     name: macos-latest (release)
 
@@ -226,6 +400,10 @@ jobs:
           upload-snapshots: true
           build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
           error-on: '"warning"'
+
+      - uses: ./.github/actions/pytest-fast
+        with:
+          run: ${{ needs.ci-plan.outputs.pytests }}
 
       - name: Upload Rcheck tests (full testthat output) on failure
         if: failure()

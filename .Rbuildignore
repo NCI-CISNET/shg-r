@@ -39,8 +39,6 @@
 ^docs
 ^src/shg-cli-info\.txt$
 ^tests/pytests
-^pytest\.ini
-^requirements-test\.txt$
 ^\.pytest_cache
 ^\.pytest_cache/
 ^\.mypy_cache

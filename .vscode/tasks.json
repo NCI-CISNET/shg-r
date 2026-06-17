@@ -38,6 +38,64 @@
 			}
 		},
 		{
+			"label": "Python: pytest (fast)",
+			"type": "shell",
+			"command": "pytest",
+			"group": "test",
+			"problemMatcher": [],
+			"options": {
+				"cwd": "${workspaceFolder}/tests/pytests",
+				"env": {
+					"SHG_R_ROOT": "${workspaceFolder}"
+				}
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "Python: pytest (install deps + fast)",
+			"type": "shell",
+			"command": "sh",
+			"args": [
+				"-c",
+				"pip install -r requirements-test.txt && pytest"
+			],
+			"group": "test",
+			"problemMatcher": [],
+			"options": {
+				"cwd": "${workspaceFolder}/tests/pytests",
+				"env": {
+					"SHG_R_ROOT": "${workspaceFolder}"
+				}
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "Python: pytest (include slow)",
+			"type": "shell",
+			"command": "pytest",
+			"args": [
+				"--include-slow"
+			],
+			"group": "test",
+			"problemMatcher": [],
+			"options": {
+				"cwd": "${workspaceFolder}/tests/pytests",
+				"env": {
+					"SHG_R_ROOT": "${workspaceFolder}"
+				}
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			}
+		},
+		{
 			"type": "R",
 			"code": [
 				"devtools::build()"

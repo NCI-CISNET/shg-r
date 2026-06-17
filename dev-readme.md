@@ -36,11 +36,38 @@ devtools::load_all()
 library(SmokingHistoryGenerator)
 ```
 
+## GitHub Actions CI
+
+[`.github/workflows/R-CMD-check-all-OS.yaml`](.github/workflows/R-CMD-check-all-OS.yaml) runs **R CMD check --as-cran** and the **fast pytest suite** on each OS job that runs.
+
+| Trigger | What runs |
+|---------|-----------|
+| **Pull request** (default) | **ubuntu-latest** only (skipped if the diff is docs-only) |
+| **Pull request** + label **`full-ci`** | Full sequential matrix: ubuntu → Windows release → Windows R-devel (CRLF stress) → macOS |
+| **Push to `main` / `master`** | Same full matrix when package/pytest paths changed |
+| **workflow_dispatch** | Pick **one OS** or **all** (ignores path filters; use after a merge failure to re-check a single platform) |
+
+**Path filters** skip jobs when only markdown/docs change. Windows R-devel is omitted on full matrix unless `src/`, `inst/extdata/`, or `tests/testdata/` changed.
+
+### Add the `full-ci` label on a PR
+
+1. **Once per repo:** GitHub → **Settings** → **Labels** → **New label** → name `full-ci`, color of your choice → Create.
+2. **On a PR:** open the PR → right sidebar **Labels** → select **`full-ci`**.
+
+Re-run checks after adding the label (push an empty commit or re-run failed jobs from the Actions tab).
+
+### Manually re-check one OS
+
+1. **Actions** → **R CMD check (all OS)** → **Run workflow**.
+2. Choose your branch under “Use workflow from”.
+3. Set **os** to `ubuntu`, `windows-release`, `windows-devel`, or `macos` (or `all`).
+4. Optionally set **ref** to a branch name, tag, or SHA.
+
 ## CRAN Windows preflight
 
 CRAN incoming checks use flavor **`r-devel-windows-x86_64`** (R-devel on 64-bit Windows). You cannot replicate CRAN’s exact farm in GitHub Actions, but you can get close before submitting.
 
-1. **GitHub Actions** — [`.github/workflows/R-CMD-check-all-OS.yaml`](.github/workflows/R-CMD-check-all-OS.yaml) runs **one** workflow per PR (no duplicate push+pull_request). Jobs run **in order**, stopping at the first failure: **ubuntu-latest** → **windows-latest (R-release)** → **windows-2022 (R-devel)** (CRAN preflight with CRLF stress on bundled CSVs) → **macos-latest**. Open a PR against `main`/`master`/`v*-rc` (or use **workflow_dispatch** to run on a branch without a PR). Ensure **`windows-2022 (R-devel)`** is green before uploading to CRAN.
+1. **GitHub Actions** — see [GitHub Actions CI](#github-actions-ci) above. Ensure **`windows-2022 (R-devel)`** is green before uploading to CRAN (full matrix on merge to `main`, or add **`full-ci`** on a PR, or **workflow_dispatch** with `windows-devel`).
 
 2. **Local tarball check** — From the package root:
 
