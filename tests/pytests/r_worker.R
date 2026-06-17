@@ -119,10 +119,14 @@ run_legacy <- function(input, cwd) {
 }
 
 while (TRUE) {
-  req <- read_request()
-  if (is.null(req)) {
+  line <- readLines("stdin", n = 1L, warn = FALSE)
+  if (length(line) == 0) {
+    break
+  }
+  if (!nzchar(line)) {
     next
   }
+  req <- jsonlite::fromJSON(line, simplifyVector = FALSE)
   if (identical(req$op, "legacy_run")) {
     resp <- run_legacy(req$input, req$cwd %||% "")
   } else {
