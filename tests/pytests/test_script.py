@@ -152,19 +152,16 @@ def test_not_specifying_single_MT_SEEDS_should_use_defaults():
 
 
 @pytest.mark.parametrize(
-    "result",
-    [
-        get_simulation_results(rng_strategy="MersenneTwister"),
-        get_simulation_results(rng_strategy="RngStream"),
-    ],
+    "rng_strategy",
+    ["MersenneTwister", "RngStream"],
     ids=["MersenneTwister", "RngStream"],
 )
-def test_basic_characterization(result):
+def test_basic_characterization(rng_strategy):
+    result = get_simulation_results(rng_strategy=rng_strategy)
     assert result["individuals"] >= 1000
     assert abs(result["init_age"]["min"] - 8) <= 7
     assert abs(result["cess_age"]["min"] - 15) <= 7
     assert result["death_age"]["min"] == 0
-
 
 @pytest.mark.parametrize(
     "result",
