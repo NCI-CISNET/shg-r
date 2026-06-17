@@ -164,14 +164,10 @@ def test_basic_characterization(rng_strategy):
     assert result["death_age"]["min"] == 0
 
 @pytest.mark.parametrize(
-    "result",
-    [
-        get_simulation_results(
-            rng_strategy="MersenneTwister", yob=1990, cessation=2010
-        ),
-        get_simulation_results(rng_strategy="RngStream", yob=1990, cessation=2010),
-    ],
+    "rng_strategy",
+    ["MersenneTwister", "RngStream"],
     ids=["MersenneTwister", "RngStream"],
 )
-def test_immediate_cessation_year(result):
+def test_immediate_cessation_year(rng_strategy):
+    result = get_simulation_results(rng_strategy=rng_strategy, yob=1990, cessation=2010)
     assert result["cess_age"]["max"] == 2010 - 1990 - 1
