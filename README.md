@@ -295,7 +295,7 @@ Funding for the CISNET Smoking History Generator and the Rcpp wrapper came from 
 
 ## License
 
-You may not use the Software or Datasets for commercial purposes without prior written consent from the CISNET Lung Working Group and without entering into a separate license agreement regarding such commercial use. Contact: Rafael Meza Rodriguez [rmeza@bccrc.ca](mailto:rmeza@bccrc.ca) and Jamie Tam [jamie.tam@yale.edu](mailto:jamie.tam@yale.edu).
+You may not use the Software or Datasets for commercial purposes without prior written consent from the CISNET Lung Working Group and without entering into a separate license agreement regarding such commercial use. Contact: Rafael Meza Rodriguez [rmeza@bccrc.ca](mailto:rmeza@bccrc.ca) and Jamie Tam [jamie.tam@rutgers.edu](mailto:jamie.tam@rutgers.edu).
 
 The **software** is released under the [GPL-3](https://choosealicense.com/licenses/gpl-3.0/). The **test input tables** shipped with the package are released under the [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) license.
 
